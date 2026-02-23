@@ -1,0 +1,352 @@
+import { v } from 'convex/values';
+import { mutation, query, MutationCtx, QueryCtx } from './_generated/server';
+import { Id } from './_generated/dataModel';
+import { getAuthUserId } from '@convex-dev/auth/server';
+
+// Helper to verify authenticated user matches requested user
+async function verifyAuth(ctx: MutationCtx | QueryCtx, requestedUserId: string) {
+  const authUserId = await getAuthUserId(ctx);
+  if (!authUserId) {
+    throw new Error('Unauthorized: Not authenticated');
+  }
+  if (authUserId !== requestedUserId) {
+    throw new Error("Unauthorized: Cannot access other user's data");
+  }
+  return authUserId;
+}
+
+// ============================================
+// CHAT MESSAGES
+// ============================================
+
+// Get recent chat messages for a user
+export const getRecentMessages = query({
+  args: {
+    userId: v.id('users'),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const limit = args.limit ?? 50;
+
+    const messages = await ctx.db
+      .query('chatMessages')
+      .withIndex('by_user', (q) => q.eq('userId', args.userId))
+      .order('desc')
+      .take(limit);
+
+    // Return in chronological order
+    return messages.reverse();
+  },
+});
+
+// Get messages from a specific session
+export const getSessionMessages = query({
+  args: {
+    sessionId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const messages = await ctx.db
+      .query('chatMessages')
+      .withIndex('by_session', (q) => q.eq('sessionId', args.sessionId))
+      .order('asc')
+      .collect();
+
+    return messages;
+  },
+});
+
+// Save a chat message
+export const saveMessage = mutation({
+  args: {
+    userId: v.id('users'),
+    role: v.union(v.literal('user'), v.literal('assistant')),
+    content: v.string(),
+    sessionId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await verifyAuth(ctx, args.userId);
+
+    return await ctx.db.insert('chatMessages', {
+      userId: args.userId,
+      role: args.role,
+      content: args.content,
+      sessionId: args.sessionId,
+    });
+  },
+});
+
+// Save multiple messages at once (for batch saving)
+export const saveMessages = mutation({
+  args: {
+    userId: v.id('users'),
+    messages: v.array(
+      v.object({
+        role: v.union(v.literal('user'), v.literal('assistant')),
+        content: v.string(),
+      })
+    ),
+    sessionId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await verifyAuth(ctx, args.userId);
+
+    const ids: Id<'chatMessages'>[] = [];
+
+    for (const msg of args.messages) {
+      const id = await ctx.db.insert('chatMessages', {
+        userId: args.userId,
+        role: msg.role,
+        content: msg.content,
+        sessionId: args.sessionId,
+      });
+      ids.push(id);
+    }
+
+    return ids;
+  },
+});
+
+// ============================================
+// AI MEMORIES
+// ============================================
+
+// Get all memories for a user
+export const getMemories = query({
+  args: {
+    userId: v.id('users'),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query('aiMemories')
+      .withIndex('by_user', (q) => q.eq('userId', args.userId))
+      .collect();
+  },
+});
+
+// Get memories by category
+export const getMemoriesByCategory = query({
+  args: {
+    userId: v.id('users'),
+    category: v.union(
+      v.literal('preference'),
+      v.literal('goal'),
+      v.literal('blocker'),
+      v.literal('motivation'),
+      v.literal('context'),
+      v.literal('strategy'),
+      v.literal('insight')
+    ),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query('aiMemories')
+      .withIndex('by_category', (q) => q.eq('userId', args.userId).eq('category', args.category))
+      .collect();
+  },
+});
+
+// Save a new memory
+export const saveMemory = mutation({
+  args: {
+    userId: v.id('users'),
+    category: v.union(
+      v.literal('preference'),
+      v.literal('goal'),
+      v.literal('blocker'),
+      v.literal('motivation'),
+      v.literal('context'),
+      v.literal('strategy'),
+      v.literal('insight')
+    ),
+    content: v.string(),
+    source: v.union(v.literal('chat'), v.literal('journal'), v.literal('habit_pattern')),
+    confidence: v.number(),
+  },
+  handler: async (ctx, args) => {
+    await verifyAuth(ctx, args.userId);
+
+    // Check if a similar memory already exists
+    const existingMemories = await ctx.db
+      .query('aiMemories')
+      .withIndex('by_category', (q) => q.eq('userId', args.userId).eq('category', args.category))
+      .collect();
+
+    // Simple similarity check - if content is very similar, reinforce instead
+    const similarMemory = existingMemories.find(
+      (m) =>
+        m.content.toLowerCase().includes(args.content.toLowerCase().slice(0, 50)) ||
+        args.content.toLowerCase().includes(m.content.toLowerCase().slice(0, 50))
+    );
+
+    if (similarMemory) {
+      // Reinforce existing memory
+      await ctx.db.patch(similarMemory._id, {
+        reinforcementCount: similarMemory.reinforcementCount + 1,
+        confidence: Math.min(1, similarMemory.confidence + 0.1),
+        lastReferencedAt: new Date().toISOString(),
+      });
+      return similarMemory._id;
+    }
+
+    // Create new memory
+    return await ctx.db.insert('aiMemories', {
+      userId: args.userId,
+      category: args.category,
+      content: args.content,
+      source: args.source,
+      confidence: args.confidence,
+      reinforcementCount: 1,
+      lastReferencedAt: new Date().toISOString(),
+    });
+  },
+});
+
+// Save multiple memories at once
+export const saveMemories = mutation({
+  args: {
+    userId: v.id('users'),
+    memories: v.array(
+      v.object({
+        category: v.union(
+          v.literal('preference'),
+          v.literal('goal'),
+          v.literal('blocker'),
+          v.literal('motivation'),
+          v.literal('context'),
+          v.literal('strategy'),
+          v.literal('insight')
+        ),
+        content: v.string(),
+        source: v.union(v.literal('chat'), v.literal('journal'), v.literal('habit_pattern')),
+        confidence: v.number(),
+      })
+    ),
+  },
+  handler: async (ctx, args) => {
+    await verifyAuth(ctx, args.userId);
+
+    // Query all existing memories once upfront to avoid N+1 queries
+    const allExistingMemories = await ctx.db
+      .query('aiMemories')
+      .withIndex('by_user', (q) => q.eq('userId', args.userId))
+      .collect();
+
+    // Group existing memories by category for O(1) lookup
+    const memoriesByCategory = new Map<string, typeof allExistingMemories>();
+    for (const m of allExistingMemories) {
+      const categoryMemories = memoriesByCategory.get(m.category) || [];
+      categoryMemories.push(m);
+      memoriesByCategory.set(m.category, categoryMemories);
+    }
+
+    const ids: Id<'aiMemories'>[] = [];
+
+    for (const memory of args.memories) {
+      // Look up existing memories from our pre-fetched map
+      const existingMemories = memoriesByCategory.get(memory.category) || [];
+
+      const similarMemory = existingMemories.find(
+        (m) =>
+          m.content.toLowerCase().includes(memory.content.toLowerCase().slice(0, 50)) ||
+          memory.content.toLowerCase().includes(m.content.toLowerCase().slice(0, 50))
+      );
+
+      if (similarMemory) {
+        await ctx.db.patch(similarMemory._id, {
+          reinforcementCount: similarMemory.reinforcementCount + 1,
+          confidence: Math.min(1, similarMemory.confidence + 0.1),
+          lastReferencedAt: new Date().toISOString(),
+        });
+        ids.push(similarMemory._id);
+      } else {
+        const id = await ctx.db.insert('aiMemories', {
+          userId: args.userId,
+          category: memory.category,
+          content: memory.content,
+          source: memory.source,
+          confidence: memory.confidence,
+          reinforcementCount: 1,
+          lastReferencedAt: new Date().toISOString(),
+        });
+        ids.push(id);
+      }
+    }
+
+    return ids;
+  },
+});
+
+// Update memory reference time (when AI uses a memory)
+export const touchMemory = mutation({
+  args: {
+    memoryId: v.id('aiMemories'),
+    userId: v.id('users'),
+  },
+  handler: async (ctx, args) => {
+    await verifyAuth(ctx, args.userId);
+
+    const memory = await ctx.db.get(args.memoryId);
+    if (!memory || memory.userId !== args.userId) return;
+
+    await ctx.db.patch(args.memoryId, {
+      lastReferencedAt: new Date().toISOString(),
+    });
+  },
+});
+
+// Delete a memory
+export const deleteMemory = mutation({
+  args: {
+    memoryId: v.id('aiMemories'),
+    userId: v.id('users'),
+  },
+  handler: async (ctx, args) => {
+    await verifyAuth(ctx, args.userId);
+
+    const memory = await ctx.db.get(args.memoryId);
+    if (!memory || memory.userId !== args.userId) return false;
+
+    await ctx.db.delete(args.memoryId);
+    return true;
+  },
+});
+
+// Get chat history summary for context
+export const getChatSummary = query({
+  args: {
+    userId: v.id('users'),
+  },
+  handler: async (ctx, args) => {
+    // Get all messages to avoid a second query just for counting
+    // We need all messages anyway for the count, and we take the last 20 from there
+    const allMessages = await ctx.db
+      .query('chatMessages')
+      .withIndex('by_user', (q) => q.eq('userId', args.userId))
+      .order('desc')
+      .collect();
+
+    // Take the 20 most recent (already in desc order)
+    const recentMessages = allMessages.slice(0, 20).reverse();
+
+    // Get all memories
+    const memories = await ctx.db
+      .query('aiMemories')
+      .withIndex('by_user', (q) => q.eq('userId', args.userId))
+      .collect();
+
+    return {
+      totalMessages: allMessages.length,
+      recentMessages,
+      memories: memories.sort((a, b) => b.confidence - a.confidence),
+      memoriesByCategory: {
+        preferences: memories.filter((m) => m.category === 'preference'),
+        goals: memories.filter((m) => m.category === 'goal'),
+        blockers: memories.filter((m) => m.category === 'blocker'),
+        motivations: memories.filter((m) => m.category === 'motivation'),
+        context: memories.filter((m) => m.category === 'context'),
+        strategies: memories.filter((m) => m.category === 'strategy'),
+        insights: memories.filter((m) => m.category === 'insight'),
+      },
+    };
+  },
+});
