@@ -174,7 +174,7 @@ export default function ChroniclesScreen() {
                         isSelected && { backgroundColor: `${config.color}20`, borderColor: config.color },
                       ]}
                     >
-                      <Text style={styles.moodIcon}>{config.icon}</Text>
+                      <Ionicons name={config.icon as keyof typeof Ionicons.glyphMap} size={18} color={isSelected ? config.color : Colors.textMuted} />
                       <Text
                         style={[
                           styles.moodLabel,
@@ -266,9 +266,11 @@ export default function ChroniclesScreen() {
             <View style={styles.moodTrend}>
               {entries.slice(0, 7).map((entry) => (
                 <View key={entry.id} style={styles.moodDot}>
-                  <Text style={styles.moodDotIcon}>
-                    {entry.mood ? MOOD_CONFIG[entry.mood].icon : '📝'}
-                  </Text>
+                  <Ionicons
+                    name={(entry.mood ? MOOD_CONFIG[entry.mood].icon : 'document-text-outline') as keyof typeof Ionicons.glyphMap}
+                    size={16}
+                    color={entry.mood ? MOOD_CONFIG[entry.mood].color : Colors.textDim}
+                  />
                   <Text style={styles.moodDotDate}>
                     {entry.entryDate
                       ? format(parseISO(entry.entryDate), 'MMM d')
@@ -314,9 +316,11 @@ function EntryCard({ entry }: { entry: JournalEntry }) {
     <GlassCard onPress={() => setExpanded(!expanded)}>
       <View style={cardStyles.header}>
         <View style={cardStyles.headerLeft}>
-          <Text style={cardStyles.moodIcon}>
-            {entry.mood ? MOOD_CONFIG[entry.mood].icon : '📝'}
-          </Text>
+          <Ionicons
+            name={(entry.mood ? MOOD_CONFIG[entry.mood].icon : 'document-text-outline') as keyof typeof Ionicons.glyphMap}
+            size={20}
+            color={entry.mood ? MOOD_CONFIG[entry.mood].color : Colors.textDim}
+          />
           <View>
             <Text style={cardStyles.date}>{dateStr}</Text>
             <Text style={cardStyles.meta}>

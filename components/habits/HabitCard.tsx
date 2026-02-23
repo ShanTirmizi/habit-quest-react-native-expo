@@ -14,11 +14,11 @@ interface HabitCardProps {
   onPress?: (habit: Habit) => void;
 }
 
-const TIME_ICONS: Record<TimeOfDay, string> = {
-  morning: '🌅',
-  afternoon: '☀️',
-  evening: '🌙',
-  anytime: '',
+const TIME_ICON_NAMES: Record<TimeOfDay, keyof typeof Ionicons.glyphMap | null> = {
+  morning: 'sunny-outline',
+  afternoon: 'partly-sunny-outline',
+  evening: 'moon-outline',
+  anytime: null,
 };
 
 export function HabitCard({ habit, isCompleted, onToggle, onPress }: HabitCardProps) {
@@ -62,17 +62,12 @@ export function HabitCard({ habit, isCompleted, onToggle, onPress }: HabitCardPr
       </Pressable>
 
       <View style={styles.content}>
-        <View style={styles.topRow}>
-          <Text
-            style={[styles.name, isCompleted && styles.nameCompleted]}
-            numberOfLines={1}
-          >
-            {habit.name}
-          </Text>
-          {habit.timeOfDay && habit.timeOfDay !== 'anytime' ? (
-            <Text style={styles.timeIcon}>{TIME_ICONS[habit.timeOfDay]}</Text>
-          ) : null}
-        </View>
+        <Text
+          style={[styles.name, isCompleted && styles.nameCompleted]}
+          numberOfLines={1}
+        >
+          {habit.name}
+        </Text>
 
         <View style={styles.metaRow}>
           <BadgePill
@@ -84,7 +79,7 @@ export function HabitCard({ habit, isCompleted, onToggle, onPress }: HabitCardPr
           <Text style={styles.xp}>+{habit.xpReward} XP</Text>
           {habit.streak > 0 ? (
             <View style={styles.streakBadge}>
-              <Text style={styles.streakIcon}>🔥</Text>
+              <Ionicons name="flame" size={12} color={Colors.accent} />
               <Text style={styles.streakText}>{habit.streak}</Text>
             </View>
           ) : null}
@@ -94,7 +89,12 @@ export function HabitCard({ habit, isCompleted, onToggle, onPress }: HabitCardPr
         </View>
       </View>
 
-      <Ionicons name="chevron-forward" size={16} color={Colors.textDim} />
+      <View style={styles.rightSection}>
+        {habit.timeOfDay && TIME_ICON_NAMES[habit.timeOfDay] ? (
+          <Ionicons name={TIME_ICON_NAMES[habit.timeOfDay]!} size={16} color={Colors.textDim} />
+        ) : null}
+        <Ionicons name="chevron-forward" size={16} color={Colors.textDim} />
+      </View>
     </Pressable>
   );
 }
@@ -126,7 +126,7 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 4,
   },
-  topRow: {
+  rightSection: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
@@ -140,9 +140,6 @@ const styles = StyleSheet.create({
   nameCompleted: {
     color: Colors.textMuted,
     textDecorationLine: 'line-through',
-  },
-  timeIcon: {
-    fontSize: 14,
   },
   metaRow: {
     flexDirection: 'row',
@@ -158,9 +155,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 2,
-  },
-  streakIcon: {
-    fontSize: 11,
   },
   streakText: {
     fontSize: FontSize.xs,

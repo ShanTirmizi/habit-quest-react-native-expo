@@ -19,26 +19,26 @@ import type { HabitCategory } from '@/types';
 type InsightsTab = 'overview' | 'history' | 'achievements' | 'gamification';
 
 // Demo data
-const DEMO_ACHIEVEMENTS = [
-  { id: 'first_step', name: 'First Step', icon: '👣', description: 'Complete your first habit', unlocked: true },
-  { id: 'consistent', name: 'Consistent', icon: '📅', description: '7-day streak', unlocked: true },
-  { id: 'dedicated', name: 'Dedicated', icon: '💪', description: '14-day streak', unlocked: true },
-  { id: 'well_rounded', name: 'Well-Rounded', icon: '🌈', description: 'Complete all 4 categories', unlocked: false },
-  { id: 'xp_hunter', name: 'XP Hunter', icon: '⚡', description: 'Earn 1,000 XP', unlocked: true },
-  { id: 'perfect_week', name: 'Perfect Week', icon: '🏆', description: '100% completion for 7 days', unlocked: false },
-  { id: 'marathon', name: 'Marathon', icon: '🏃', description: '30-day streak', unlocked: false },
-  { id: 'xp_master', name: 'XP Master', icon: '💎', description: 'Earn 5,000 XP', unlocked: false },
-  { id: 'centurion', name: 'Centurion', icon: '🎖️', description: '100 total completions', unlocked: false },
+const DEMO_ACHIEVEMENTS: { id: string; name: string; icon: keyof typeof Ionicons.glyphMap; description: string; unlocked: boolean }[] = [
+  { id: 'first_step', name: 'First Step', icon: 'footsteps-outline', description: 'Complete your first habit', unlocked: true },
+  { id: 'consistent', name: 'Consistent', icon: 'calendar-outline', description: '7-day streak', unlocked: true },
+  { id: 'dedicated', name: 'Dedicated', icon: 'fitness-outline', description: '14-day streak', unlocked: true },
+  { id: 'well_rounded', name: 'Well-Rounded', icon: 'color-palette-outline', description: 'Complete all 4 categories', unlocked: false },
+  { id: 'xp_hunter', name: 'XP Hunter', icon: 'flash-outline', description: 'Earn 1,000 XP', unlocked: true },
+  { id: 'perfect_week', name: 'Perfect Week', icon: 'trophy-outline', description: '100% completion for 7 days', unlocked: false },
+  { id: 'marathon', name: 'Marathon', icon: 'walk-outline', description: '30-day streak', unlocked: false },
+  { id: 'xp_master', name: 'XP Master', icon: 'diamond-outline', description: 'Earn 5,000 XP', unlocked: false },
+  { id: 'centurion', name: 'Centurion', icon: 'medal-outline', description: '100 total completions', unlocked: false },
 ];
 
-const DEMO_SKILLS = [
-  { id: 'iron_will', name: 'Iron Will', category: 'discipline', xpCost: 500, unlocked: true, icon: '🛡️', description: '+5% XP bonus' },
-  { id: 'streak_guardian', name: 'Streak Guardian', category: 'discipline', xpCost: 750, unlocked: true, icon: '🔒', description: '+1 streak freeze/week' },
-  { id: 'momentum', name: 'Momentum Master', category: 'discipline', xpCost: 1000, unlocked: false, icon: '🚀', description: '+10% for 3+ habits/day' },
-  { id: 'vitality', name: 'Vitality', category: 'wellness', xpCost: 500, unlocked: true, icon: '❤️', description: '+10% health habits' },
-  { id: 'rest_mastery', name: 'Rest Mastery', category: 'wellness', xpCost: 750, unlocked: false, icon: '😴', description: '+1 rest day/week' },
-  { id: 'scholar', name: 'Scholar', category: 'growth', xpCost: 500, unlocked: false, icon: '📚', description: '+10% career/mind' },
-  { id: 'harmony', name: 'Harmony', category: 'balance', xpCost: 500, unlocked: false, icon: '☯️', description: '+10% life habits' },
+const DEMO_SKILLS: { id: string; name: string; category: string; xpCost: number; unlocked: boolean; icon: keyof typeof Ionicons.glyphMap; description: string }[] = [
+  { id: 'iron_will', name: 'Iron Will', category: 'discipline', xpCost: 500, unlocked: true, icon: 'shield-outline', description: '+5% XP bonus' },
+  { id: 'streak_guardian', name: 'Streak Guardian', category: 'discipline', xpCost: 750, unlocked: true, icon: 'lock-closed-outline', description: '+1 streak freeze/week' },
+  { id: 'momentum', name: 'Momentum Master', category: 'discipline', xpCost: 1000, unlocked: false, icon: 'rocket-outline', description: '+10% for 3+ habits/day' },
+  { id: 'vitality', name: 'Vitality', category: 'wellness', xpCost: 500, unlocked: true, icon: 'heart-outline', description: '+10% health habits' },
+  { id: 'rest_mastery', name: 'Rest Mastery', category: 'wellness', xpCost: 750, unlocked: false, icon: 'bed-outline', description: '+1 rest day/week' },
+  { id: 'scholar', name: 'Scholar', category: 'growth', xpCost: 500, unlocked: false, icon: 'library-outline', description: '+10% career/mind' },
+  { id: 'harmony', name: 'Harmony', category: 'balance', xpCost: 500, unlocked: false, icon: 'infinite-outline', description: '+10% life habits' },
 ];
 
 const DEMO_WEEKLY_STATS = {
@@ -57,7 +57,7 @@ const DEMO_WEEKLY_STATS = {
 
 const DEMO_BOSS = {
   name: 'Chaos Dragon',
-  icon: '🐉',
+  icon: 'skull-outline' as keyof typeof Ionicons.glyphMap,
   progress: 65,
   completions: 16,
   required: 25,
@@ -113,7 +113,7 @@ function OverviewTab() {
       {/* Weekly Boss */}
       <GlassCard>
         <View style={styles.bossHeader}>
-          <Text style={styles.bossIcon}>{boss.icon}</Text>
+          <Ionicons name={boss.icon} size={32} color={Colors.danger} />
           <View style={styles.bossInfo}>
             <Text style={styles.bossName}>{boss.name}</Text>
             <Text style={styles.bossStatus}>
@@ -262,9 +262,12 @@ function AchievementsTab() {
               ...(!achievement.unlocked ? styles.achievementLocked : {}),
             }}
           >
-            <Text style={[styles.achievementIcon, !achievement.unlocked && { opacity: 0.3 }]}>
-              {achievement.icon}
-            </Text>
+            <Ionicons
+              name={achievement.icon}
+              size={28}
+              color={achievement.unlocked ? Colors.accent : Colors.textDim}
+              style={!achievement.unlocked ? { opacity: 0.3 } : undefined}
+            />
             <Text
               style={[
                 styles.achievementName,
@@ -309,7 +312,7 @@ function GamificationTab() {
                   key={skill.id}
                   style={[styles.skillItem, skill.unlocked && styles.skillItemUnlocked]}
                 >
-                  <Text style={styles.skillIcon}>{skill.icon}</Text>
+                  <Ionicons name={skill.icon} size={20} color={skill.unlocked ? categoryColors[cat] : Colors.textMuted} />
                   <View style={styles.skillInfo}>
                     <Text
                       style={[
@@ -377,7 +380,8 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
   },
   bossIcon: {
-    fontSize: 32,
+    width: 32,
+    alignItems: 'center',
   },
   bossInfo: {
     flex: 1,
@@ -497,7 +501,6 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   achievementIcon: {
-    fontSize: 28,
     marginBottom: Spacing.xs,
   },
   achievementName: {
@@ -543,7 +546,8 @@ const styles = StyleSheet.create({
     borderColor: Colors.glassBorder,
   },
   skillIcon: {
-    fontSize: 20,
+    width: 20,
+    alignItems: 'center',
   },
   skillInfo: {
     flex: 1,

@@ -22,11 +22,11 @@ interface AddHabitSheetProps {
   }) => void;
 }
 
-const CATEGORIES: { value: HabitCategory; label: string; icon: string }[] = [
-  { value: 'health', label: 'Health', icon: '💚' },
-  { value: 'career', label: 'Career', icon: '💙' },
-  { value: 'mind', label: 'Mind', icon: '💜' },
-  { value: 'life', label: 'Life', icon: '🧡' },
+const CATEGORIES: { value: HabitCategory; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+  { value: 'health', label: 'Health', icon: 'heart-outline' },
+  { value: 'career', label: 'Career', icon: 'briefcase-outline' },
+  { value: 'mind', label: 'Mind', icon: 'bulb-outline' },
+  { value: 'life', label: 'Life', icon: 'sunny-outline' },
 ];
 
 const FREQUENCIES: { value: HabitFrequencyType; label: string }[] = [
@@ -37,11 +37,11 @@ const FREQUENCIES: { value: HabitFrequencyType; label: string }[] = [
   { value: 'timesPerWeek', label: 'X per week' },
 ];
 
-const TIME_OF_DAY: { value: TimeOfDay; label: string; icon: string }[] = [
-  { value: 'morning', label: 'Morning', icon: '🌅' },
-  { value: 'afternoon', label: 'Afternoon', icon: '☀️' },
-  { value: 'evening', label: 'Evening', icon: '🌙' },
-  { value: 'anytime', label: 'Anytime', icon: '⏰' },
+const TIME_OF_DAY: { value: TimeOfDay; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+  { value: 'morning', label: 'Morning', icon: 'sunny-outline' },
+  { value: 'afternoon', label: 'Afternoon', icon: 'partly-sunny-outline' },
+  { value: 'evening', label: 'Evening', icon: 'moon-outline' },
+  { value: 'anytime', label: 'Anytime', icon: 'time-outline' },
 ];
 
 const DAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
@@ -132,7 +132,7 @@ export function AddHabitSheet({ visible, onClose, onAdd }: AddHabitSheetProps) {
                   },
                 ]}
               >
-                <Text style={styles.chipIcon}>{cat.icon}</Text>
+                <Ionicons name={cat.icon} size={14} color={category === cat.value ? CATEGORY_COLORS[cat.value] : Colors.textSecondary} />
                 <Text
                   style={[
                     styles.chipLabel,
@@ -240,7 +240,7 @@ export function AddHabitSheet({ visible, onClose, onAdd }: AddHabitSheetProps) {
                   timeOfDay === tod.value && styles.todChipActive,
                 ]}
               >
-                <Text style={styles.todIcon}>{tod.icon}</Text>
+                <Ionicons name={tod.icon} size={14} color={timeOfDay === tod.value ? Colors.primary : Colors.textSecondary} />
                 <Text
                   style={[
                     styles.todLabel,
@@ -339,7 +339,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   chipIcon: {
-    fontSize: 14,
+    width: 14,
   },
   chipLabel: {
     fontSize: FontSize.sm,
@@ -429,7 +429,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.primary,
   },
   todIcon: {
-    fontSize: 14,
+    width: 14,
   },
   todLabel: {
     fontSize: FontSize.sm,

@@ -358,10 +358,10 @@ export interface TimeCapsule {
 
 // Config constants
 export const MOOD_CONFIG: Record<JournalMood, { icon: string; label: string; color: string }> = {
-  great: { icon: '✨', label: 'Great', color: '#FBBF24' },
-  good: { icon: '🌿', label: 'Good', color: '#4ADE80' },
-  okay: { icon: '🌙', label: 'Okay', color: '#60A5FA' },
-  rough: { icon: '🌧️', label: 'Rough', color: '#9CA3AF' },
+  great: { icon: 'sparkles', label: 'Great', color: '#FBBF24' },
+  good: { icon: 'leaf', label: 'Good', color: '#4ADE80' },
+  okay: { icon: 'cloudy-night', label: 'Okay', color: '#60A5FA' },
+  rough: { icon: 'rainy', label: 'Rough', color: '#9CA3AF' },
 };
 
 export const JOURNAL_XP = {
@@ -374,10 +374,10 @@ export const JOURNAL_XP = {
 
 export const TIME_OF_DAY_CONFIG: Record<TimeOfDay, { icon: string; label: string; range: string }> =
   {
-    morning: { icon: '🌅', label: 'Morning', range: '5am - 12pm' },
-    afternoon: { icon: '☀️', label: 'Afternoon', range: '12pm - 5pm' },
-    evening: { icon: '🌙', label: 'Evening', range: '5pm - 12am' },
-    anytime: { icon: '⏰', label: 'Anytime', range: 'All day' },
+    morning: { icon: 'sunny-outline', label: 'Morning', range: '5am - 12pm' },
+    afternoon: { icon: 'partly-sunny-outline', label: 'Afternoon', range: '12pm - 5pm' },
+    evening: { icon: 'moon-outline', label: 'Evening', range: '5pm - 12am' },
+    anytime: { icon: 'time-outline', label: 'Anytime', range: 'All day' },
   };
 
 export const QUEST_PRIORITY_CONFIG: Record<
@@ -403,22 +403,22 @@ export const GOAL_CATEGORY_CONFIG: Record<
   GoalCategory,
   { label: string; icon: string; color: string }
 > = {
-  fitness: { label: 'Fitness', icon: '💪', color: '#22C55E' },
-  learning: { label: 'Learning', icon: '📚', color: '#3B82F6' },
-  career: { label: 'Career', icon: '💼', color: '#A855F7' },
-  health: { label: 'Health', icon: '🏥', color: '#EF4444' },
-  creative: { label: 'Creative', icon: '🎨', color: '#EC4899' },
-  financial: { label: 'Financial', icon: '💰', color: '#F59E0B' },
+  fitness: { label: 'Fitness', icon: 'barbell-outline', color: '#22C55E' },
+  learning: { label: 'Learning', icon: 'book-outline', color: '#3B82F6' },
+  career: { label: 'Career', icon: 'briefcase-outline', color: '#A855F7' },
+  health: { label: 'Health', icon: 'heart-outline', color: '#EF4444' },
+  creative: { label: 'Creative', icon: 'color-palette-outline', color: '#EC4899' },
+  financial: { label: 'Financial', icon: 'wallet-outline', color: '#F59E0B' },
 };
 
 export const GOAL_STATUS_CONFIG: Record<
   GoalStatus,
   { label: string; icon: string; color: string }
 > = {
-  active: { label: 'Active', icon: '🎯', color: '#00E5CC' },
-  achieved: { label: 'Achieved', icon: '🏆', color: '#22C55E' },
-  paused: { label: 'Paused', icon: '⏸️', color: '#F59E0B' },
-  abandoned: { label: 'Abandoned', icon: '❌', color: '#71717A' },
+  active: { label: 'Active', icon: 'radio-button-on', color: '#00E5CC' },
+  achieved: { label: 'Achieved', icon: 'trophy', color: '#22C55E' },
+  paused: { label: 'Paused', icon: 'pause-circle', color: '#F59E0B' },
+  abandoned: { label: 'Abandoned', icon: 'close-circle', color: '#71717A' },
 };
 
 export const UNDERWORLD_CONFIG = {

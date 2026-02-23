@@ -216,7 +216,7 @@ export default function DashboardScreen() {
             {/* All Done Banner */}
             {allDone ? (
               <GlassCard style={styles.allDoneBanner}>
-                <Text style={styles.allDoneEmoji}>🎉</Text>
+                <Ionicons name="trophy" size={32} color={Colors.accent} />
                 <Text style={styles.allDoneTitle}>All Done!</Text>
                 <Text style={styles.allDoneText}>
                   You&apos;ve completed all habits for today. Amazing work!

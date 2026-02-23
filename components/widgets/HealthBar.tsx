@@ -41,7 +41,10 @@ export function HealthBar({ currentHp, maxHp, compact }: HealthBarProps) {
       </View>
       <ProgressBar progress={percentage} color={hpColor} height={6} />
       {isCritical ? (
-        <Text style={styles.criticalText}>⚠️ Critical! Complete habits to heal.</Text>
+        <View style={styles.criticalRow}>
+          <Ionicons name="warning-outline" size={12} color={Colors.danger} />
+          <Text style={styles.criticalText}>Critical! Complete habits to heal.</Text>
+        </View>
       ) : null}
     </View>
   );
@@ -70,10 +73,15 @@ const styles = StyleSheet.create({
     fontSize: FontSize.xs,
     fontWeight: '700',
   },
+  criticalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 2,
+  },
   criticalText: {
     fontSize: FontSize.xs,
     color: Colors.danger,
-    marginTop: 2,
   },
   compactContainer: {
     flexDirection: 'row',

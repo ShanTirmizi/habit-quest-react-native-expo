@@ -79,17 +79,17 @@ export function HabitDetailSheet({
         {/* Stats */}
         <View style={styles.statsGrid}>
           <View style={styles.statCard}>
-            <Text style={styles.statEmoji}>🔥</Text>
+            <Ionicons name="flame" size={20} color={Colors.accent} />
             <Text style={styles.statValue}>{habit.streak}</Text>
             <Text style={styles.statLabel}>Streak</Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={styles.statEmoji}>📊</Text>
+            <Ionicons name="bar-chart" size={20} color={Colors.info} />
             <Text style={styles.statValue}>{habit.completedDates.length}</Text>
             <Text style={styles.statLabel}>Total</Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={styles.statEmoji}>⚡</Text>
+            <Ionicons name="flash" size={20} color={Colors.primary} />
             <Text style={styles.statValue}>
               {habit.completedDates.length * habit.xpReward}
             </Text>
@@ -214,9 +214,6 @@ const styles = StyleSheet.create({
     borderRadius: Radius.md,
     padding: Spacing.md,
     gap: 2,
-  },
-  statEmoji: {
-    fontSize: 20,
   },
   statValue: {
     fontSize: FontSize.lg,

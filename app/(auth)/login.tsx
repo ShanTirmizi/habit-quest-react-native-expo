@@ -92,7 +92,7 @@ export default function LoginScreen() {
         {/* Hero */}
         <View style={styles.hero}>
           <View style={styles.logoContainer}>
-            <Text style={styles.logoIcon}>⚔️</Text>
+            <Ionicons name="shield-half" size={32} color={Colors.primary} />
           </View>
           <Text style={styles.appName}>HabitQuest</Text>
           <Text style={styles.tagline}>Level up your life, one habit at a time</Text>
@@ -173,13 +173,13 @@ export default function LoginScreen() {
 
         {/* Features Preview */}
         <View style={styles.features}>
-          {[
-            { icon: '🔥', text: 'Track habits & build streaks' },
-            { icon: '⚔️', text: 'Defeat weekly bosses' },
-            { icon: '📊', text: 'AI-powered insights' },
-          ].map((f, i) => (
+          {([
+            { icon: 'flame' as const, color: Colors.accent, text: 'Track habits & build streaks' },
+            { icon: 'shield' as const, color: Colors.primary, text: 'Defeat weekly bosses' },
+            { icon: 'analytics' as const, color: Colors.info, text: 'AI-powered insights' },
+          ]).map((f, i) => (
             <View key={i} style={styles.featureItem}>
-              <Text style={styles.featureIcon}>{f.icon}</Text>
+              <Ionicons name={f.icon} size={18} color={f.color} />
               <Text style={styles.featureText}>{f.text}</Text>
             </View>
           ))}
@@ -213,9 +213,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: Spacing.lg,
-  },
-  logoIcon: {
-    fontSize: 32,
   },
   appName: {
     fontSize: FontSize['3xl'],
@@ -284,9 +281,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.md,
-  },
-  featureIcon: {
-    fontSize: 20,
   },
   featureText: {
     fontSize: FontSize.sm,

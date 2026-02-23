@@ -61,11 +61,11 @@ const DEMO_SCHEDULE: TodayMedicineScheduleItem[] = [
   },
 ];
 
-const TIME_SLOT_CONFIG: Record<string, { icon: string; label: string; color: string }> = {
-  morning: { icon: '☀️', label: 'Morning', color: '#F59E0B' },
-  afternoon: { icon: '🌤️', label: 'Afternoon', color: '#F97316' },
-  evening: { icon: '🌆', label: 'Evening', color: '#8B5CF6' },
-  night: { icon: '🌙', label: 'Night', color: '#6366F1' },
+const TIME_SLOT_CONFIG: Record<string, { icon: keyof typeof Ionicons.glyphMap; label: string; color: string }> = {
+  morning: { icon: 'sunny-outline', label: 'Morning', color: '#F59E0B' },
+  afternoon: { icon: 'partly-sunny-outline', label: 'Afternoon', color: '#F97316' },
+  evening: { icon: 'cloudy-night-outline', label: 'Evening', color: '#8B5CF6' },
+  night: { icon: 'moon-outline', label: 'Night', color: '#6366F1' },
 };
 
 export default function MedicinesScreen() {
@@ -121,7 +121,7 @@ export default function MedicinesScreen() {
         <View style={styles.headerLeft}>
           <Text style={styles.title}>Medicines</Text>
           <BadgePill
-            label={`🔥 ${medicineStreak} day streak`}
+            label={`${medicineStreak} day streak`}
             color={Colors.accent}
             size="sm"
           />
@@ -180,11 +180,11 @@ export default function MedicinesScreen() {
             />
           ) : (
             Object.entries(groupedSchedule).map(([slot, items]) => {
-              const config = TIME_SLOT_CONFIG[slot] || { icon: '💊', label: slot, color: Colors.textSecondary };
+              const config = TIME_SLOT_CONFIG[slot] || { icon: 'medkit-outline' as keyof typeof Ionicons.glyphMap, label: slot, color: Colors.textSecondary };
               return (
                 <View key={slot} style={styles.timeSlot}>
                   <View style={styles.slotHeader}>
-                    <Text style={styles.slotIcon}>{config.icon}</Text>
+                    <Ionicons name={config.icon} size={18} color={config.color} />
                     <Text style={[styles.slotLabel, { color: config.color }]}>{config.label}</Text>
                     <Text style={styles.slotTime}>
                       {items[0] ? formatMedicineTime(items[0].scheduledTime) : ''}

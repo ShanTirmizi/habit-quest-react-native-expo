@@ -110,6 +110,7 @@ export default function GoalsScreen() {
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.filterRow}
+        style={styles.filterScroll}
       >
         {(['all', 'active', 'achieved', 'paused'] as FilterValue[]).map((f) => {
           const isActive = filter === f;
@@ -195,7 +196,7 @@ function GoalCard({ goal, onPress }: { goal: Goal; onPress: () => void }) {
   return (
     <GlassCard onPress={onPress} style={styles.goalCard}>
       <View style={styles.goalTop}>
-        <Text style={styles.goalIcon}>{categoryConfig.icon}</Text>
+        <Ionicons name={categoryConfig.icon as keyof typeof Ionicons.glyphMap} size={24} color={categoryConfig.color} />
         <BadgePill
           label={statusConfig.label}
           icon={statusConfig.icon}
@@ -251,9 +252,10 @@ function GoalDetail({ goal }: { goal: Goal }) {
       <View style={styles.detailMeta}>
         <View style={styles.detailMetaItem}>
           <Text style={styles.detailMetaLabel}>Category</Text>
-          <Text style={[styles.detailMetaValue, { color: categoryConfig.color }]}>
-            {categoryConfig.icon} {categoryConfig.label}
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <Ionicons name={categoryConfig.icon as keyof typeof Ionicons.glyphMap} size={14} color={categoryConfig.color} />
+            <Text style={[styles.detailMetaValue, { color: categoryConfig.color }]}>{categoryConfig.label}</Text>
+          </View>
         </View>
         <View style={styles.detailMetaItem}>
           <Text style={styles.detailMetaLabel}>Target Date</Text>
@@ -384,7 +386,7 @@ function AddGoalSheet({
                     },
                   ]}
                 >
-                  <Text>{config.icon}</Text>
+                  <Ionicons name={config.icon as keyof typeof Ionicons.glyphMap} size={16} color={config.color} />
                   <Text
                     style={[
                       styles.categoryChipText,
@@ -437,6 +439,9 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primaryBg,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  filterScroll: {
+    flexGrow: 0,
   },
   filterRow: {
     paddingHorizontal: Spacing.xl,

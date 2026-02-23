@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, ViewStyle } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors, Radius, FontSize, Spacing } from '@/constants/theme';
 
 interface BadgePillProps {
@@ -35,7 +36,7 @@ export function BadgePill({
       ]}
     >
       {icon ? (
-        <Text style={[styles.icon, { fontSize: isSmall ? 10 : 12 }]}>{icon}</Text>
+        <Ionicons name={icon as keyof typeof Ionicons.glyphMap} size={isSmall ? 10 : 12} color={color} />
       ) : null}
       <Text
         style={[
