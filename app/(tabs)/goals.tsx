@@ -5,8 +5,9 @@ import {
   StyleSheet,
   ScrollView,
   Pressable,
-  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -22,6 +23,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
+import { useToast } from '@/contexts/toast-context';
 import type { Goal, GoalCategory, GoalStatus } from '@/types';
 import { GOAL_CATEGORY_CONFIG, GOAL_STATUS_CONFIG } from '@/types';
 
@@ -56,9 +58,11 @@ export default function GoalsScreen() {
   const insets = useSafeAreaInsets();
   const { userId } = useAuth();
 
+  const { showToast } = useToast();
   const [filter, setFilter] = useState<FilterValue>('all');
   const [showAddSheet, setShowAddSheet] = useState(false);
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Convex queries & mutations
   const rawGoals = useQuery(api.goals.getGoals, userId ? { userId } : 'skip');
@@ -89,8 +93,14 @@ export default function GoalsScreen() {
             <Text style={styles.subtitle}>Loading...</Text>
           </View>
         </View>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.primary} />
+        <View style={{ paddingHorizontal: Spacing.lg, gap: Spacing.md }}>
+          <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
+            <Skeleton width={60} height={28} borderRadius={Radius.full} />
+            <Skeleton width={70} height={28} borderRadius={Radius.full} />
+            <Skeleton width={80} height={28} borderRadius={Radius.full} />
+          </View>
+          <Skeleton height={140} borderRadius={Radius.lg} />
+          <Skeleton height={140} borderRadius={Radius.lg} />
         </View>
       </View>
     );
@@ -144,6 +154,16 @@ export default function GoalsScreen() {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => {
+              setRefreshing(true);
+              setTimeout(() => setRefreshing(false), 1000);
+            }}
+            tintColor={Colors.primary}
+          />
+        }
       >
         {filteredGoals.length === 0 ? (
           <EmptyState
@@ -172,13 +192,17 @@ export default function GoalsScreen() {
         onClose={() => setShowAddSheet(false)}
         onAdd={async (goalData) => {
           if (!userId) return;
-          await createGoalMutation({
-            userId,
-            title: goalData.title,
-            description: goalData.description,
-            category: goalData.category,
-            targetDate: goalData.targetDate,
-          });
+          try {
+            await createGoalMutation({
+              userId,
+              title: goalData.title,
+              description: goalData.description,
+              category: goalData.category,
+              targetDate: goalData.targetDate,
+            });
+          } catch (error) {
+            showToast('Failed to create goal', undefined, 'error');
+          }
         }}
       />
 
@@ -193,23 +217,27 @@ export default function GoalsScreen() {
             goal={selectedGoal}
             onCompleteMilestone={async (goalId, milestoneId) => {
               if (!userId) return;
-              await completeMilestoneMutation({
-                goalId: goalId as any,
-                userId,
-                milestoneId,
-              });
-              // Update selected goal locally so the sheet reflects the change
-              setSelectedGoal((prev) => {
-                if (!prev) return null;
-                return {
-                  ...prev,
-                  milestones: prev.milestones?.map((m) =>
-                    m.id === milestoneId
-                      ? { ...m, completed: true, completedAt: new Date().toISOString() }
-                      : m
-                  ),
-                };
-              });
+              try {
+                await completeMilestoneMutation({
+                  goalId: goalId as any,
+                  userId,
+                  milestoneId,
+                });
+                // Update selected goal locally so the sheet reflects the change
+                setSelectedGoal((prev) => {
+                  if (!prev) return null;
+                  return {
+                    ...prev,
+                    milestones: prev.milestones?.map((m) =>
+                      m.id === milestoneId
+                        ? { ...m, completed: true, completedAt: new Date().toISOString() }
+                        : m
+                    ),
+                  };
+                });
+              } catch (error) {
+                showToast('Failed to complete milestone', undefined, 'error');
+              }
             }}
           />
         ) : null}

@@ -11,6 +11,7 @@ interface IconButtonProps {
   bgColor?: string;
   style?: ViewStyle;
   disabled?: boolean;
+  accessibilityLabel?: string;
 }
 
 export function IconButton({
@@ -21,11 +22,15 @@ export function IconButton({
   bgColor = Colors.surfaceLight,
   style,
   disabled,
+  accessibilityLabel,
 }: IconButtonProps) {
   return (
     <Pressable
       onPress={onPress}
       disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel ?? icon.replace(/-/g, ' ').replace(/outline$/, '').trim()}
+      accessibilityState={{ disabled: !!disabled }}
       style={({ pressed }) => [
         styles.button,
         { backgroundColor: bgColor },

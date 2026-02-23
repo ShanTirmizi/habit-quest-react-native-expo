@@ -6,9 +6,10 @@ import {
   ScrollView,
   Pressable,
   Alert,
-  ActivityIndicator,
+  RefreshControl,
   Animated,
 } from 'react-native';
+import { useToast } from '@/contexts/toast-context';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -22,13 +23,16 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
+import { Skeleton } from '@/components/ui/Skeleton';
 import type { SideQuest, QuestPriority } from '@/types';
 import { QUEST_PRIORITY_CONFIG } from '@/types';
 
 export default function QuestsScreen() {
   const insets = useSafeAreaInsets();
   const { userId } = useAuth();
+  const { showToast } = useToast();
   const [showAddSheet, setShowAddSheet] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const rawQuests = useQuery(api.quests.getQuests, userId ? { userId } : 'skip');
   const addQuestMutation = useMutation(api.quests.addQuest);
@@ -56,12 +60,16 @@ export default function QuestsScreen() {
   const completedQuests = quests.filter((q) => q.completed);
 
   const handleComplete = useCallback(
-    (id: string) => {
+    async (id: string) => {
       if (!userId) return;
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      completeQuestMutation({ questId: id as any, userId });
+      try {
+        await completeQuestMutation({ questId: id as any, userId });
+      } catch (error) {
+        showToast('Failed to complete quest', undefined, 'error');
+      }
     },
-    [userId, completeQuestMutation]
+    [userId, completeQuestMutation, showToast]
   );
 
   const handleDelete = useCallback(
@@ -75,39 +83,51 @@ export default function QuestsScreen() {
           {
             text: 'Delete',
             style: 'destructive',
-            onPress: () => {
+            onPress: async () => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              deleteQuestMutation({ questId: id as any, userId });
+              try {
+                await deleteQuestMutation({ questId: id as any, userId });
+              } catch (error) {
+                showToast('Failed to delete quest', undefined, 'error');
+              }
             },
           },
         ]
       );
     },
-    [userId, deleteQuestMutation]
+    [userId, deleteQuestMutation, showToast]
   );
 
   const handleUncomplete = useCallback(
-    (id: string) => {
+    async (id: string) => {
       if (!userId) return;
-      uncompleteQuestMutation({ questId: id as any, userId });
+      try {
+        await uncompleteQuestMutation({ questId: id as any, userId });
+      } catch (error) {
+        showToast('Failed to undo quest', undefined, 'error');
+      }
     },
-    [userId, uncompleteQuestMutation]
+    [userId, uncompleteQuestMutation, showToast]
   );
 
   const handleAdd = useCallback(
-    (quest: { title: string; description?: string; priority: QuestPriority }) => {
+    async (quest: { title: string; description?: string; priority: QuestPriority }) => {
       if (!userId) return;
       const xp = QUEST_PRIORITY_CONFIG[quest.priority].xp;
-      addQuestMutation({
-        userId,
-        title: quest.title,
-        description: quest.description,
-        xpReward: xp,
-        priority: quest.priority,
-        questType: 'ongoing',
-      });
+      try {
+        await addQuestMutation({
+          userId,
+          title: quest.title,
+          description: quest.description,
+          xpReward: xp,
+          priority: quest.priority,
+          questType: 'ongoing',
+        });
+      } catch (error) {
+        showToast('Failed to create quest', undefined, 'error');
+      }
     },
-    [userId, addQuestMutation]
+    [userId, addQuestMutation, showToast]
   );
 
   const isLoading = rawQuests === undefined;
@@ -134,13 +154,28 @@ export default function QuestsScreen() {
 
       {isLoading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.primary} />
+          <View style={{ gap: Spacing.sm, paddingHorizontal: Spacing.lg }}>
+            <Skeleton width="40%" height={12} />
+            <Skeleton height={70} borderRadius={Radius.lg} />
+            <Skeleton height={70} borderRadius={Radius.lg} />
+            <Skeleton height={70} borderRadius={Radius.lg} />
+          </View>
         </View>
       ) : (
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => {
+                setRefreshing(true);
+                setTimeout(() => setRefreshing(false), 1000);
+              }}
+              tintColor={Colors.primary}
+            />
+          }
         >
           {quests.length === 0 ? (
             <EmptyState

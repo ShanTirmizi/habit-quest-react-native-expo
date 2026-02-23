@@ -18,9 +18,9 @@ export function HealthBar({ currentHp, maxHp, compact }: HealthBarProps) {
 
   if (compact) {
     return (
-      <View style={styles.compactContainer}>
+      <View style={styles.compactContainer} accessibilityLabel={`HP: ${currentHp} out of ${maxHp}${isCritical ? ', critical' : ''}`}>
         <Ionicons name="heart" size={14} color={hpColor} />
-        <ProgressBar progress={percentage} color={hpColor} height={4} style={styles.compactBar} />
+        <ProgressBar progress={percentage} color={hpColor} height={4} style={styles.compactBar} glowColor={isCritical ? Colors.hpCritical : undefined} />
         <Text style={[styles.compactText, { color: hpColor }]}>
           {currentHp}/{maxHp}
         </Text>
@@ -29,7 +29,7 @@ export function HealthBar({ currentHp, maxHp, compact }: HealthBarProps) {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} accessibilityLabel={`HP: ${currentHp} out of ${maxHp}${isCritical ? ', critical health warning' : ''}`}>
       <View style={styles.header}>
         <View style={styles.labelRow}>
           <Ionicons name="heart" size={16} color={hpColor} />
@@ -39,7 +39,7 @@ export function HealthBar({ currentHp, maxHp, compact }: HealthBarProps) {
           {currentHp}/{maxHp}
         </Text>
       </View>
-      <ProgressBar progress={percentage} color={hpColor} height={6} />
+      <ProgressBar progress={percentage} color={hpColor} height={6} glowColor={isCritical ? Colors.hpCritical : undefined} />
       {isCritical ? (
         <View style={styles.criticalRow}>
           <Ionicons name="warning-outline" size={12} color={Colors.danger} />

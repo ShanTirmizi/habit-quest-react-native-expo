@@ -1,6 +1,7 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
 import { View, Text, StyleSheet, Platform } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, FontSize } from '@/constants/theme';
@@ -43,8 +44,11 @@ export default function TabLayout() {
         headerShown: false,
         tabBarActiveTintColor: Colors.primary,
         tabBarInactiveTintColor: Colors.textMuted,
+        tabBarBackground: () => (
+          <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill} />
+        ),
         tabBarStyle: {
-          backgroundColor: Colors.surface,
+          backgroundColor: 'transparent',
           borderTopColor: Colors.glassBorder,
           borderTopWidth: 1,
           height: 56 + insets.bottom,
@@ -52,6 +56,7 @@ export default function TabLayout() {
           paddingTop: 6,
           elevation: 0,
           shadowOpacity: 0,
+          position: 'absolute' as const,
         },
         tabBarLabelStyle: {
           fontSize: 10,

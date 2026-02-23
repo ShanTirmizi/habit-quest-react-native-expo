@@ -7,6 +7,8 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Colors } from '@/constants/theme';
 import { ConvexProvider } from '@/contexts/ConvexProvider';
 import { AuthProvider, useAuth } from '@/contexts/auth-context';
+import { ToastProvider } from '@/contexts/toast-context';
+import { XpToast } from '@/components/ui/XpToast';
 
 function AuthGate({ children }: { children: React.ReactNode }) {
   const { isLoading, isAuthenticated } = useAuth();
@@ -44,24 +46,27 @@ export default function RootLayout() {
       <ConvexProvider>
         <AuthProvider>
           <SafeAreaProvider>
-            <View style={styles.container}>
-              <StatusBar style="light" backgroundColor={Colors.background} />
-              <AuthGate>
-                <Stack
-                  screenOptions={{
-                    headerShown: false,
-                    contentStyle: { backgroundColor: Colors.background },
-                    animation: 'fade',
-                  }}
-                >
-                  <Stack.Screen name="(tabs)" />
-                  <Stack.Screen
-                    name="(auth)/login"
-                    options={{ presentation: 'modal' }}
-                  />
-                </Stack>
-              </AuthGate>
-            </View>
+            <ToastProvider>
+              <View style={styles.container}>
+                <StatusBar style="light" backgroundColor={Colors.background} />
+                <AuthGate>
+                  <Stack
+                    screenOptions={{
+                      headerShown: false,
+                      contentStyle: { backgroundColor: Colors.background },
+                      animation: 'fade',
+                    }}
+                  >
+                    <Stack.Screen name="(tabs)" />
+                    <Stack.Screen
+                      name="(auth)/login"
+                      options={{ presentation: 'modal' }}
+                    />
+                  </Stack>
+                </AuthGate>
+                <XpToast />
+              </View>
+            </ToastProvider>
           </SafeAreaProvider>
         </AuthProvider>
       </ConvexProvider>

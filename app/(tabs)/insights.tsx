@@ -4,8 +4,8 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  ActivityIndicator,
 } from 'react-native';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { format } from 'date-fns';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -149,9 +149,16 @@ export default function InsightsScreen() {
 
   if (isLoading) {
     return (
-      <View style={[styles.container, styles.centered, { paddingTop: insets.top }]}>
-        <ActivityIndicator size="large" color={Colors.primary} />
-        <Text style={styles.loadingText}>Loading insights...</Text>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Insights</Text>
+        </View>
+        <View style={{ paddingHorizontal: Spacing.lg, gap: Spacing.lg }}>
+          <Skeleton width="30%" height={14} />
+          <Skeleton height={120} borderRadius={Radius.lg} />
+          <Skeleton height={120} borderRadius={Radius.lg} />
+          <Skeleton height={120} borderRadius={Radius.lg} />
+        </View>
       </View>
     );
   }

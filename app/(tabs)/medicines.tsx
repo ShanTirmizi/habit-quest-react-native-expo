@@ -5,10 +5,11 @@ import {
   StyleSheet,
   ScrollView,
   Pressable,
-  Alert,
-  ActivityIndicator,
+  RefreshControl,
   Animated,
 } from 'react-native';
+import { useToast } from '@/contexts/toast-context';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -53,8 +54,10 @@ function getTodayDateString(): string {
 export default function MedicinesScreen() {
   const insets = useSafeAreaInsets();
   const { userId } = useAuth();
+  const { showToast } = useToast();
   const [tab, setTab] = useState('today');
   const [showAddSheet, setShowAddSheet] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const todayDate = getTodayDateString();
 
@@ -128,7 +131,7 @@ export default function MedicinesScreen() {
           date: todayDate,
         });
       } catch (error) {
-        Alert.alert('Error', 'Failed to mark medicine as taken. Please try again.');
+        showToast('Failed to mark medicine as taken', undefined, 'error');
       }
     },
     [userId, scheduleData, markTakenMutation, todayDate]
@@ -147,7 +150,7 @@ export default function MedicinesScreen() {
           date: todayDate,
         });
       } catch (error) {
-        Alert.alert('Error', 'Failed to mark medicine as skipped. Please try again.');
+        showToast('Failed to mark medicine as skipped', undefined, 'error');
       }
     },
     [userId, scheduleData, markSkippedMutation, todayDate]
@@ -171,7 +174,7 @@ export default function MedicinesScreen() {
         });
         setShowAddSheet(false);
       } catch (error) {
-        Alert.alert('Error', 'Failed to add medicine. Please try again.');
+        showToast('Failed to add medicine', undefined, 'error');
       }
     },
     [userId, addMedicineMutation]
@@ -236,15 +239,26 @@ export default function MedicinesScreen() {
       </View>
 
       {isLoading ? (
-        <View style={styles.centered}>
-          <ActivityIndicator size="large" color={Colors.primary} />
-          <Text style={styles.loadingText}>Loading medicines...</Text>
+        <View style={[styles.centered, { gap: Spacing.sm, paddingHorizontal: Spacing.lg }]}>
+          <Skeleton height={60} borderRadius={Radius.lg} />
+          <Skeleton height={60} borderRadius={Radius.lg} />
+          <Skeleton height={60} borderRadius={Radius.lg} />
         </View>
       ) : (
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => {
+                setRefreshing(true);
+                setTimeout(() => setRefreshing(false), 1000);
+              }}
+              tintColor={Colors.primary}
+            />
+          }
         >
           {tab === 'today' ? (
             scheduleData.length === 0 ? (
@@ -413,8 +427,10 @@ function MedicineHistoryView({
 
   if (!grouped) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color={Colors.primary} />
+      <View style={{ gap: Spacing.md }}>
+        <Skeleton height={100} borderRadius={Radius.lg} />
+        <Skeleton height={100} borderRadius={Radius.lg} />
+        <Skeleton height={100} borderRadius={Radius.lg} />
       </View>
     );
   }

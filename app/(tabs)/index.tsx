@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,7 +6,6 @@ import {
   ScrollView,
   Pressable,
   RefreshControl,
-  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,22 +17,39 @@ import { api } from '@/convex/_generated/api';
 import { Colors, FontSize, Spacing, Radius } from '@/constants/theme';
 import { StatsHeader } from '@/components/widgets/StatsHeader';
 import { HabitCard } from '@/components/habits/HabitCard';
+import { HabitDetailSheet } from '@/components/habits/HabitDetailSheet';
 import { AddHabitSheet } from '@/components/habits/AddHabitSheet';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { BottomSheet } from '@/components/ui/BottomSheet';
+import { SkeletonDashboard } from '@/components/ui/Skeleton';
+import { CompanionWidget } from '@/components/widgets/CompanionWidget';
+import { OracleChallengeCard } from '@/components/widgets/OracleChallengeCard';
+import { UnderworldOverlay } from '@/components/overlays/UnderworldOverlay';
+import { LevelUpCelebration } from '@/components/overlays/LevelUpCelebration';
 import { useAuth } from '@/contexts/auth-context';
+import { useToast } from '@/contexts/toast-context';
 import type { Habit, HabitCategory } from '@/types';
 
 export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
-  const { signOut, userId } = useAuth();
+  const { signOut, userId, user } = useAuth();
+  const { showToast } = useToast();
   const [showAddSheet, setShowAddSheet] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedHabit, setSelectedHabit] = useState<Habit | null>(null);
+  const [levelUpVisible, setLevelUpVisible] = useState(false);
+  const [levelUpLevel, setLevelUpLevel] = useState(0);
+  const missedChecked = useRef(false);
 
   const today = format(new Date(), 'EEEE, MMM d');
   const todayDate = format(new Date(), 'yyyy-MM-dd');
+
+  // Time-of-day greeting (#8)
+  const hour = new Date().getHours();
+  const timeGreeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+  const firstName = user?.name?.split(' ')[0] ?? 'Adventurer';
 
   // Fetch real data from Convex
   const rawHabits = useQuery(api.habits.getHabits, userId ? { userId } : 'skip');
@@ -42,6 +58,28 @@ export default function DashboardScreen() {
   // Mutations
   const addHabitMutation = useMutation(api.habits.addHabit);
   const toggleCompletionMutation = useMutation(api.habits.toggleCompletion);
+  const deleteHabitMutation = useMutation(api.habits.deleteHabit);
+  const addNoteMutation = useMutation(api.habits.addNote);
+  const addXpMutation = useMutation(api.progress.addXp);
+  const checkMissedMutation = useMutation(api.progress.checkMissedHabitsOnLogin);
+
+  // Check missed habits on mount (#14)
+  useEffect(() => {
+    if (userId && !missedChecked.current) {
+      missedChecked.current = true;
+      checkMissedMutation({ userId })
+        .then((result) => {
+          if (result.missedCount > 0) {
+            showToast(
+              `Missed ${result.missedCount} habit${result.missedCount > 1 ? 's' : ''} — lost ${result.hpLost} HP`,
+              undefined,
+              'hp',
+            );
+          }
+        })
+        .catch(() => {});
+    }
+  }, [userId]);
 
   // Map Convex habits to the Habit type the UI expects
   const habits: Habit[] = useMemo(() => {
@@ -102,18 +140,39 @@ export default function DashboardScreen() {
     ? Math.round(((totalXp - xpForCurrentLevel) / (xpForNextLevel - xpForCurrentLevel)) * 100)
     : 0;
 
+  const completionRate = habits.length > 0
+    ? Math.round((completedIds.size / habits.length) * 100)
+    : 0;
+
   const handleToggle = useCallback(async (id: string) => {
     if (!userId) return;
     try {
-      await toggleCompletionMutation({
+      const result = await toggleCompletionMutation({
         habitId: id as any,
         userId,
         date: todayDate,
       });
+
+      // If just completed, show XP toast
+      if (result.completed) {
+        const habit = habits.find((h) => h.id === id);
+        if (habit) {
+          showToast(`${habit.name} completed!`, habit.xpReward, 'xp');
+
+          // Check for level up via addXp
+          try {
+            const xpResult = await addXpMutation({ userId, amount: habit.xpReward });
+            if (xpResult.leveledUp) {
+              setLevelUpLevel(xpResult.newLevel);
+              setLevelUpVisible(true);
+            }
+          } catch {}
+        }
+      }
     } catch (err) {
-      console.error('Failed to toggle habit:', err);
+      showToast('Failed to toggle habit', undefined, 'error');
     }
-  }, [userId, todayDate, toggleCompletionMutation]);
+  }, [userId, todayDate, toggleCompletionMutation, habits, showToast, addXpMutation]);
 
   const handleAddHabit = useCallback(
     async (habitData: {
@@ -137,19 +196,49 @@ export default function DashboardScreen() {
           location: habitData.location,
           trigger: habitData.trigger,
         });
+        showToast('Habit created!', undefined, 'xp');
       } catch (err) {
-        console.error('Failed to add habit:', err);
+        showToast('Failed to add habit', undefined, 'error');
       }
     },
-    [userId, addHabitMutation]
+    [userId, addHabitMutation, showToast]
   );
 
+  const handleDeleteHabit = useCallback(async (id: string) => {
+    if (!userId) return;
+    try {
+      await deleteHabitMutation({ habitId: id as any, userId });
+      showToast('Habit deleted', undefined, 'hp');
+    } catch {
+      showToast('Failed to delete habit', undefined, 'error');
+    }
+  }, [userId, deleteHabitMutation, showToast]);
+
+  const handleAddNote = useCallback(async (habitId: string, text: string) => {
+    if (!userId) return;
+    try {
+      await addNoteMutation({ habitId: habitId as any, userId, text });
+      showToast('Note added', undefined, 'xp');
+    } catch {
+      showToast('Failed to add note', undefined, 'error');
+    }
+  }, [userId, addNoteMutation, showToast]);
+
   const handleRefresh = useCallback(async () => {
+    if (!userId) return;
     setRefreshing(true);
-    // Convex queries auto-refresh, just show the spinner briefly
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    try {
+      const result = await checkMissedMutation({ userId });
+      if (result.missedCount > 0) {
+        showToast(
+          `Missed ${result.missedCount} habit${result.missedCount > 1 ? 's' : ''} — lost ${result.hpLost} HP`,
+          undefined,
+          'hp',
+        );
+      }
+    } catch {}
     setRefreshing(false);
-  }, []);
+  }, [userId, checkMissedMutation, showToast]);
 
   const isLoading = rawHabits === undefined || progress === undefined;
   const allDone = pendingHabits.length === 0 && habits.length > 0;
@@ -159,13 +248,15 @@ export default function DashboardScreen() {
       {/* Header */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.greeting}>Today&apos;s Quest</Text>
+          <Text style={styles.greeting}>{timeGreeting}, {firstName}</Text>
           <Text style={styles.date}>{today}</Text>
         </View>
         <View style={styles.headerActions}>
           <Pressable
             onPress={() => setShowSettings(true)}
             style={({ pressed }) => [styles.logoutButton, pressed && { opacity: 0.7 }]}
+            accessibilityLabel="Settings"
+            accessibilityRole="button"
           >
             <Ionicons name="person-circle-outline" size={22} color={Colors.textSecondary} />
           </Pressable>
@@ -175,6 +266,8 @@ export default function DashboardScreen() {
               setShowAddSheet(true);
             }}
             style={({ pressed }) => [styles.addButton, pressed && styles.addButtonPressed]}
+            accessibilityLabel="Add new habit"
+            accessibilityRole="button"
           >
             <Ionicons name="add" size={24} color={Colors.background} />
           </Pressable>
@@ -183,7 +276,7 @@ export default function DashboardScreen() {
 
       {isLoading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.primary} />
+          <SkeletonDashboard />
         </View>
       ) : (
         <ScrollView
@@ -198,6 +291,9 @@ export default function DashboardScreen() {
             />
           }
         >
+          {/* Underworld Overlay (#7) */}
+          {userId ? <UnderworldOverlay userId={userId} /> : null}
+
           {/* Stats Header */}
           {habits.length > 0 ? (
             <StatsHeader
@@ -212,6 +308,19 @@ export default function DashboardScreen() {
               longestStreak={longestStreak}
             />
           ) : null}
+
+          {/* Companion Widget (#5) */}
+          {userId ? (
+            <CompanionWidget
+              userId={userId}
+              completionRate={completionRate}
+              currentHp={currentHp}
+              maxHp={maxHp}
+            />
+          ) : null}
+
+          {/* Oracle Challenge (#6) */}
+          {userId ? <OracleChallengeCard userId={userId} /> : null}
 
           {/* Habit List */}
           {habits.length === 0 ? (
@@ -248,6 +357,7 @@ export default function DashboardScreen() {
                         habit={habit}
                         isCompleted={false}
                         onToggle={handleToggle}
+                        onPress={setSelectedHabit}
                       />
                     ))}
                   </View>
@@ -267,6 +377,7 @@ export default function DashboardScreen() {
                         habit={habit}
                         isCompleted={true}
                         onToggle={handleToggle}
+                        onPress={setSelectedHabit}
                       />
                     ))}
                   </View>
@@ -279,6 +390,16 @@ export default function DashboardScreen() {
           <View style={{ height: 100 }} />
         </ScrollView>
       )}
+
+      {/* Habit Detail Sheet (#4) */}
+      <HabitDetailSheet
+        habit={selectedHabit}
+        isCompleted={selectedHabit ? completedIds.has(selectedHabit.id) : false}
+        onClose={() => setSelectedHabit(null)}
+        onToggle={handleToggle}
+        onDelete={handleDeleteHabit}
+        onAddNote={handleAddNote}
+      />
 
       {/* Add Habit Sheet */}
       <AddHabitSheet
@@ -296,6 +417,8 @@ export default function DashboardScreen() {
               signOut();
             }}
             style={({ pressed }) => [styles.signOutButton, pressed && { opacity: 0.7 }]}
+            accessibilityRole="button"
+            accessibilityLabel="Sign out"
           >
             <Ionicons name="log-out-outline" size={20} color={Colors.danger} />
             <Text style={styles.signOutText}>Sign Out</Text>
@@ -305,6 +428,13 @@ export default function DashboardScreen() {
           </Text>
         </View>
       </BottomSheet>
+
+      {/* Level Up Celebration (#9) */}
+      <LevelUpCelebration
+        level={levelUpLevel}
+        visible={levelUpVisible}
+        onDismiss={() => setLevelUpVisible(false)}
+      />
     </View>
   );
 }
@@ -358,8 +488,7 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    paddingTop: Spacing.lg,
   },
   scrollView: {
     flex: 1,

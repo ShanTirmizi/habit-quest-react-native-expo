@@ -1,0 +1,157 @@
+import React, { useEffect } from 'react';
+import { View, StyleSheet, ViewStyle } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Colors, Radius, Spacing } from '@/constants/theme';
+
+interface SkeletonProps {
+  width?: number | string;
+  height?: number;
+  borderRadius?: number;
+  style?: ViewStyle;
+}
+
+export function Skeleton({ width = '100%', height = 16, borderRadius = Radius.md, style }: SkeletonProps) {
+  const opacity = useSharedValue(0.3);
+
+  useEffect(() => {
+    opacity.value = withRepeat(
+      withSequence(
+        withTiming(0.6, { duration: 600 }),
+        withTiming(0.3, { duration: 600 }),
+      ),
+      -1,
+      true,
+    );
+  }, []);
+
+  const animStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+  }));
+
+  return (
+    <Animated.View
+      style={[
+        { width: width as any, height, borderRadius, overflow: 'hidden' },
+        animStyle,
+        style,
+      ]}
+    >
+      <LinearGradient
+        colors={[Colors.surfaceLight, Colors.surface, Colors.surfaceLight]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={StyleSheet.absoluteFill}
+      />
+    </Animated.View>
+  );
+}
+
+export function SkeletonHabitCard() {
+  return (
+    <View style={skeletonStyles.habitCard}>
+      <Skeleton width={24} height={24} borderRadius={6} />
+      <View style={skeletonStyles.habitContent}>
+        <Skeleton width="70%" height={14} />
+        <View style={skeletonStyles.habitMeta}>
+          <Skeleton width={60} height={10} borderRadius={Radius.full} />
+          <Skeleton width={40} height={10} borderRadius={Radius.full} />
+        </View>
+      </View>
+      <Skeleton width={16} height={16} borderRadius={8} />
+    </View>
+  );
+}
+
+export function SkeletonStatsHeader() {
+  return (
+    <View style={skeletonStyles.statsCard}>
+      <View style={skeletonStyles.statsTopRow}>
+        <View style={skeletonStyles.statsLevel}>
+          <Skeleton width={44} height={44} borderRadius={22} />
+          <View style={{ gap: 4 }}>
+            <Skeleton width={80} height={14} />
+            <Skeleton width={60} height={10} />
+          </View>
+        </View>
+        <View style={skeletonStyles.statsRight}>
+          <Skeleton width={40} height={14} />
+          <Skeleton width={40} height={14} />
+        </View>
+      </View>
+      <Skeleton width="100%" height={6} borderRadius={Radius.full} />
+      <Skeleton width="100%" height={6} borderRadius={Radius.full} />
+      <Skeleton width="100%" height={4} borderRadius={Radius.full} />
+    </View>
+  );
+}
+
+export function SkeletonDashboard() {
+  return (
+    <View style={skeletonStyles.dashboard}>
+      <SkeletonStatsHeader />
+      <View style={skeletonStyles.sectionHeader}>
+        <Skeleton width={100} height={12} />
+      </View>
+      <SkeletonHabitCard />
+      <SkeletonHabitCard />
+      <SkeletonHabitCard />
+    </View>
+  );
+}
+
+const skeletonStyles = StyleSheet.create({
+  habitCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Colors.glassBorder,
+    padding: Spacing.md,
+  },
+  habitContent: {
+    flex: 1,
+    gap: 6,
+  },
+  habitMeta: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+  },
+  statsCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Colors.glassBorder,
+    padding: Spacing.lg,
+    gap: Spacing.md,
+  },
+  statsTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  statsLevel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+  },
+  statsRight: {
+    flexDirection: 'row',
+    gap: Spacing.lg,
+  },
+  dashboard: {
+    gap: Spacing.lg,
+    paddingHorizontal: Spacing.lg,
+  },
+  sectionHeader: {
+    paddingHorizontal: Spacing.xs,
+  },
+});

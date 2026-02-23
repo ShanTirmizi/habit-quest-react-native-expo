@@ -32,6 +32,9 @@ export function Button({
     <Pressable
       onPress={onPress}
       disabled={disabled || loading}
+      accessibilityRole="button"
+      accessibilityState={{ disabled: disabled || loading }}
+      accessibilityLabel={loading ? `${title}, loading` : title}
       style={({ pressed }) => [
         styles.base,
         variantStyles.container,

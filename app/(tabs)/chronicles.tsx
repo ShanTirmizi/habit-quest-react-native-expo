@@ -6,7 +6,6 @@ import {
   ScrollView,
   Pressable,
   TextInput,
-  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,7 +17,9 @@ import { Colors, FontSize, Spacing, Radius } from '@/constants/theme';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { useAuth } from '@/contexts/auth-context';
+import { useToast } from '@/contexts/toast-context';
 import type { JournalEntry, JournalMood } from '@/types';
 import { MOOD_CONFIG, JOURNAL_XP } from '@/types';
 
@@ -33,6 +34,7 @@ const GRATITUDE_PROMPTS = [
 export default function ChroniclesScreen() {
   const insets = useSafeAreaInsets();
   const { userId } = useAuth();
+  const { showToast } = useToast();
   const [isWriting, setIsWriting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
 
@@ -112,7 +114,7 @@ export default function ChroniclesScreen() {
       setContent('');
       setSelectedMood(null);
     } catch (err) {
-      console.error('Failed to save entry:', err);
+      showToast('Failed to save entry', undefined, 'error');
     } finally {
       setSaving(false);
     }
@@ -141,7 +143,7 @@ export default function ChroniclesScreen() {
       setContent('');
       setSelectedMood(null);
     } catch (err) {
-      console.error('Failed to update entry:', err);
+      showToast('Failed to update entry', undefined, 'error');
     } finally {
       setSaving(false);
     }
@@ -174,28 +176,33 @@ export default function ChroniclesScreen() {
             {entries.length} {entries.length === 1 ? 'entry' : 'entries'} · {hasEntryToday ? 'Journaled today' : 'No entry yet'}
           </Text>
         </View>
-        {!isWriting && !isEditing && !hasEntryToday ? (
-          <Pressable
-            onPress={() => setIsWriting(true)}
-            style={({ pressed }) => [styles.writeBtn, pressed && { opacity: 0.7 }]}
-          >
-            <Ionicons name="create-outline" size={18} color={Colors.background} />
-            <Text style={styles.writeBtnText}>Write</Text>
-          </Pressable>
-        ) : hasEntryToday && !isWriting && !isEditing ? (
-          <Pressable
-            onPress={handleStartEditing}
-            style={({ pressed }) => [styles.writeBtn, pressed && { opacity: 0.7 }]}
-          >
-            <Ionicons name="pencil-outline" size={18} color={Colors.background} />
-            <Text style={styles.writeBtnText}>Edit</Text>
-          </Pressable>
+        {!isWriting && !isEditing ? (
+          <View style={styles.headerActions}>
+            {hasEntryToday ? (
+              <Pressable
+                onPress={handleStartEditing}
+                style={({ pressed }) => [styles.editBtn, pressed && { opacity: 0.7 }]}
+              >
+                <Ionicons name="pencil-outline" size={16} color={Colors.primary} />
+                <Text style={styles.editBtnText}>Edit</Text>
+              </Pressable>
+            ) : null}
+            <Pressable
+              onPress={() => setIsWriting(true)}
+              style={({ pressed }) => [styles.writeBtn, pressed && { opacity: 0.7 }]}
+            >
+              <Ionicons name="create-outline" size={18} color={Colors.background} />
+              <Text style={styles.writeBtnText}>Write</Text>
+            </Pressable>
+          </View>
         ) : null}
       </View>
 
       {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.primary} />
+        <View style={[styles.loadingContainer, { gap: Spacing.sm, paddingHorizontal: Spacing.lg }]}>
+          <Skeleton height={80} borderRadius={Radius.lg} />
+          <Skeleton height={60} borderRadius={Radius.lg} />
+          <Skeleton height={60} borderRadius={Radius.lg} />
         </View>
       ) : (
         <ScrollView
@@ -498,6 +505,11 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     marginTop: 2,
   },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
   writeBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -511,6 +523,21 @@ const styles = StyleSheet.create({
     fontSize: FontSize.sm,
     fontWeight: '700',
     color: Colors.background,
+  },
+  editBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.primary,
+  },
+  editBtnText: {
+    fontSize: FontSize.sm,
+    fontWeight: '600',
+    color: Colors.primary,
   },
   loadingContainer: {
     flex: 1,
