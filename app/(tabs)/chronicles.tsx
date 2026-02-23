@@ -34,6 +34,7 @@ export default function ChroniclesScreen() {
   const insets = useSafeAreaInsets();
   const { userId } = useAuth();
   const [isWriting, setIsWriting] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
 
   // New entry form state
   const [gratitude1, setGratitude1] = useState('');
@@ -47,6 +48,7 @@ export default function ChroniclesScreen() {
   // Fetch real data from Convex
   const rawEntries = useQuery(api.journal.getEntries, userId ? { userId } : 'skip');
   const addEntryMutation = useMutation(api.journal.addEntry);
+  const updateEntryMutation = useMutation(api.journal.updateEntry);
 
   // Map Convex entries to the JournalEntry type the UI expects
   const entries: JournalEntry[] = useMemo(() => {
@@ -116,6 +118,46 @@ export default function ChroniclesScreen() {
     }
   }, [gratitude1, gratitude2, gratitude3, improvement, content, selectedMood, userId, addEntryMutation]);
 
+  const handleUpdateEntry = useCallback(async () => {
+    if (!gratitude1 || !gratitude2 || !gratitude3 || !userId || !todayEntry) return;
+
+    setSaving(true);
+    try {
+      await updateEntryMutation({
+        entryId: todayEntry.id as any,
+        userId,
+        gratitudes: [gratitude1, gratitude2, gratitude3],
+        improvement: improvement || undefined,
+        content: content || undefined,
+        mood: selectedMood || undefined,
+      });
+
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setIsEditing(false);
+      setGratitude1('');
+      setGratitude2('');
+      setGratitude3('');
+      setImprovement('');
+      setContent('');
+      setSelectedMood(null);
+    } catch (err) {
+      console.error('Failed to update entry:', err);
+    } finally {
+      setSaving(false);
+    }
+  }, [gratitude1, gratitude2, gratitude3, improvement, content, selectedMood, userId, todayEntry, updateEntryMutation]);
+
+  const handleStartEditing = useCallback(() => {
+    if (!todayEntry) return;
+    setGratitude1(todayEntry.gratitudes[0] || '');
+    setGratitude2(todayEntry.gratitudes[1] || '');
+    setGratitude3(todayEntry.gratitudes[2] || '');
+    setImprovement(todayEntry.improvement || '');
+    setContent(todayEntry.content || '');
+    setSelectedMood(todayEntry.mood || null);
+    setIsEditing(true);
+  }, [todayEntry]);
+
   const prompts = useMemo(() => {
     const shuffled = [...GRATITUDE_PROMPTS].sort(() => Math.random() - 0.5);
     return shuffled.slice(0, 3);
@@ -129,16 +171,24 @@ export default function ChroniclesScreen() {
         <View>
           <Text style={styles.title}>Chronicles</Text>
           <Text style={styles.subtitle}>
-            {entries.length} entries · {hasEntryToday ? 'Journaled today' : 'No entry yet'}
+            {entries.length} {entries.length === 1 ? 'entry' : 'entries'} · {hasEntryToday ? 'Journaled today' : 'No entry yet'}
           </Text>
         </View>
-        {!isWriting && !hasEntryToday ? (
+        {!isWriting && !isEditing && !hasEntryToday ? (
           <Pressable
             onPress={() => setIsWriting(true)}
             style={({ pressed }) => [styles.writeBtn, pressed && { opacity: 0.7 }]}
           >
             <Ionicons name="create-outline" size={18} color={Colors.background} />
             <Text style={styles.writeBtnText}>Write</Text>
+          </Pressable>
+        ) : hasEntryToday && !isWriting && !isEditing ? (
+          <Pressable
+            onPress={handleStartEditing}
+            style={({ pressed }) => [styles.writeBtn, pressed && { opacity: 0.7 }]}
+          >
+            <Ionicons name="pencil-outline" size={18} color={Colors.background} />
+            <Text style={styles.writeBtnText}>Edit</Text>
           </Pressable>
         ) : null}
       </View>
@@ -155,9 +205,9 @@ export default function ChroniclesScreen() {
           keyboardShouldPersistTaps="handled"
         >
           {/* Writing Form */}
-          {isWriting ? (
+          {isWriting || isEditing ? (
             <GlassCard style={styles.writeForm}>
-              <Text style={styles.formTitle}>Today&apos;s Reflection</Text>
+              <Text style={styles.formTitle}>{isEditing ? "Edit Today's Entry" : "Today's Reflection"}</Text>
 
               {/* Mood Selection */}
               <View style={styles.moodSection}>
@@ -250,10 +300,10 @@ export default function ChroniclesScreen() {
 
               {/* Actions */}
               <View style={styles.formActions}>
-                <Button title="Cancel" variant="ghost" onPress={() => setIsWriting(false)} />
+                <Button title="Cancel" variant="ghost" onPress={() => { setIsWriting(false); setIsEditing(false); }} />
                 <Button
-                  title="Save Entry"
-                  onPress={handleSaveEntry}
+                  title={isEditing ? "Update Entry" : "Save Entry"}
+                  onPress={isEditing ? handleUpdateEntry : handleSaveEntry}
                   loading={saving}
                   disabled={!gratitude1 || !gratitude2 || !gratitude3}
                 />

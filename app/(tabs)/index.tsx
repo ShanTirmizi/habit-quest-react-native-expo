@@ -11,6 +11,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import Constants from 'expo-constants';
 import { format } from 'date-fns';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
@@ -20,6 +21,7 @@ import { HabitCard } from '@/components/habits/HabitCard';
 import { AddHabitSheet } from '@/components/habits/AddHabitSheet';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { GlassCard } from '@/components/ui/GlassCard';
+import { BottomSheet } from '@/components/ui/BottomSheet';
 import { useAuth } from '@/contexts/auth-context';
 import type { Habit, HabitCategory } from '@/types';
 
@@ -27,6 +29,7 @@ export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
   const { signOut, userId } = useAuth();
   const [showAddSheet, setShowAddSheet] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const today = format(new Date(), 'EEEE, MMM d');
@@ -161,10 +164,10 @@ export default function DashboardScreen() {
         </View>
         <View style={styles.headerActions}>
           <Pressable
-            onPress={() => signOut()}
+            onPress={() => setShowSettings(true)}
             style={({ pressed }) => [styles.logoutButton, pressed && { opacity: 0.7 }]}
           >
-            <Ionicons name="log-out-outline" size={22} color={Colors.textSecondary} />
+            <Ionicons name="person-circle-outline" size={22} color={Colors.textSecondary} />
           </Pressable>
           <Pressable
             onPress={() => {
@@ -196,17 +199,19 @@ export default function DashboardScreen() {
           }
         >
           {/* Stats Header */}
-          <StatsHeader
-            level={level}
-            totalXp={totalXp}
-            xpProgress={xpProgress}
-            xpToNext={xpToNext}
-            currentHp={currentHp}
-            maxHp={maxHp}
-            todayCompleted={completedIds.size}
-            todayTotal={habits.length}
-            longestStreak={longestStreak}
-          />
+          {habits.length > 0 ? (
+            <StatsHeader
+              level={level}
+              totalXp={totalXp}
+              xpProgress={xpProgress}
+              xpToNext={xpToNext}
+              currentHp={currentHp}
+              maxHp={maxHp}
+              todayCompleted={completedIds.size}
+              todayTotal={habits.length}
+              longestStreak={longestStreak}
+            />
+          ) : null}
 
           {/* Habit List */}
           {habits.length === 0 ? (
@@ -281,6 +286,25 @@ export default function DashboardScreen() {
         onClose={() => setShowAddSheet(false)}
         onAdd={handleAddHabit}
       />
+
+      {/* Settings Sheet */}
+      <BottomSheet visible={showSettings} onClose={() => setShowSettings(false)} title="Settings">
+        <View style={styles.settingsContent}>
+          <Pressable
+            onPress={() => {
+              setShowSettings(false);
+              signOut();
+            }}
+            style={({ pressed }) => [styles.signOutButton, pressed && { opacity: 0.7 }]}
+          >
+            <Ionicons name="log-out-outline" size={20} color={Colors.danger} />
+            <Text style={styles.signOutText}>Sign Out</Text>
+          </Pressable>
+          <Text style={styles.versionText}>
+            HabitQuest v{Constants.expoConfig?.version ?? '1.0.0'}
+          </Text>
+        </View>
+      </BottomSheet>
     </View>
   );
 }
@@ -374,6 +398,28 @@ const styles = StyleSheet.create({
   allDoneText: {
     fontSize: FontSize.sm,
     color: Colors.textSecondary,
+    textAlign: 'center',
+  },
+  settingsContent: {
+    paddingBottom: Spacing['2xl'],
+    gap: Spacing.lg,
+  },
+  signOutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    padding: Spacing.md,
+    borderRadius: Radius.md,
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+  },
+  signOutText: {
+    fontSize: FontSize.base,
+    fontWeight: '600',
+    color: Colors.danger,
+  },
+  versionText: {
+    fontSize: FontSize.xs,
+    color: Colors.textDim,
     textAlign: 'center',
   },
 });

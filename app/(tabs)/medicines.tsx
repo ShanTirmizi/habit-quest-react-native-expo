@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   Pressable,
   Alert,
   ActivityIndicator,
+  Animated,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,6 +23,7 @@ import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
+import { format, parseISO } from 'date-fns';
 import type { TodayMedicineScheduleItem, MedicineCompletionStatus } from '@/types';
 import { formatMedicineTime } from '@/types';
 import type { Id } from '@/convex/_generated/dataModel';
@@ -56,6 +58,16 @@ export default function MedicinesScreen() {
 
   const todayDate = getTodayDateString();
 
+  // Compute date range for history
+  const fourteenDaysAgo = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 14);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }, []);
+
   // Convex queries
   const schedule = useQuery(
     api.medicines.getTodaySchedule,
@@ -65,6 +77,16 @@ export default function MedicinesScreen() {
   const medicineStats = useQuery(
     api.progress.getMedicineStats,
     userId ? { userId } : 'skip'
+  );
+
+  const medicineHistory = useQuery(
+    api.medicines.getMedicineHistory,
+    userId && tab === 'history' ? { userId, startDate: fourteenDaysAgo, endDate: todayDate } : 'skip'
+  );
+
+  const allMedicines = useQuery(
+    api.medicines.getMedicines,
+    userId && tab === 'history' ? { userId } : 'skip'
   );
 
   // Convex mutations
@@ -260,11 +282,10 @@ export default function MedicinesScreen() {
               })
             )
           ) : (
-            <GlassCard>
-              <Text style={styles.historyPlaceholder}>
-                Medicine history and adherence calendar coming soon. Total medicines taken: {medicineStats?.totalMedicinesTaken ?? 0}. Today's XP earned: {medicineStats?.todayMedicineXp ?? 0}.
-              </Text>
-            </GlassCard>
+            <MedicineHistoryView
+              history={medicineHistory}
+              medicines={allMedicines}
+            />
           )}
 
           <View style={{ height: 100 }} />
@@ -293,6 +314,16 @@ function MedicineCard({
   const isTaken = item.status === 'taken';
   const isSkipped = item.status === 'skipped';
   const isPending = item.status === 'pending';
+  const btnScale = useRef(new Animated.Value(1)).current;
+
+  const handleTaken = useCallback(() => {
+    Animated.sequence([
+      Animated.spring(btnScale, { toValue: 0.85, useNativeDriver: true, speed: 50, bounciness: 0 }),
+      Animated.spring(btnScale, { toValue: 1.15, useNativeDriver: true, speed: 50, bounciness: 0 }),
+      Animated.spring(btnScale, { toValue: 1, useNativeDriver: true, speed: 50, bounciness: 0 }),
+    ]).start();
+    onMarkTaken(item.medicineId);
+  }, [item.medicineId, onMarkTaken, btnScale]);
 
   return (
     <View style={[styles.medCard, isTaken && styles.medCardTaken]}>
@@ -317,12 +348,14 @@ function MedicineCard({
           </View>
         ) : (
           <View style={styles.actionButtons}>
-            <Pressable
-              onPress={() => onMarkTaken(item.medicineId)}
-              style={({ pressed }) => [styles.takeBtn, pressed && { opacity: 0.7 }]}
-            >
-              <Ionicons name="checkmark" size={20} color={Colors.background} />
-            </Pressable>
+            <Animated.View style={{ transform: [{ scale: btnScale }] }}>
+              <Pressable
+                onPress={handleTaken}
+                style={({ pressed }) => [styles.takeBtn, pressed && { opacity: 0.7 }]}
+              >
+                <Ionicons name="checkmark" size={20} color={Colors.background} />
+              </Pressable>
+            </Animated.View>
             <Pressable
               onPress={() => onMarkSkipped(item.medicineId)}
               style={({ pressed }) => [styles.skipBtn, pressed && { opacity: 0.7 }]}
@@ -332,6 +365,97 @@ function MedicineCard({
           </View>
         )}
       </View>
+    </View>
+  );
+}
+
+function MedicineHistoryView({
+  history,
+  medicines,
+}: {
+  history: Array<{
+    medicineId: Id<'medicines'>;
+    date: string;
+    scheduledTime: string;
+    status: string;
+    xpAwarded?: number;
+  }> | undefined;
+  medicines: Array<{ _id: Id<'medicines'>; name: string }> | undefined;
+}) {
+  const grouped = useMemo(() => {
+    if (!history) return null;
+    const medicineLookup = new Map<string, string>();
+    if (medicines) {
+      for (const m of medicines) {
+        medicineLookup.set(m._id, m.name);
+      }
+    }
+
+    const byDate: Record<string, Array<{
+      medicineName: string;
+      time: string;
+      status: string;
+      xp: number;
+    }>> = {};
+
+    for (const item of history) {
+      if (!byDate[item.date]) byDate[item.date] = [];
+      byDate[item.date].push({
+        medicineName: medicineLookup.get(item.medicineId) || 'Unknown',
+        time: formatMedicineTime(item.scheduledTime),
+        status: item.status,
+        xp: item.xpAwarded ?? 0,
+      });
+    }
+
+    return Object.entries(byDate).sort(([a], [b]) => b.localeCompare(a));
+  }, [history, medicines]);
+
+  if (!grouped) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+      </View>
+    );
+  }
+
+  if (grouped.length === 0) {
+    return (
+      <EmptyState
+        icon="time-outline"
+        title="No history yet"
+        description="Your medicine history will appear here once you start tracking."
+      />
+    );
+  }
+
+  return (
+    <View style={{ gap: Spacing.md }}>
+      {grouped.map(([date, items]) => (
+        <GlassCard key={date}>
+          <Text style={styles.historyDateTitle}>
+            {format(parseISO(date), 'EEEE, MMM d')}
+          </Text>
+          <View style={{ gap: Spacing.sm }}>
+            {items.map((item, i) => (
+              <View key={`${date}-${i}`} style={styles.historyRow}>
+                <Ionicons
+                  name={item.status === 'taken' ? 'checkmark-circle' : 'close-circle'}
+                  size={18}
+                  color={item.status === 'taken' ? Colors.success : Colors.danger}
+                />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.historyMedName}>{item.medicineName}</Text>
+                  <Text style={styles.historyMedTime}>{item.time}</Text>
+                </View>
+                {item.xp > 0 ? (
+                  <Text style={styles.historyXp}>+{item.xp} XP</Text>
+                ) : null}
+              </View>
+            ))}
+          </View>
+        </GlassCard>
+      ))}
     </View>
   );
 }
@@ -619,6 +743,32 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     textAlign: 'center',
     padding: Spacing['2xl'],
+  },
+  historyDateTitle: {
+    fontSize: FontSize.sm,
+    fontWeight: '700',
+    color: Colors.foreground,
+    marginBottom: Spacing.sm,
+  },
+  historyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    paddingVertical: 4,
+  },
+  historyMedName: {
+    fontSize: FontSize.sm,
+    fontWeight: '600',
+    color: Colors.foreground,
+  },
+  historyMedTime: {
+    fontSize: FontSize.xs,
+    color: Colors.textDim,
+  },
+  historyXp: {
+    fontSize: FontSize.xs,
+    fontWeight: '700',
+    color: Colors.primary,
   },
   addForm: {
     paddingBottom: Spacing['2xl'],

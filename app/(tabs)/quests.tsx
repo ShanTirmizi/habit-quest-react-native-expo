@@ -1,11 +1,13 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   Pressable,
+  Alert,
   ActivityIndicator,
+  Animated,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -65,8 +67,21 @@ export default function QuestsScreen() {
   const handleDelete = useCallback(
     (id: string) => {
       if (!userId) return;
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      deleteQuestMutation({ questId: id as any, userId });
+      Alert.alert(
+        'Delete Quest',
+        'Are you sure you want to delete this quest? This cannot be undone.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: () => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              deleteQuestMutation({ questId: id as any, userId });
+            },
+          },
+        ]
+      );
     },
     [userId, deleteQuestMutation]
   );
@@ -195,6 +210,16 @@ function QuestCard({
   onDelete: (id: string) => void;
 }) {
   const priorityConfig = QUEST_PRIORITY_CONFIG[quest.priority];
+  const btnScale = useRef(new Animated.Value(1)).current;
+
+  const handleComplete = useCallback(() => {
+    Animated.sequence([
+      Animated.spring(btnScale, { toValue: 0.85, useNativeDriver: true, speed: 50, bounciness: 0 }),
+      Animated.spring(btnScale, { toValue: 1.15, useNativeDriver: true, speed: 50, bounciness: 0 }),
+      Animated.spring(btnScale, { toValue: 1, useNativeDriver: true, speed: 50, bounciness: 0 }),
+    ]).start();
+    onComplete?.(quest.id);
+  }, [quest.id, onComplete, btnScale]);
 
   return (
     <GlassCard style={styles.questCard}>
@@ -222,12 +247,14 @@ function QuestCard({
         </View>
       </View>
       {!quest.completed && onComplete ? (
-        <Pressable
-          onPress={() => onComplete(quest.id)}
-          style={({ pressed }) => [styles.completeBtn, pressed && { opacity: 0.7 }]}
-        >
-          <Ionicons name="checkmark" size={20} color={Colors.background} />
-        </Pressable>
+        <Animated.View style={{ transform: [{ scale: btnScale }] }}>
+          <Pressable
+            onPress={handleComplete}
+            style={({ pressed }) => [styles.completeBtn, pressed && { opacity: 0.7 }]}
+          >
+            <Ionicons name="checkmark" size={20} color={Colors.background} />
+          </Pressable>
+        </Animated.View>
       ) : quest.completed && onUncomplete ? (
         <Pressable
           onPress={() => onUncomplete(quest.id)}

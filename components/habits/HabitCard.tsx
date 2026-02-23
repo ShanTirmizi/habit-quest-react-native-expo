@@ -1,5 +1,5 @@
-import React, { useCallback } from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import React, { useCallback, useRef } from 'react';
+import { View, Text, StyleSheet, Pressable, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { Colors, FontSize, Spacing, Radius } from '@/constants/theme';
@@ -24,11 +24,17 @@ const TIME_ICON_NAMES: Record<TimeOfDay, keyof typeof Ionicons.glyphMap | null> 
 export function HabitCard({ habit, isCompleted, onToggle, onPress }: HabitCardProps) {
   const categoryColor = CATEGORY_COLORS[habit.category] || Colors.textSecondary;
   const categoryBg = CATEGORY_BG_COLORS[habit.category] || Colors.surfaceLight;
+  const checkboxScale = useRef(new Animated.Value(1)).current;
 
   const handleToggle = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    Animated.sequence([
+      Animated.spring(checkboxScale, { toValue: 0.85, useNativeDriver: true, speed: 50, bounciness: 0 }),
+      Animated.spring(checkboxScale, { toValue: 1.15, useNativeDriver: true, speed: 50, bounciness: 0 }),
+      Animated.spring(checkboxScale, { toValue: 1, useNativeDriver: true, speed: 50, bounciness: 0 }),
+    ]).start();
     onToggle(habit.id);
-  }, [habit.id, onToggle]);
+  }, [habit.id, onToggle, checkboxScale]);
 
   const handlePress = useCallback(() => {
     if (onPress) {
@@ -46,20 +52,22 @@ export function HabitCard({ habit, isCompleted, onToggle, onPress }: HabitCardPr
         pressed && styles.cardPressed,
       ]}
     >
-      <Pressable
-        onPress={handleToggle}
-        hitSlop={8}
-        style={({ pressed }) => [
-          styles.checkbox,
-          isCompleted && { backgroundColor: categoryColor, borderColor: categoryColor },
-          !isCompleted && { borderColor: Colors.border },
-          pressed && { transform: [{ scale: 0.9 }] },
-        ]}
-      >
-        {isCompleted ? (
-          <Ionicons name="checkmark" size={14} color={Colors.background} />
-        ) : null}
-      </Pressable>
+      <Animated.View style={{ transform: [{ scale: checkboxScale }] }}>
+        <Pressable
+          onPress={handleToggle}
+          hitSlop={8}
+          style={({ pressed }) => [
+            styles.checkbox,
+            isCompleted && { backgroundColor: categoryColor, borderColor: categoryColor },
+            !isCompleted && { borderColor: Colors.border },
+            pressed && { transform: [{ scale: 0.9 }] },
+          ]}
+        >
+          {isCompleted ? (
+            <Ionicons name="checkmark" size={14} color={Colors.background} />
+          ) : null}
+        </Pressable>
+      </Animated.View>
 
       <View style={styles.content}>
         <Text

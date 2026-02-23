@@ -6,6 +6,7 @@ import {
   ScrollView,
   ActivityIndicator,
 } from 'react-native';
+import { format } from 'date-fns';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from 'convex/react';
@@ -306,12 +307,59 @@ interface HistoryTabProps {
   habits: Array<{ completedDates: string[] }>;
 }
 
+function computeStreakStats(habits: Array<{ completedDates: string[] }>) {
+  const today = new Date();
+  const todayStr = today.toISOString().split('T')[0];
+
+  let bestCurrentStreak = 0;
+  let longestEverStreak = 0;
+  let activeStreaksCount = 0;
+
+  for (const habit of habits) {
+    const sorted = [...habit.completedDates].sort();
+    if (sorted.length === 0) continue;
+
+    // Current streak: walk backwards from today
+    let currentStreak = 0;
+    const d = new Date(today);
+    while (true) {
+      const dateStr = d.toISOString().split('T')[0];
+      if (habit.completedDates.includes(dateStr)) {
+        currentStreak++;
+        d.setDate(d.getDate() - 1);
+      } else {
+        break;
+      }
+    }
+    if (currentStreak > bestCurrentStreak) bestCurrentStreak = currentStreak;
+    if (currentStreak > 0) activeStreaksCount++;
+
+    // Longest ever streak
+    let longest = 1;
+    let run = 1;
+    for (let i = 1; i < sorted.length; i++) {
+      const prev = new Date(sorted[i - 1]);
+      const curr = new Date(sorted[i]);
+      const diffDays = Math.round((curr.getTime() - prev.getTime()) / (1000 * 60 * 60 * 24));
+      if (diffDays === 1) {
+        run++;
+        if (run > longest) longest = run;
+      } else if (diffDays > 1) {
+        run = 1;
+      }
+    }
+    if (longest > longestEverStreak) longestEverStreak = longest;
+  }
+
+  return { bestCurrentStreak, longestEverStreak, activeStreaksCount, totalHabits: habits.length };
+}
+
 function HistoryTab({ userId, habits }: HistoryTabProps) {
   // Build real heat map data from habit completions over last 8 weeks
   const weeks = 8;
   const days = 7;
 
-  const heatData = useMemo(() => {
+  const { heatData, monthLabels, gridStart } = useMemo(() => {
     // Collect all completed dates across all habits
     const allDates: Record<string, number> = {};
     for (const habit of habits) {
@@ -327,42 +375,84 @@ function HistoryTab({ userId, habits }: HistoryTabProps) {
     const now = new Date();
     const todayDayOfWeek = now.getDay(); // 0 = Sunday
     // Go back to the start of the grid (8 weeks ago, starting on Sunday)
-    const gridStart = new Date(now);
-    gridStart.setDate(now.getDate() - todayDayOfWeek - (weeks - 1) * 7);
+    const start = new Date(now);
+    start.setDate(now.getDate() - todayDayOfWeek - (weeks - 1) * 7);
 
     const data: number[] = [];
+    const months: { label: string; weekIdx: number }[] = [];
+    let lastMonth = -1;
+
     for (let i = 0; i < weeks * days; i++) {
-      const d = new Date(gridStart);
-      d.setDate(gridStart.getDate() + i);
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
       const dateStr = d.toISOString().split('T')[0];
       const count = allDates[dateStr] ?? 0;
       data.push(count / maxCompletions);
+
+      // Track month labels (on first day of week, i.e. Sunday)
+      if (i % 7 === 0) {
+        const month = d.getMonth();
+        if (month !== lastMonth) {
+          months.push({ label: format(d, 'MMM'), weekIdx: Math.floor(i / 7) });
+          lastMonth = month;
+        }
+      }
     }
-    return data;
+    return { heatData: data, monthLabels: months, gridStart: start };
   }, [habits]);
+
+  const streakStats = useMemo(() => computeStreakStats(habits), [habits]);
+
+  const DAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+  const SHOW_DAY_INDICES = [1, 3, 5]; // M, W, F
 
   return (
     <View style={styles.tabContent}>
       <GlassCard>
         <Text style={styles.cardTitle}>Completion Calendar</Text>
-        <View style={styles.heatMap}>
-          {Array.from({ length: weeks }).map((_, weekIdx) => (
-            <View key={weekIdx} style={styles.heatWeek}>
-              {Array.from({ length: days }).map((_, dayIdx) => {
-                const value = heatData[weekIdx * days + dayIdx];
-                const opacity = value > 0.8 ? 1 : value > 0.5 ? 0.6 : value > 0.2 ? 0.3 : 0.08;
-                return (
-                  <View
-                    key={dayIdx}
-                    style={[
-                      styles.heatCell,
-                      { backgroundColor: Colors.primary, opacity },
-                    ]}
-                  />
-                );
-              })}
-            </View>
-          ))}
+        {/* Month labels */}
+        <View style={styles.heatMonthRow}>
+          <View style={{ width: 18 }} />
+          <View style={{ flex: 1, position: 'relative', height: 16 }}>
+            {monthLabels.map((m, i) => (
+              <Text
+                key={`${m.label}-${i}`}
+                style={[styles.heatMonthLabel, { left: m.weekIdx * 17 }]}
+              >
+                {m.label}
+              </Text>
+            ))}
+          </View>
+        </View>
+        <View style={{ flexDirection: 'row' }}>
+          {/* Day labels */}
+          <View style={styles.heatDayLabels}>
+            {DAY_LABELS.map((label, i) => (
+              <Text key={i} style={styles.heatDayLabel}>
+                {SHOW_DAY_INDICES.includes(i) ? label : ''}
+              </Text>
+            ))}
+          </View>
+          {/* Heatmap grid */}
+          <View style={styles.heatMap}>
+            {Array.from({ length: weeks }).map((_, weekIdx) => (
+              <View key={weekIdx} style={styles.heatWeek}>
+                {Array.from({ length: days }).map((_, dayIdx) => {
+                  const value = heatData[weekIdx * days + dayIdx];
+                  const opacity = value > 0.8 ? 1 : value > 0.5 ? 0.6 : value > 0.2 ? 0.3 : 0.08;
+                  return (
+                    <View
+                      key={dayIdx}
+                      style={[
+                        styles.heatCell,
+                        { backgroundColor: Colors.primary, opacity },
+                      ]}
+                    />
+                  );
+                })}
+              </View>
+            ))}
+          </View>
         </View>
         <View style={styles.heatLegend}>
           <Text style={styles.heatLegendText}>Less</Text>
@@ -376,11 +466,27 @@ function HistoryTab({ userId, habits }: HistoryTabProps) {
         </View>
       </GlassCard>
 
+      {/* Streak Summary */}
       <GlassCard>
-        <Text style={styles.cardTitle}>Streak History</Text>
-        <Text style={styles.placeholderText}>
-          Detailed streak analytics coming soon. Your completion data is being tracked in real time.
-        </Text>
+        <Text style={styles.cardTitle}>Streak Summary</Text>
+        <View style={styles.summaryGrid}>
+          <View style={styles.summaryItem}>
+            <Text style={styles.summaryValue}>{streakStats.bestCurrentStreak}</Text>
+            <Text style={styles.summaryLabel}>Current Best</Text>
+          </View>
+          <View style={styles.summaryItem}>
+            <Text style={[styles.summaryValue, { color: Colors.accent }]}>{streakStats.longestEverStreak}</Text>
+            <Text style={styles.summaryLabel}>Longest Ever</Text>
+          </View>
+          <View style={styles.summaryItem}>
+            <Text style={[styles.summaryValue, { color: Colors.primary }]}>{streakStats.activeStreaksCount}</Text>
+            <Text style={styles.summaryLabel}>Active Streaks</Text>
+          </View>
+          <View style={styles.summaryItem}>
+            <Text style={styles.summaryValue}>{streakStats.totalHabits}</Text>
+            <Text style={styles.summaryLabel}>Total Habits</Text>
+          </View>
+        </View>
       </GlassCard>
     </View>
   );
@@ -427,12 +533,19 @@ function AchievementsTab({ userId, progress }: AchievementsTabProps) {
               ...(!achievement.unlocked ? styles.achievementLocked : {}),
             }}
           >
-            <Ionicons
-              name={achievement.icon}
-              size={28}
-              color={achievement.unlocked ? Colors.accent : Colors.textDim}
-              style={!achievement.unlocked ? { opacity: 0.3 } : undefined}
-            />
+            <View style={{ position: 'relative' }}>
+              <Ionicons
+                name={achievement.icon}
+                size={28}
+                color={achievement.unlocked ? Colors.accent : Colors.textDim}
+                style={!achievement.unlocked ? { opacity: 0.3 } : undefined}
+              />
+              {!achievement.unlocked ? (
+                <View style={styles.lockOverlay}>
+                  <Ionicons name="lock-closed" size={10} color={Colors.textDim} />
+                </View>
+              ) : null}
+            </View>
             <Text
               style={[
                 styles.achievementName,
@@ -659,6 +772,28 @@ const styles = StyleSheet.create({
     height: 12,
     borderRadius: 2,
   },
+  heatMonthRow: {
+    flexDirection: 'row',
+    marginBottom: 4,
+  },
+  heatMonthLabel: {
+    position: 'absolute',
+    fontSize: 10,
+    color: Colors.textDim,
+  },
+  heatDayLabels: {
+    gap: 3,
+    marginRight: 4,
+    justifyContent: 'center',
+  },
+  heatDayLabel: {
+    height: 14,
+    fontSize: 10,
+    color: Colors.textDim,
+    lineHeight: 14,
+    textAlign: 'right',
+    width: 14,
+  },
   placeholderText: {
     fontSize: FontSize.sm,
     color: Colors.textSecondary,
@@ -688,10 +823,21 @@ const styles = StyleSheet.create({
     padding: Spacing.md,
   },
   achievementLocked: {
-    opacity: 0.5,
+    opacity: 0.6,
   },
   achievementIcon: {
     marginBottom: Spacing.xs,
+  },
+  lockOverlay: {
+    position: 'absolute',
+    bottom: -2,
+    right: -4,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: Colors.surfaceLight,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   achievementName: {
     fontSize: FontSize.sm,
