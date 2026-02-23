@@ -42,9 +42,16 @@ export default function LoginScreen() {
       }
       router.replace('/(tabs)');
     } catch (err: any) {
+      const raw = err?.message || '';
+      let message = 'Something went wrong. Please try again.';
+      if (raw.includes('InvalidAccountId') || raw.includes('InvalidSecret')) {
+        message = 'Incorrect email or password. Please try again.';
+      } else if (raw.includes('AccountAlreadyExists')) {
+        message = 'An account with this email already exists. Try signing in instead.';
+      }
       Alert.alert(
         mode === 'login' ? 'Sign In Failed' : 'Sign Up Failed',
-        err?.message || 'Something went wrong. Please try again.'
+        message
       );
     } finally {
       setLoading(false);

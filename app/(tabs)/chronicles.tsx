@@ -6,15 +6,19 @@ import {
   ScrollView,
   Pressable,
   TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { format, isToday, parseISO, subDays } from 'date-fns';
+import { format, isToday, parseISO } from 'date-fns';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
 import { Colors, FontSize, Spacing, Radius } from '@/constants/theme';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { useAuth } from '@/contexts/auth-context';
 import type { JournalEntry, JournalMood } from '@/types';
 import { MOOD_CONFIG, JOURNAL_XP } from '@/types';
 
@@ -26,43 +30,9 @@ const GRATITUDE_PROMPTS = [
   'What are you looking forward to?',
 ];
 
-// Demo journal entries
-const DEMO_ENTRIES: JournalEntry[] = [
-  {
-    id: '1',
-    entryType: 'daily',
-    gratitudes: [
-      'Had a productive morning workout',
-      'My team delivered the sprint goals',
-      'Enjoyed a peaceful evening walk',
-    ],
-    improvement: 'Could have started work earlier instead of scrolling',
-    content: 'Feeling good about the new habit tracking system. The streaks are really motivating.',
-    mood: 'great',
-    createdAt: new Date().toISOString(),
-    wordCount: 42,
-    xpAwarded: 40,
-    entryDate: format(new Date(), 'yyyy-MM-dd'),
-  },
-  {
-    id: '2',
-    entryType: 'daily',
-    gratitudes: [
-      'Coffee was perfect this morning',
-      'Learned something new about TypeScript',
-      'Had a nice chat with a friend',
-    ],
-    mood: 'good',
-    createdAt: subDays(new Date(), 1).toISOString(),
-    wordCount: 18,
-    xpAwarded: 20,
-    entryDate: format(subDays(new Date(), 1), 'yyyy-MM-dd'),
-  },
-];
-
 export default function ChroniclesScreen() {
   const insets = useSafeAreaInsets();
-  const [entries, setEntries] = useState<JournalEntry[]>(DEMO_ENTRIES);
+  const { userId } = useAuth();
   const [isWriting, setIsWriting] = useState(false);
 
   // New entry form state
@@ -72,6 +42,32 @@ export default function ChroniclesScreen() {
   const [improvement, setImprovement] = useState('');
   const [content, setContent] = useState('');
   const [selectedMood, setSelectedMood] = useState<JournalMood | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  // Fetch real data from Convex
+  const rawEntries = useQuery(api.journal.getEntries, userId ? { userId } : 'skip');
+  const addEntryMutation = useMutation(api.journal.addEntry);
+
+  // Map Convex entries to the JournalEntry type the UI expects
+  const entries: JournalEntry[] = useMemo(() => {
+    if (!rawEntries) return [];
+    return rawEntries.map((e) => ({
+      id: e._id,
+      entryType: e.entryType as JournalEntry['entryType'],
+      gratitudes: e.gratitudes as [string, string, string],
+      improvement: e.improvement,
+      content: e.content,
+      weekHighlights: e.weekHighlights,
+      weekChallenges: e.weekChallenges,
+      nextWeekGoals: e.nextWeekGoals,
+      mood: e.mood as JournalMood | undefined,
+      createdAt: new Date(e._creationTime).toISOString(),
+      wordCount: e.wordCount,
+      xpAwarded: e.xpAwarded,
+      entryDate: e.entryDate,
+      promptsUsed: e.promptsUsed,
+    }));
+  }, [rawEntries]);
 
   const todayEntry = useMemo(
     () => {
@@ -91,41 +87,41 @@ export default function ChroniclesScreen() {
     return Math.min(xp, JOURNAL_XP.MAX_DAILY);
   }, [gratitude1, gratitude2, gratitude3, improvement, content]);
 
-  const handleSaveEntry = useCallback(() => {
-    if (!gratitude1 || !gratitude2 || !gratitude3) return;
+  const handleSaveEntry = useCallback(async () => {
+    if (!gratitude1 || !gratitude2 || !gratitude3 || !userId) return;
 
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setSaving(true);
+    try {
+      await addEntryMutation({
+        userId,
+        entryType: 'daily',
+        gratitudes: [gratitude1, gratitude2, gratitude3],
+        improvement: improvement || undefined,
+        content: content || undefined,
+        mood: selectedMood || undefined,
+      });
 
-    const newEntry: JournalEntry = {
-      id: Date.now().toString(),
-      entryType: 'daily',
-      gratitudes: [gratitude1, gratitude2, gratitude3],
-      improvement: improvement || undefined,
-      content: content || undefined,
-      mood: selectedMood || undefined,
-      createdAt: new Date().toISOString(),
-      wordCount: [gratitude1, gratitude2, gratitude3, improvement, content]
-        .join(' ')
-        .split(/\s+/)
-        .filter(Boolean).length,
-      xpAwarded: calculateXp(),
-      entryDate: format(new Date(), 'yyyy-MM-dd'),
-    };
-
-    setEntries((prev) => [newEntry, ...prev]);
-    setIsWriting(false);
-    setGratitude1('');
-    setGratitude2('');
-    setGratitude3('');
-    setImprovement('');
-    setContent('');
-    setSelectedMood(null);
-  }, [gratitude1, gratitude2, gratitude3, improvement, content, selectedMood, calculateXp]);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setIsWriting(false);
+      setGratitude1('');
+      setGratitude2('');
+      setGratitude3('');
+      setImprovement('');
+      setContent('');
+      setSelectedMood(null);
+    } catch (err) {
+      console.error('Failed to save entry:', err);
+    } finally {
+      setSaving(false);
+    }
+  }, [gratitude1, gratitude2, gratitude3, improvement, content, selectedMood, userId, addEntryMutation]);
 
   const prompts = useMemo(() => {
     const shuffled = [...GRATITUDE_PROMPTS].sort(() => Math.random() - 0.5);
     return shuffled.slice(0, 3);
   }, []);
+
+  const isLoading = rawEntries === undefined;
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -133,7 +129,7 @@ export default function ChroniclesScreen() {
         <View>
           <Text style={styles.title}>Chronicles</Text>
           <Text style={styles.subtitle}>
-            {entries.length} entries · {hasEntryToday ? 'Journaled today ✨' : 'No entry yet'}
+            {entries.length} entries · {hasEntryToday ? 'Journaled today' : 'No entry yet'}
           </Text>
         </View>
         {!isWriting && !hasEntryToday ? (
@@ -147,161 +143,168 @@ export default function ChroniclesScreen() {
         ) : null}
       </View>
 
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        {/* Writing Form */}
-        {isWriting ? (
-          <GlassCard style={styles.writeForm}>
-            <Text style={styles.formTitle}>Today&apos;s Reflection</Text>
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+        </View>
+      ) : (
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Writing Form */}
+          {isWriting ? (
+            <GlassCard style={styles.writeForm}>
+              <Text style={styles.formTitle}>Today&apos;s Reflection</Text>
 
-            {/* Mood Selection */}
-            <View style={styles.moodSection}>
-              <Text style={styles.formLabel}>How are you feeling?</Text>
-              <View style={styles.moodRow}>
-                {(Object.keys(MOOD_CONFIG) as JournalMood[]).map((mood) => {
-                  const config = MOOD_CONFIG[mood];
-                  const isSelected = selectedMood === mood;
-                  return (
-                    <Pressable
-                      key={mood}
-                      onPress={() => setSelectedMood(mood)}
-                      style={[
-                        styles.moodChip,
-                        isSelected && { backgroundColor: `${config.color}20`, borderColor: config.color },
-                      ]}
-                    >
-                      <Ionicons name={config.icon as keyof typeof Ionicons.glyphMap} size={18} color={isSelected ? config.color : Colors.textMuted} />
-                      <Text
+              {/* Mood Selection */}
+              <View style={styles.moodSection}>
+                <Text style={styles.formLabel}>How are you feeling?</Text>
+                <View style={styles.moodRow}>
+                  {(Object.keys(MOOD_CONFIG) as JournalMood[]).map((mood) => {
+                    const config = MOOD_CONFIG[mood];
+                    const isSelected = selectedMood === mood;
+                    return (
+                      <Pressable
+                        key={mood}
+                        onPress={() => setSelectedMood(mood)}
                         style={[
-                          styles.moodLabel,
-                          isSelected && { color: config.color },
+                          styles.moodChip,
+                          isSelected && { backgroundColor: `${config.color}20`, borderColor: config.color },
                         ]}
                       >
-                        {config.label}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
+                        <Ionicons name={config.icon as keyof typeof Ionicons.glyphMap} size={18} color={isSelected ? config.color : Colors.textMuted} />
+                        <Text
+                          style={[
+                            styles.moodLabel,
+                            isSelected && { color: config.color },
+                          ]}
+                        >
+                          {config.label}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
               </View>
-            </View>
 
-            {/* Gratitudes */}
-            <View style={styles.gratitudeSection}>
-              <Text style={styles.formLabel}>3 things I&apos;m grateful for</Text>
-              <View style={styles.gratitudeInputs}>
-                {[
-                  { value: gratitude1, setter: setGratitude1, placeholder: prompts[0] },
-                  { value: gratitude2, setter: setGratitude2, placeholder: prompts[1] },
-                  { value: gratitude3, setter: setGratitude3, placeholder: prompts[2] },
-                ].map((item, i) => (
-                  <View key={i} style={styles.gratitudeRow}>
-                    <Text style={styles.gratitudeNumber}>{i + 1}</Text>
-                    <TextInput
-                      style={styles.gratitudeInput}
-                      value={item.value}
-                      onChangeText={item.setter}
-                      placeholder={item.placeholder}
-                      placeholderTextColor={Colors.textDim}
-                      selectionColor={Colors.primary}
+              {/* Gratitudes */}
+              <View style={styles.gratitudeSection}>
+                <Text style={styles.formLabel}>3 things I&apos;m grateful for</Text>
+                <View style={styles.gratitudeInputs}>
+                  {[
+                    { value: gratitude1, setter: setGratitude1, placeholder: prompts[0] },
+                    { value: gratitude2, setter: setGratitude2, placeholder: prompts[1] },
+                    { value: gratitude3, setter: setGratitude3, placeholder: prompts[2] },
+                  ].map((item, i) => (
+                    <View key={i} style={styles.gratitudeRow}>
+                      <Text style={styles.gratitudeNumber}>{i + 1}</Text>
+                      <TextInput
+                        style={styles.gratitudeInput}
+                        value={item.value}
+                        onChangeText={item.setter}
+                        placeholder={item.placeholder}
+                        placeholderTextColor={Colors.textDim}
+                        selectionColor={Colors.primary}
+                      />
+                    </View>
+                  ))}
+                </View>
+              </View>
+
+              {/* Improvement */}
+              <View style={styles.section}>
+                <Text style={styles.formLabel}>How could today be better? (+{JOURNAL_XP.IMPROVEMENT_BONUS} XP)</Text>
+                <TextInput
+                  style={[styles.textArea, { minHeight: 60 }]}
+                  value={improvement}
+                  onChangeText={setImprovement}
+                  placeholder="One thing I could improve..."
+                  placeholderTextColor={Colors.textDim}
+                  selectionColor={Colors.primary}
+                  multiline
+                />
+              </View>
+
+              {/* Additional Thoughts */}
+              <View style={styles.section}>
+                <Text style={styles.formLabel}>Additional thoughts (+{JOURNAL_XP.THOUGHTS_BONUS} XP)</Text>
+                <TextInput
+                  style={[styles.textArea, { minHeight: 80 }]}
+                  value={content}
+                  onChangeText={setContent}
+                  placeholder="Free-form reflections, ideas, feelings..."
+                  placeholderTextColor={Colors.textDim}
+                  selectionColor={Colors.primary}
+                  multiline
+                />
+              </View>
+
+              {/* XP Preview */}
+              <View style={styles.xpPreview}>
+                <Text style={styles.xpPreviewLabel}>XP Earned</Text>
+                <Text style={styles.xpPreviewValue}>+{calculateXp()} XP</Text>
+              </View>
+
+              {/* Actions */}
+              <View style={styles.formActions}>
+                <Button title="Cancel" variant="ghost" onPress={() => setIsWriting(false)} />
+                <Button
+                  title="Save Entry"
+                  onPress={handleSaveEntry}
+                  loading={saving}
+                  disabled={!gratitude1 || !gratitude2 || !gratitude3}
+                />
+              </View>
+            </GlassCard>
+          ) : null}
+
+          {/* Mood Trend (simplified) */}
+          {entries.length >= 2 ? (
+            <GlassCard>
+              <Text style={styles.trendTitle}>Recent Moods</Text>
+              <View style={styles.moodTrend}>
+                {entries.slice(0, 7).map((entry) => (
+                  <View key={entry.id} style={styles.moodDot}>
+                    <Ionicons
+                      name={(entry.mood ? MOOD_CONFIG[entry.mood].icon : 'document-text-outline') as keyof typeof Ionicons.glyphMap}
+                      size={16}
+                      color={entry.mood ? MOOD_CONFIG[entry.mood].color : Colors.textDim}
                     />
+                    <Text style={styles.moodDotDate}>
+                      {entry.entryDate
+                        ? format(parseISO(entry.entryDate), 'MMM d')
+                        : format(parseISO(entry.createdAt), 'MMM d')}
+                    </Text>
                   </View>
                 ))}
               </View>
-            </View>
+            </GlassCard>
+          ) : null}
 
-            {/* Improvement */}
-            <View style={styles.section}>
-              <Text style={styles.formLabel}>How could today be better? (+{JOURNAL_XP.IMPROVEMENT_BONUS} XP)</Text>
-              <TextInput
-                style={[styles.textArea, { minHeight: 60 }]}
-                value={improvement}
-                onChangeText={setImprovement}
-                placeholder="One thing I could improve..."
-                placeholderTextColor={Colors.textDim}
-                selectionColor={Colors.primary}
-                multiline
-              />
-            </View>
-
-            {/* Additional Thoughts */}
-            <View style={styles.section}>
-              <Text style={styles.formLabel}>Additional thoughts (+{JOURNAL_XP.THOUGHTS_BONUS} XP)</Text>
-              <TextInput
-                style={[styles.textArea, { minHeight: 80 }]}
-                value={content}
-                onChangeText={setContent}
-                placeholder="Free-form reflections, ideas, feelings..."
-                placeholderTextColor={Colors.textDim}
-                selectionColor={Colors.primary}
-                multiline
-              />
-            </View>
-
-            {/* XP Preview */}
-            <View style={styles.xpPreview}>
-              <Text style={styles.xpPreviewLabel}>XP Earned</Text>
-              <Text style={styles.xpPreviewValue}>+{calculateXp()} XP</Text>
-            </View>
-
-            {/* Actions */}
-            <View style={styles.formActions}>
-              <Button title="Cancel" variant="ghost" onPress={() => setIsWriting(false)} />
-              <Button
-                title="Save Entry"
-                onPress={handleSaveEntry}
-                disabled={!gratitude1 || !gratitude2 || !gratitude3}
-              />
-            </View>
-          </GlassCard>
-        ) : null}
-
-        {/* Mood Trend (simplified) */}
-        {entries.length >= 2 ? (
-          <GlassCard>
-            <Text style={styles.trendTitle}>Recent Moods</Text>
-            <View style={styles.moodTrend}>
-              {entries.slice(0, 7).map((entry) => (
-                <View key={entry.id} style={styles.moodDot}>
-                  <Ionicons
-                    name={(entry.mood ? MOOD_CONFIG[entry.mood].icon : 'document-text-outline') as keyof typeof Ionicons.glyphMap}
-                    size={16}
-                    color={entry.mood ? MOOD_CONFIG[entry.mood].color : Colors.textDim}
-                  />
-                  <Text style={styles.moodDotDate}>
-                    {entry.entryDate
-                      ? format(parseISO(entry.entryDate), 'MMM d')
-                      : format(parseISO(entry.createdAt), 'MMM d')}
-                  </Text>
-                </View>
+          {/* Entry History */}
+          {entries.length === 0 && !isWriting ? (
+            <EmptyState
+              icon="book-outline"
+              title="Your chronicles await"
+              description="Start journaling to track your mood, practice gratitude, and earn XP. Writing just 3 gratitudes takes 2 minutes."
+              actionLabel="Write First Entry"
+              onAction={() => setIsWriting(true)}
+            />
+          ) : entries.length > 0 ? (
+            <View style={styles.entryList}>
+              <Text style={styles.sectionTitle}>Past Entries</Text>
+              {entries.map((entry) => (
+                <EntryCard key={entry.id} entry={entry} />
               ))}
             </View>
-          </GlassCard>
-        ) : null}
+          ) : null}
 
-        {/* Entry History */}
-        {entries.length === 0 && !isWriting ? (
-          <EmptyState
-            icon="book-outline"
-            title="Your chronicles await"
-            description="Start journaling to track your mood, practice gratitude, and earn XP. Writing just 3 gratitudes takes 2 minutes."
-            actionLabel="Write First Entry"
-            onAction={() => setIsWriting(true)}
-          />
-        ) : (
-          <View style={styles.entryList}>
-            <Text style={styles.sectionTitle}>Past Entries</Text>
-            {entries.map((entry) => (
-              <EntryCard key={entry.id} entry={entry} />
-            ))}
-          </View>
-        )}
-
-        <View style={{ height: 100 }} />
-      </ScrollView>
+          <View style={{ height: 100 }} />
+        </ScrollView>
+      )}
     </View>
   );
 }
@@ -376,9 +379,6 @@ const cardStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.md,
-  },
-  moodIcon: {
-    fontSize: 24,
   },
   date: {
     fontSize: FontSize.sm,
@@ -462,6 +462,11 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: Colors.background,
   },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   scrollView: {
     flex: 1,
   },
@@ -497,9 +502,6 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     backgroundColor: Colors.surfaceLight,
     gap: 4,
-  },
-  moodIcon: {
-    fontSize: 20,
   },
   moodLabel: {
     fontSize: FontSize.xs,
@@ -585,9 +587,6 @@ const styles = StyleSheet.create({
   moodDot: {
     alignItems: 'center',
     gap: 4,
-  },
-  moodDotIcon: {
-    fontSize: 20,
   },
   moodDotDate: {
     fontSize: 10,

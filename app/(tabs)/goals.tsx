@@ -1,15 +1,19 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   Pressable,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { format, differenceInDays, parseISO } from 'date-fns';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { useAuth } from '@/contexts/auth-context';
 import { Colors, FontSize, Spacing, Radius } from '@/constants/theme';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { ProgressBar } from '@/components/ui/ProgressBar';
@@ -21,61 +25,51 @@ import { Button } from '@/components/ui/Button';
 import type { Goal, GoalCategory, GoalStatus } from '@/types';
 import { GOAL_CATEGORY_CONFIG, GOAL_STATUS_CONFIG } from '@/types';
 
-const DEMO_GOALS: Goal[] = [
-  {
-    id: '1',
-    userId: 'demo',
-    title: 'Run a half marathon',
-    description: 'Train consistently to complete a half marathon by June',
-    category: 'fitness',
-    targetDate: '2024-06-15',
-    status: 'active',
-    currentLevel: 'intermediate',
-    linkedHabitIds: ['1'],
-    milestones: [
-      { id: 'm1', title: 'Run 5K without stopping', targetDate: '2024-03-01', completed: true, completedAt: '2024-02-28' },
-      { id: 'm2', title: 'Run 10K', targetDate: '2024-04-01', completed: false },
-      { id: 'm3', title: 'Run 15K', targetDate: '2024-05-01', completed: false },
-    ],
-    checkIns: [
-      { date: '2024-02-01', status: 'on_track', note: 'Feeling strong!' },
-    ],
-    createdAt: '2024-01-01T00:00:00Z',
-  },
-  {
-    id: '2',
-    userId: 'demo',
-    title: 'Learn TypeScript Advanced Patterns',
-    description: 'Master generics, conditional types, and utility types',
-    category: 'learning',
-    targetDate: '2024-04-30',
-    status: 'active',
-    currentLevel: 'intermediate',
-    milestones: [
-      { id: 'm1', title: 'Complete generics chapter', targetDate: '2024-02-15', completed: true, completedAt: '2024-02-14' },
-      { id: 'm2', title: 'Build a typed state machine', targetDate: '2024-03-15', completed: false },
-    ],
-    createdAt: '2024-01-15T00:00:00Z',
-  },
-  {
-    id: '3',
-    userId: 'demo',
-    title: 'Save $5,000 emergency fund',
-    category: 'financial',
-    targetDate: '2024-12-31',
-    status: 'active',
-    createdAt: '2024-01-01T00:00:00Z',
-  },
-];
-
 type FilterValue = 'all' | GoalStatus;
+
+/** Map a Convex goal document to the local Goal type */
+function mapConvexGoal(raw: any): Goal {
+  return {
+    id: raw._id,
+    userId: raw.userId,
+    title: raw.title,
+    description: raw.description,
+    category: raw.category,
+    targetDate: raw.targetDate,
+    status: raw.status,
+    currentLevel: raw.currentLevel,
+    dailyTimeAvailable: raw.dailyTimeAvailable,
+    constraints: raw.constraints,
+    preferences: raw.preferences,
+    linkedHabitIds: raw.linkedHabitIds,
+    milestones: raw.milestones,
+    checkIns: raw.checkIns,
+    phases: raw.phases,
+    currentPhaseIndex: raw.currentPhaseIndex,
+    createdAt: raw._creationTime
+      ? new Date(raw._creationTime).toISOString()
+      : new Date().toISOString(),
+  };
+}
 
 export default function GoalsScreen() {
   const insets = useSafeAreaInsets();
-  const [goals, setGoals] = useState<Goal[]>(DEMO_GOALS);
+  const { userId } = useAuth();
+
   const [filter, setFilter] = useState<FilterValue>('all');
   const [showAddSheet, setShowAddSheet] = useState(false);
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
+
+  // Convex queries & mutations
+  const rawGoals = useQuery(api.goals.getGoals, userId ? { userId } : 'skip');
+  const createGoalMutation = useMutation(api.goals.createGoal);
+  const completeMilestoneMutation = useMutation(api.goals.completeMilestone);
+
+  // Map Convex documents to local Goal type
+  const goals: Goal[] = useMemo(() => {
+    if (!rawGoals) return [];
+    return rawGoals.map(mapConvexGoal);
+  }, [rawGoals]);
 
   const filteredGoals = useMemo(() => {
     if (filter === 'all') return goals;
@@ -84,6 +78,23 @@ export default function GoalsScreen() {
 
   const activeCount = goals.filter((g) => g.status === 'active').length;
   const achievedCount = goals.filter((g) => g.status === 'achieved').length;
+
+  // Loading state
+  if (rawGoals === undefined) {
+    return (
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.title}>Goals</Text>
+            <Text style={styles.subtitle}>Loading...</Text>
+          </View>
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -159,17 +170,15 @@ export default function GoalsScreen() {
       <AddGoalSheet
         visible={showAddSheet}
         onClose={() => setShowAddSheet(false)}
-        onAdd={(goalData) => {
-          setGoals((prev) => [
-            ...prev,
-            {
-              ...goalData,
-              id: Date.now().toString(),
-              userId: 'demo',
-              status: 'active' as GoalStatus,
-              createdAt: new Date().toISOString(),
-            },
-          ]);
+        onAdd={async (goalData) => {
+          if (!userId) return;
+          await createGoalMutation({
+            userId,
+            title: goalData.title,
+            description: goalData.description,
+            category: goalData.category,
+            targetDate: goalData.targetDate,
+          });
         }}
       />
 
@@ -179,7 +188,31 @@ export default function GoalsScreen() {
         onClose={() => setSelectedGoal(null)}
         title={selectedGoal?.title}
       >
-        {selectedGoal ? <GoalDetail goal={selectedGoal} /> : null}
+        {selectedGoal ? (
+          <GoalDetail
+            goal={selectedGoal}
+            onCompleteMilestone={async (goalId, milestoneId) => {
+              if (!userId) return;
+              await completeMilestoneMutation({
+                goalId: goalId as any,
+                userId,
+                milestoneId,
+              });
+              // Update selected goal locally so the sheet reflects the change
+              setSelectedGoal((prev) => {
+                if (!prev) return null;
+                return {
+                  ...prev,
+                  milestones: prev.milestones?.map((m) =>
+                    m.id === milestoneId
+                      ? { ...m, completed: true, completedAt: new Date().toISOString() }
+                      : m
+                  ),
+                };
+              });
+            }}
+          />
+        ) : null}
       </BottomSheet>
     </View>
   );
@@ -240,7 +273,13 @@ function GoalCard({ goal, onPress }: { goal: Goal; onPress: () => void }) {
   );
 }
 
-function GoalDetail({ goal }: { goal: Goal }) {
+function GoalDetail({
+  goal,
+  onCompleteMilestone,
+}: {
+  goal: Goal;
+  onCompleteMilestone: (goalId: string, milestoneId: string) => void;
+}) {
   const categoryConfig = GOAL_CATEGORY_CONFIG[goal.category];
 
   return (
@@ -278,7 +317,16 @@ function GoalDetail({ goal }: { goal: Goal }) {
         <View style={styles.milestonesSection}>
           <Text style={styles.detailSectionTitle}>Milestones</Text>
           {goal.milestones.map((m) => (
-            <View key={m.id} style={styles.milestoneItem}>
+            <Pressable
+              key={m.id}
+              onPress={() => {
+                if (!m.completed) {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  onCompleteMilestone(goal.id, m.id);
+                }
+              }}
+              style={styles.milestoneItem}
+            >
               <View style={[styles.milestoneCheck, m.completed && styles.milestoneCheckDone]}>
                 {m.completed ? (
                   <Ionicons name="checkmark" size={12} color={Colors.background} />
@@ -292,7 +340,7 @@ function GoalDetail({ goal }: { goal: Goal }) {
                   {format(parseISO(m.targetDate), 'MMM d, yyyy')}
                 </Text>
               </View>
-            </View>
+            </Pressable>
           ))}
         </View>
       ) : null}
@@ -437,6 +485,11 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: 18,
     backgroundColor: Colors.primaryBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingContainer: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },

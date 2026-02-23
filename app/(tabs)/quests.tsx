@@ -1,14 +1,18 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   Pressable,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { useAuth } from '@/contexts/auth-context';
 import { Colors, FontSize, Spacing, Radius } from '@/constants/theme';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { BadgePill } from '@/components/ui/BadgePill';
@@ -19,95 +23,79 @@ import { Button } from '@/components/ui/Button';
 import type { SideQuest, QuestPriority } from '@/types';
 import { QUEST_PRIORITY_CONFIG } from '@/types';
 
-const DEMO_QUESTS: SideQuest[] = [
-  {
-    id: '1',
-    title: 'Organize desk workspace',
-    description: 'Clear clutter and create a clean work environment',
-    xpReward: 50,
-    priority: 'medium',
-    questType: 'daily',
-    completed: false,
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: '2',
-    title: 'Review weekly goals',
-    xpReward: 25,
-    priority: 'low',
-    questType: 'weekly',
-    completed: false,
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: '3',
-    title: 'Complete TypeScript course module',
-    description: 'Finish chapter 5 on advanced types',
-    xpReward: 100,
-    priority: 'high',
-    questType: 'ongoing',
-    completed: false,
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: '4',
-    title: 'Call dentist for appointment',
-    xpReward: 25,
-    priority: 'low',
-    completed: true,
-    completedAt: new Date().toISOString(),
-    createdAt: new Date().toISOString(),
-  },
-];
-
 export default function QuestsScreen() {
   const insets = useSafeAreaInsets();
-  const [quests, setQuests] = useState<SideQuest[]>(DEMO_QUESTS);
+  const { userId } = useAuth();
   const [showAddSheet, setShowAddSheet] = useState(false);
+
+  const rawQuests = useQuery(api.quests.getQuests, userId ? { userId } : 'skip');
+  const addQuestMutation = useMutation(api.quests.addQuest);
+  const completeQuestMutation = useMutation(api.quests.completeQuest);
+  const uncompleteQuestMutation = useMutation(api.quests.uncompleteQuest);
+  const deleteQuestMutation = useMutation(api.quests.deleteQuest);
+
+  // Map Convex documents to local SideQuest type
+  const quests: SideQuest[] = useMemo(() => {
+    if (!rawQuests) return [];
+    return rawQuests.map((q) => ({
+      id: q._id,
+      title: q.title,
+      description: q.description,
+      xpReward: q.xpReward,
+      priority: q.priority,
+      questType: q.questType,
+      completed: q.completed,
+      createdAt: new Date(q._creationTime).toISOString(),
+      completedAt: q.completedAt,
+    }));
+  }, [rawQuests]);
 
   const pendingQuests = quests.filter((q) => !q.completed);
   const completedQuests = quests.filter((q) => q.completed);
 
-  const handleComplete = useCallback((id: string) => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    setQuests((prev) =>
-      prev.map((q) =>
-        q.id === id ? { ...q, completed: true, completedAt: new Date().toISOString() } : q
-      )
-    );
-  }, []);
+  const handleComplete = useCallback(
+    (id: string) => {
+      if (!userId) return;
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      completeQuestMutation({ questId: id as any, userId });
+    },
+    [userId, completeQuestMutation]
+  );
 
-  const handleDelete = useCallback((id: string) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setQuests((prev) => prev.filter((q) => q.id !== id));
-  }, []);
+  const handleDelete = useCallback(
+    (id: string) => {
+      if (!userId) return;
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      deleteQuestMutation({ questId: id as any, userId });
+    },
+    [userId, deleteQuestMutation]
+  );
 
-  const handleUncomplete = useCallback((id: string) => {
-    setQuests((prev) =>
-      prev.map((q) =>
-        q.id === id ? { ...q, completed: false, completedAt: undefined } : q
-      )
-    );
-  }, []);
+  const handleUncomplete = useCallback(
+    (id: string) => {
+      if (!userId) return;
+      uncompleteQuestMutation({ questId: id as any, userId });
+    },
+    [userId, uncompleteQuestMutation]
+  );
 
   const handleAdd = useCallback(
     (quest: { title: string; description?: string; priority: QuestPriority }) => {
+      if (!userId) return;
       const xp = QUEST_PRIORITY_CONFIG[quest.priority].xp;
-      setQuests((prev) => [
-        ...prev,
-        {
-          id: Date.now().toString(),
-          title: quest.title,
-          description: quest.description,
-          xpReward: xp,
-          priority: quest.priority,
-          completed: false,
-          createdAt: new Date().toISOString(),
-        },
-      ]);
+      addQuestMutation({
+        userId,
+        title: quest.title,
+        description: quest.description,
+        xpReward: xp,
+        priority: quest.priority,
+        questType: 'ongoing',
+      });
     },
-    []
+    [userId, addQuestMutation]
   );
+
+  const isLoading = rawQuests === undefined;
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -129,56 +117,62 @@ export default function QuestsScreen() {
         </Pressable>
       </View>
 
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {quests.length === 0 ? (
-          <EmptyState
-            icon="shield-outline"
-            title="No quests yet"
-            description="Side quests are one-off tasks that earn bonus XP. Create your first quest!"
-            actionLabel="Create Quest"
-            onAction={() => setShowAddSheet(true)}
-          />
-        ) : (
-          <>
-            {pendingQuests.length > 0 ? (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Active Quests</Text>
-                <View style={styles.questList}>
-                  {pendingQuests.map((quest) => (
-                    <QuestCard
-                      key={quest.id}
-                      quest={quest}
-                      onComplete={handleComplete}
-                      onDelete={handleDelete}
-                    />
-                  ))}
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+        </View>
+      ) : (
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {quests.length === 0 ? (
+            <EmptyState
+              icon="shield-outline"
+              title="No quests yet"
+              description="Side quests are one-off tasks that earn bonus XP. Create your first quest!"
+              actionLabel="Create Quest"
+              onAction={() => setShowAddSheet(true)}
+            />
+          ) : (
+            <>
+              {pendingQuests.length > 0 ? (
+                <View style={styles.section}>
+                  <Text style={styles.sectionTitle}>Active Quests</Text>
+                  <View style={styles.questList}>
+                    {pendingQuests.map((quest) => (
+                      <QuestCard
+                        key={quest.id}
+                        quest={quest}
+                        onComplete={handleComplete}
+                        onDelete={handleDelete}
+                      />
+                    ))}
+                  </View>
                 </View>
-              </View>
-            ) : null}
+              ) : null}
 
-            {completedQuests.length > 0 ? (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Completed</Text>
-                <View style={styles.questList}>
-                  {completedQuests.map((quest) => (
-                    <QuestCard
-                      key={quest.id}
-                      quest={quest}
-                      onUncomplete={handleUncomplete}
-                      onDelete={handleDelete}
-                    />
-                  ))}
+              {completedQuests.length > 0 ? (
+                <View style={styles.section}>
+                  <Text style={styles.sectionTitle}>Completed</Text>
+                  <View style={styles.questList}>
+                    {completedQuests.map((quest) => (
+                      <QuestCard
+                        key={quest.id}
+                        quest={quest}
+                        onUncomplete={handleUncomplete}
+                        onDelete={handleDelete}
+                      />
+                    ))}
+                  </View>
                 </View>
-              </View>
-            ) : null}
-          </>
-        )}
-        <View style={{ height: 100 }} />
-      </ScrollView>
+              ) : null}
+            </>
+          )}
+          <View style={{ height: 100 }} />
+        </ScrollView>
+      )}
 
       <AddQuestSheet
         visible={showAddSheet}
@@ -353,6 +347,11 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: 18,
     backgroundColor: Colors.primaryBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingContainer: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },

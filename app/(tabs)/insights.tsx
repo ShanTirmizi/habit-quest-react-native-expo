@@ -4,69 +4,156 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  Pressable,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useQuery } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { useAuth } from '@/contexts/auth-context';
 import { Colors, FontSize, Spacing, Radius } from '@/constants/theme';
 import { CATEGORY_COLORS } from '@/constants/theme';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { BadgePill } from '@/components/ui/BadgePill';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
+import { getWeeklyBoss, getWeekStart } from '@/data/weekly-bosses';
 import type { HabitCategory } from '@/types';
+import type { Id } from '@/convex/_generated/dataModel';
 
 type InsightsTab = 'overview' | 'history' | 'achievements' | 'gamification';
 
-// Demo data
-const DEMO_ACHIEVEMENTS: { id: string; name: string; icon: keyof typeof Ionicons.glyphMap; description: string; unlocked: boolean }[] = [
-  { id: 'first_step', name: 'First Step', icon: 'footsteps-outline', description: 'Complete your first habit', unlocked: true },
-  { id: 'consistent', name: 'Consistent', icon: 'calendar-outline', description: '7-day streak', unlocked: true },
-  { id: 'dedicated', name: 'Dedicated', icon: 'fitness-outline', description: '14-day streak', unlocked: true },
-  { id: 'well_rounded', name: 'Well-Rounded', icon: 'color-palette-outline', description: 'Complete all 4 categories', unlocked: false },
-  { id: 'xp_hunter', name: 'XP Hunter', icon: 'flash-outline', description: 'Earn 1,000 XP', unlocked: true },
-  { id: 'perfect_week', name: 'Perfect Week', icon: 'trophy-outline', description: '100% completion for 7 days', unlocked: false },
-  { id: 'marathon', name: 'Marathon', icon: 'walk-outline', description: '30-day streak', unlocked: false },
-  { id: 'xp_master', name: 'XP Master', icon: 'diamond-outline', description: 'Earn 5,000 XP', unlocked: false },
-  { id: 'centurion', name: 'Centurion', icon: 'medal-outline', description: '100 total completions', unlocked: false },
+// Static achievement definitions (what achievements exist)
+const ACHIEVEMENT_DEFINITIONS: { id: string; name: string; icon: keyof typeof Ionicons.glyphMap; description: string }[] = [
+  { id: 'first_step', name: 'First Step', icon: 'footsteps-outline', description: 'Complete your first habit' },
+  { id: 'consistent', name: 'Consistent', icon: 'calendar-outline', description: '7-day streak' },
+  { id: 'dedicated', name: 'Dedicated', icon: 'fitness-outline', description: '14-day streak' },
+  { id: 'well_rounded', name: 'Well-Rounded', icon: 'color-palette-outline', description: 'Complete all 4 categories' },
+  { id: 'xp_hunter', name: 'XP Hunter', icon: 'flash-outline', description: 'Earn 1,000 XP' },
+  { id: 'perfect_week', name: 'Perfect Week', icon: 'trophy-outline', description: '100% completion for 7 days' },
+  { id: 'marathon', name: 'Marathon', icon: 'walk-outline', description: '30-day streak' },
+  { id: 'xp_master', name: 'XP Master', icon: 'diamond-outline', description: 'Earn 5,000 XP' },
+  { id: 'centurion', name: 'Centurion', icon: 'medal-outline', description: '100 total completions' },
 ];
 
-const DEMO_SKILLS: { id: string; name: string; category: string; xpCost: number; unlocked: boolean; icon: keyof typeof Ionicons.glyphMap; description: string }[] = [
-  { id: 'iron_will', name: 'Iron Will', category: 'discipline', xpCost: 500, unlocked: true, icon: 'shield-outline', description: '+5% XP bonus' },
-  { id: 'streak_guardian', name: 'Streak Guardian', category: 'discipline', xpCost: 750, unlocked: true, icon: 'lock-closed-outline', description: '+1 streak freeze/week' },
-  { id: 'momentum', name: 'Momentum Master', category: 'discipline', xpCost: 1000, unlocked: false, icon: 'rocket-outline', description: '+10% for 3+ habits/day' },
-  { id: 'vitality', name: 'Vitality', category: 'wellness', xpCost: 500, unlocked: true, icon: 'heart-outline', description: '+10% health habits' },
-  { id: 'rest_mastery', name: 'Rest Mastery', category: 'wellness', xpCost: 750, unlocked: false, icon: 'bed-outline', description: '+1 rest day/week' },
-  { id: 'scholar', name: 'Scholar', category: 'growth', xpCost: 500, unlocked: false, icon: 'library-outline', description: '+10% career/mind' },
-  { id: 'harmony', name: 'Harmony', category: 'balance', xpCost: 500, unlocked: false, icon: 'infinite-outline', description: '+10% life habits' },
+// Static skill definitions (what skills exist)
+const SKILL_DEFINITIONS: { id: string; name: string; category: string; xpCost: number; icon: keyof typeof Ionicons.glyphMap; description: string }[] = [
+  { id: 'iron_will', name: 'Iron Will', category: 'discipline', xpCost: 500, icon: 'shield-outline', description: '+5% XP bonus' },
+  { id: 'streak_guardian', name: 'Streak Guardian', category: 'discipline', xpCost: 750, icon: 'lock-closed-outline', description: '+1 streak freeze/week' },
+  { id: 'momentum', name: 'Momentum Master', category: 'discipline', xpCost: 1000, icon: 'rocket-outline', description: '+10% for 3+ habits/day' },
+  { id: 'vitality', name: 'Vitality', category: 'wellness', xpCost: 500, icon: 'heart-outline', description: '+10% health habits' },
+  { id: 'rest_mastery', name: 'Rest Mastery', category: 'wellness', xpCost: 750, icon: 'bed-outline', description: '+1 rest day/week' },
+  { id: 'scholar', name: 'Scholar', category: 'growth', xpCost: 500, icon: 'library-outline', description: '+10% career/mind' },
+  { id: 'harmony', name: 'Harmony', category: 'balance', xpCost: 500, icon: 'infinite-outline', description: '+10% life habits' },
 ];
 
-const DEMO_WEEKLY_STATS = {
-  completions: 28,
-  total: 35,
-  rate: 80,
-  xpEarned: 620,
-  bestDay: 'Monday',
-  categories: {
-    health: 85,
-    career: 75,
-    mind: 90,
-    life: 70,
-  } as Record<HabitCategory, number>,
-};
+// Helper: get dates for the last 7 days as YYYY-MM-DD strings
+function getLast7Days(): string[] {
+  const dates: string[] = [];
+  const now = new Date();
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(now);
+    d.setDate(now.getDate() - i);
+    dates.push(d.toISOString().split('T')[0]);
+  }
+  return dates;
+}
 
-const DEMO_BOSS = {
-  name: 'Chaos Dragon',
-  icon: 'skull-outline' as keyof typeof Ionicons.glyphMap,
-  progress: 65,
-  completions: 16,
-  required: 25,
-  defeated: false,
-};
+// Helper: get day name from date string
+function getDayName(dateStr: string): string {
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  return days[new Date(dateStr).getDay()];
+}
+
+// Compute weekly stats from real habit data
+function computeWeeklyStats(habits: Array<{ category: HabitCategory; xpReward: number; completedDates: string[] }>) {
+  const last7Days = getLast7Days();
+  const last7DaysSet = new Set(last7Days);
+
+  let totalCompletions = 0;
+  let totalPossible = 0;
+  const categoryCompletions: Record<HabitCategory, number> = { health: 0, career: 0, mind: 0, life: 0 };
+  const categoryTotals: Record<HabitCategory, number> = { health: 0, career: 0, mind: 0, life: 0 };
+  const dayCompletionCounts: Record<string, number> = {};
+  let totalXpEarned = 0;
+
+  for (const habit of habits) {
+    // Each habit counts as 1 possible completion per day for simplicity
+    totalPossible += 7;
+    categoryTotals[habit.category] += 7;
+
+    for (const dateStr of habit.completedDates) {
+      if (last7DaysSet.has(dateStr)) {
+        totalCompletions++;
+        categoryCompletions[habit.category]++;
+        dayCompletionCounts[dateStr] = (dayCompletionCounts[dateStr] ?? 0) + 1;
+        totalXpEarned += habit.xpReward;
+      }
+    }
+  }
+
+  const rate = totalPossible > 0 ? Math.round((totalCompletions / totalPossible) * 100) : 0;
+
+  // Find best day
+  let bestDay = 'N/A';
+  let bestDayCount = 0;
+  for (const [dateStr, count] of Object.entries(dayCompletionCounts)) {
+    if (count > bestDayCount) {
+      bestDayCount = count;
+      bestDay = getDayName(dateStr);
+    }
+  }
+
+  // Category rates
+  const categories: Record<HabitCategory, number> = {
+    health: categoryTotals.health > 0 ? Math.round((categoryCompletions.health / categoryTotals.health) * 100) : 0,
+    career: categoryTotals.career > 0 ? Math.round((categoryCompletions.career / categoryTotals.career) * 100) : 0,
+    mind: categoryTotals.mind > 0 ? Math.round((categoryCompletions.mind / categoryTotals.mind) * 100) : 0,
+    life: categoryTotals.life > 0 ? Math.round((categoryCompletions.life / categoryTotals.life) * 100) : 0,
+  };
+
+  return {
+    completions: totalCompletions,
+    total: totalPossible,
+    rate,
+    xpEarned: totalXpEarned,
+    bestDay,
+    categories,
+  };
+}
 
 export default function InsightsScreen() {
   const insets = useSafeAreaInsets();
   const [tab, setTab] = useState<InsightsTab>('overview');
+  const { userId } = useAuth();
+
+  const progress = useQuery(
+    api.progress.getProgress,
+    userId ? { userId } : 'skip'
+  );
+  const habits = useQuery(
+    api.habits.getHabits,
+    userId ? { userId } : 'skip'
+  );
+
+  const isLoading = progress === undefined || habits === undefined;
+
+  if (!userId) {
+    return (
+      <View style={[styles.container, styles.centered, { paddingTop: insets.top }]}>
+        <Text style={styles.loadingText}>Please sign in to view insights.</Text>
+      </View>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <View style={[styles.container, styles.centered, { paddingTop: insets.top }]}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+        <Text style={styles.loadingText}>Loading insights...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -94,37 +181,70 @@ export default function InsightsScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {tab === 'overview' ? <OverviewTab /> : null}
-        {tab === 'history' ? <HistoryTab /> : null}
-        {tab === 'achievements' ? <AchievementsTab /> : null}
-        {tab === 'gamification' ? <GamificationTab /> : null}
+        {tab === 'overview' ? <OverviewTab userId={userId} progress={progress} habits={habits ?? []} /> : null}
+        {tab === 'history' ? <HistoryTab userId={userId} habits={habits ?? []} /> : null}
+        {tab === 'achievements' ? <AchievementsTab userId={userId} progress={progress} /> : null}
+        {tab === 'gamification' ? <GamificationTab userId={userId} progress={progress} /> : null}
         <View style={{ height: 100 }} />
       </ScrollView>
     </View>
   );
 }
 
-function OverviewTab() {
-  const stats = DEMO_WEEKLY_STATS;
-  const boss = DEMO_BOSS;
+interface OverviewTabProps {
+  userId: Id<'users'>;
+  progress: {
+    totalXp: number;
+    level: number;
+    currentHp: number;
+    maxHp: number;
+    weeklyBossProgress?: {
+      bossId: string;
+      currentDamage: number;
+      defeated: boolean;
+      weekStart: string;
+    };
+  } | null;
+  habits: Array<{ category: HabitCategory; xpReward: number; completedDates: string[] }>;
+}
+
+function OverviewTab({ userId, progress, habits }: OverviewTabProps) {
+  const stats = useMemo(() => computeWeeklyStats(habits), [habits]);
+
+  // Get current weekly boss info
+  const weeklyBoss = getWeeklyBoss();
+  const weekStart = getWeekStart();
+  const bossProgress = progress?.weeklyBossProgress;
+  const isSameWeekBoss = bossProgress && bossProgress.weekStart === weekStart;
+
+  const bossData = {
+    name: weeklyBoss.name,
+    icon: 'skull-outline' as keyof typeof Ionicons.glyphMap,
+    progress: isSameWeekBoss
+      ? Math.min(Math.round((bossProgress.currentDamage / weeklyBoss.requiredCompletions) * 100), 100)
+      : 0,
+    completions: isSameWeekBoss ? bossProgress.currentDamage : 0,
+    required: weeklyBoss.requiredCompletions,
+    defeated: isSameWeekBoss ? bossProgress.defeated : false,
+  };
 
   return (
     <View style={styles.tabContent}>
       {/* Weekly Boss */}
       <GlassCard>
         <View style={styles.bossHeader}>
-          <Ionicons name={boss.icon} size={32} color={Colors.danger} />
+          <Ionicons name={bossData.icon} size={32} color={Colors.danger} />
           <View style={styles.bossInfo}>
-            <Text style={styles.bossName}>{boss.name}</Text>
+            <Text style={styles.bossName}>{bossData.name}</Text>
             <Text style={styles.bossStatus}>
-              {boss.completions}/{boss.required} hits
+              {bossData.defeated ? 'Defeated!' : `${bossData.completions}/${bossData.required} hits`}
             </Text>
           </View>
-          <BadgePill label="This Week" color={Colors.danger} />
+          <BadgePill label={bossData.defeated ? 'Defeated' : 'This Week'} color={bossData.defeated ? Colors.success : Colors.danger} />
         </View>
         <ProgressBar
-          progress={boss.progress}
-          color={Colors.danger}
+          progress={bossData.progress}
+          color={bossData.defeated ? Colors.success : Colors.danger}
           height={8}
         />
       </GlassCard>
@@ -181,14 +301,45 @@ function OverviewTab() {
   );
 }
 
-function HistoryTab() {
-  // Simplified calendar heat map
+interface HistoryTabProps {
+  userId: Id<'users'>;
+  habits: Array<{ completedDates: string[] }>;
+}
+
+function HistoryTab({ userId, habits }: HistoryTabProps) {
+  // Build real heat map data from habit completions over last 8 weeks
   const weeks = 8;
   const days = 7;
-  const generateHeatData = () => {
-    return Array.from({ length: weeks * days }, () => Math.random());
-  };
-  const heatData = useMemo(generateHeatData, []);
+
+  const heatData = useMemo(() => {
+    // Collect all completed dates across all habits
+    const allDates: Record<string, number> = {};
+    for (const habit of habits) {
+      for (const dateStr of habit.completedDates) {
+        allDates[dateStr] = (allDates[dateStr] ?? 0) + 1;
+      }
+    }
+
+    // Find max completions in a day for normalization
+    const maxCompletions = Math.max(1, ...Object.values(allDates));
+
+    // Build 8 weeks of data ending today
+    const now = new Date();
+    const todayDayOfWeek = now.getDay(); // 0 = Sunday
+    // Go back to the start of the grid (8 weeks ago, starting on Sunday)
+    const gridStart = new Date(now);
+    gridStart.setDate(now.getDate() - todayDayOfWeek - (weeks - 1) * 7);
+
+    const data: number[] = [];
+    for (let i = 0; i < weeks * days; i++) {
+      const d = new Date(gridStart);
+      d.setDate(gridStart.getDate() + i);
+      const dateStr = d.toISOString().split('T')[0];
+      const count = allDates[dateStr] ?? 0;
+      data.push(count / maxCompletions);
+    }
+    return data;
+  }, [habits]);
 
   return (
     <View style={styles.tabContent}>
@@ -228,16 +379,30 @@ function HistoryTab() {
       <GlassCard>
         <Text style={styles.cardTitle}>Streak History</Text>
         <Text style={styles.placeholderText}>
-          Detailed streak analytics will be available once connected to the backend.
+          Detailed streak analytics coming soon. Your completion data is being tracked in real time.
         </Text>
       </GlassCard>
     </View>
   );
 }
 
-function AchievementsTab() {
-  const unlocked = DEMO_ACHIEVEMENTS.filter((a) => a.unlocked).length;
-  const total = DEMO_ACHIEVEMENTS.length;
+interface AchievementsTabProps {
+  userId: Id<'users'>;
+  progress: {
+    achievements: string[];
+  } | null;
+}
+
+function AchievementsTab({ userId, progress }: AchievementsTabProps) {
+  const unlockedAchievementIds = new Set(progress?.achievements ?? []);
+
+  const achievements = ACHIEVEMENT_DEFINITIONS.map((a) => ({
+    ...a,
+    unlocked: unlockedAchievementIds.has(a.id),
+  }));
+
+  const unlocked = achievements.filter((a) => a.unlocked).length;
+  const total = achievements.length;
 
   return (
     <View style={styles.tabContent}>
@@ -254,7 +419,7 @@ function AchievementsTab() {
       </View>
 
       <View style={styles.achievementGrid}>
-        {DEMO_ACHIEVEMENTS.map((achievement) => (
+        {achievements.map((achievement) => (
           <GlassCard
             key={achievement.id}
             style={{
@@ -287,7 +452,23 @@ function AchievementsTab() {
   );
 }
 
-function GamificationTab() {
+interface GamificationTabProps {
+  userId: Id<'users'>;
+  progress: {
+    unlockedSkills?: Array<{ skillId: string; unlockedAt: string }>;
+  } | null;
+}
+
+function GamificationTab({ userId, progress }: GamificationTabProps) {
+  const unlockedSkillIds = new Set(
+    (progress?.unlockedSkills ?? []).map((s) => s.skillId)
+  );
+
+  const skills = SKILL_DEFINITIONS.map((s) => ({
+    ...s,
+    unlocked: unlockedSkillIds.has(s.id),
+  }));
+
   const categories = ['discipline', 'wellness', 'growth', 'balance'] as const;
   const categoryColors = {
     discipline: Colors.danger,
@@ -300,14 +481,14 @@ function GamificationTab() {
     <View style={styles.tabContent}>
       <Text style={styles.skillTreeTitle}>Skill Tree</Text>
       {categories.map((cat) => {
-        const skills = DEMO_SKILLS.filter((s) => s.category === cat);
+        const catSkills = skills.filter((s) => s.category === cat);
         return (
           <GlassCard key={cat}>
             <Text style={[styles.skillCategoryTitle, { color: categoryColors[cat] }]}>
               {cat.charAt(0).toUpperCase() + cat.slice(1)}
             </Text>
             <View style={styles.skillList}>
-              {skills.map((skill) => (
+              {catSkills.map((skill) => (
                 <View
                   key={skill.id}
                   style={[styles.skillItem, skill.unlocked && styles.skillItemUnlocked]}
@@ -343,6 +524,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
+  },
+  centered: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: Spacing.md,
+    fontSize: FontSize.base,
+    color: Colors.textSecondary,
   },
   header: {
     paddingHorizontal: Spacing.xl,

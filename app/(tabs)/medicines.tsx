@@ -6,10 +6,14 @@ import {
   ScrollView,
   Pressable,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { useAuth } from '@/contexts/auth-context';
 import { Colors, FontSize, Spacing, Radius } from '@/constants/theme';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { BadgePill } from '@/components/ui/BadgePill';
@@ -20,46 +24,7 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import type { TodayMedicineScheduleItem, MedicineCompletionStatus } from '@/types';
 import { formatMedicineTime } from '@/types';
-
-// Demo schedule data
-const DEMO_SCHEDULE: TodayMedicineScheduleItem[] = [
-  {
-    medicineId: '1',
-    medicineName: 'Metformin',
-    dosage: '500mg',
-    instructions: 'Take with food',
-    scheduledTime: '08:00',
-    label: 'morning',
-    status: 'taken',
-    takenAt: '2024-02-06T08:15:00Z',
-  },
-  {
-    medicineId: '2',
-    medicineName: 'Vitamin D3',
-    dosage: '2000 IU',
-    scheduledTime: '08:00',
-    label: 'morning',
-    status: 'taken',
-    takenAt: '2024-02-06T08:15:00Z',
-  },
-  {
-    medicineId: '3',
-    medicineName: 'Omega-3',
-    dosage: '1000mg',
-    scheduledTime: '12:00',
-    label: 'afternoon',
-    status: 'pending',
-  },
-  {
-    medicineId: '4',
-    medicineName: 'Magnesium',
-    dosage: '400mg',
-    instructions: 'Take before bed',
-    scheduledTime: '21:00',
-    label: 'night',
-    status: 'pending',
-  },
-];
+import type { Id } from '@/convex/_generated/dataModel';
 
 const TIME_SLOT_CONFIG: Record<string, { icon: keyof typeof Ionicons.glyphMap; label: string; color: string }> = {
   morning: { icon: 'sunny-outline', label: 'Morning', color: '#F59E0B' },
@@ -68,51 +33,135 @@ const TIME_SLOT_CONFIG: Record<string, { icon: keyof typeof Ionicons.glyphMap; l
   night: { icon: 'moon-outline', label: 'Night', color: '#6366F1' },
 };
 
+const TIME_SLOT_OPTIONS: { label: string; value: string; time: string }[] = [
+  { label: 'Morning', value: 'morning', time: '08:00' },
+  { label: 'Afternoon', value: 'afternoon', time: '12:00' },
+  { label: 'Evening', value: 'evening', time: '18:00' },
+  { label: 'Night', value: 'night', time: '21:00' },
+];
+
+function getTodayDateString(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 export default function MedicinesScreen() {
   const insets = useSafeAreaInsets();
+  const { userId } = useAuth();
   const [tab, setTab] = useState('today');
-  const [schedule, setSchedule] = useState(DEMO_SCHEDULE);
   const [showAddSheet, setShowAddSheet] = useState(false);
-  const [medicineStreak, setMedicineStreak] = useState(5);
+
+  const todayDate = getTodayDateString();
+
+  // Convex queries
+  const schedule = useQuery(
+    api.medicines.getTodaySchedule,
+    userId ? { userId, date: todayDate } : 'skip'
+  );
+
+  const medicineStats = useQuery(
+    api.progress.getMedicineStats,
+    userId ? { userId } : 'skip'
+  );
+
+  // Convex mutations
+  const markTakenMutation = useMutation(api.medicines.markMedicineTaken);
+  const markSkippedMutation = useMutation(api.medicines.markMedicineSkipped);
+  const addMedicineMutation = useMutation(api.medicines.addMedicine);
+
+  const isLoading = schedule === undefined || medicineStats === undefined;
+  const scheduleData = schedule ?? [];
+  const medicineStreak = medicineStats?.medicineStreak ?? 0;
 
   const groupedSchedule = useMemo(() => {
     const groups: Record<string, TodayMedicineScheduleItem[]> = {};
-    for (const item of schedule) {
+    for (const item of scheduleData) {
       const slot = item.label || 'other';
       if (!groups[slot]) groups[slot] = [];
       groups[slot].push(item);
     }
     return groups;
-  }, [schedule]);
+  }, [scheduleData]);
 
   const stats = useMemo(() => {
-    const total = schedule.length;
-    const taken = schedule.filter((s) => s.status === 'taken').length;
-    const pending = schedule.filter((s) => s.status === 'pending').length;
+    const total = scheduleData.length;
+    const taken = scheduleData.filter((s) => s.status === 'taken').length;
+    const pending = scheduleData.filter((s) => s.status === 'pending').length;
     return { total, taken, pending, percentage: total > 0 ? Math.round((taken / total) * 100) : 0 };
-  }, [schedule]);
+  }, [scheduleData]);
 
-  const handleMarkTaken = useCallback((medicineId: string) => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    setSchedule((prev) =>
-      prev.map((item) =>
-        item.medicineId === medicineId
-          ? { ...item, status: 'taken' as MedicineCompletionStatus, takenAt: new Date().toISOString() }
-          : item
-      )
-    );
-  }, []);
+  const handleMarkTaken = useCallback(
+    async (medicineId: string) => {
+      if (!userId) return;
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      const item = scheduleData.find((s) => s.medicineId === medicineId);
+      try {
+        await markTakenMutation({
+          medicineId: medicineId as Id<'medicines'>,
+          userId,
+          scheduledTime: item?.scheduledTime ?? '08:00',
+          date: todayDate,
+        });
+      } catch (error) {
+        Alert.alert('Error', 'Failed to mark medicine as taken. Please try again.');
+      }
+    },
+    [userId, scheduleData, markTakenMutation, todayDate]
+  );
 
-  const handleMarkSkipped = useCallback((medicineId: string) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setSchedule((prev) =>
-      prev.map((item) =>
-        item.medicineId === medicineId
-          ? { ...item, status: 'skipped' as MedicineCompletionStatus }
-          : item
-      )
+  const handleMarkSkipped = useCallback(
+    async (medicineId: string) => {
+      if (!userId) return;
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      const item = scheduleData.find((s) => s.medicineId === medicineId);
+      try {
+        await markSkippedMutation({
+          medicineId: medicineId as Id<'medicines'>,
+          userId,
+          scheduledTime: item?.scheduledTime ?? '08:00',
+          date: todayDate,
+        });
+      } catch (error) {
+        Alert.alert('Error', 'Failed to mark medicine as skipped. Please try again.');
+      }
+    },
+    [userId, scheduleData, markSkippedMutation, todayDate]
+  );
+
+  const handleAddMedicine = useCallback(
+    async (name: string, dosage: string, timeSlotLabel: string, timeSlotTime: string) => {
+      if (!userId) return;
+      try {
+        await addMedicineMutation({
+          userId,
+          name: name.trim(),
+          dosage: dosage.trim(),
+          scheduledTimes: [
+            {
+              label: timeSlotLabel,
+              time: timeSlotTime,
+              reminderEnabled: true,
+            },
+          ],
+        });
+        setShowAddSheet(false);
+      } catch (error) {
+        Alert.alert('Error', 'Failed to add medicine. Please try again.');
+      }
+    },
+    [userId, addMedicineMutation]
+  );
+
+  if (!userId) {
+    return (
+      <View style={[styles.container, { paddingTop: insets.top }, styles.centered]}>
+        <Text style={styles.historyPlaceholder}>Please sign in to view your medicines.</Text>
+      </View>
     );
-  }, []);
+  }
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -164,61 +213,69 @@ export default function MedicinesScreen() {
         />
       </View>
 
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {tab === 'today' ? (
-          schedule.length === 0 ? (
-            <EmptyState
-              icon="medical-outline"
-              title="No medicines scheduled"
-              description="Add your medications to track adherence and earn XP for staying on schedule."
-              actionLabel="Add Medicine"
-              onAction={() => setShowAddSheet(true)}
-            />
+      {isLoading ? (
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+          <Text style={styles.loadingText}>Loading medicines...</Text>
+        </View>
+      ) : (
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {tab === 'today' ? (
+            scheduleData.length === 0 ? (
+              <EmptyState
+                icon="medical-outline"
+                title="No medicines scheduled"
+                description="Add your medications to track adherence and earn XP for staying on schedule."
+                actionLabel="Add Medicine"
+                onAction={() => setShowAddSheet(true)}
+              />
+            ) : (
+              Object.entries(groupedSchedule).map(([slot, items]) => {
+                const config = TIME_SLOT_CONFIG[slot] || { icon: 'medkit-outline' as keyof typeof Ionicons.glyphMap, label: slot, color: Colors.textSecondary };
+                return (
+                  <View key={slot} style={styles.timeSlot}>
+                    <View style={styles.slotHeader}>
+                      <Ionicons name={config.icon} size={18} color={config.color} />
+                      <Text style={[styles.slotLabel, { color: config.color }]}>{config.label}</Text>
+                      <Text style={styles.slotTime}>
+                        {items[0] ? formatMedicineTime(items[0].scheduledTime) : ''}
+                      </Text>
+                    </View>
+                    <View style={styles.medList}>
+                      {items.map((item) => (
+                        <MedicineCard
+                          key={`${item.medicineId}_${item.scheduledTime}`}
+                          item={item}
+                          onMarkTaken={handleMarkTaken}
+                          onMarkSkipped={handleMarkSkipped}
+                        />
+                      ))}
+                    </View>
+                  </View>
+                );
+              })
+            )
           ) : (
-            Object.entries(groupedSchedule).map(([slot, items]) => {
-              const config = TIME_SLOT_CONFIG[slot] || { icon: 'medkit-outline' as keyof typeof Ionicons.glyphMap, label: slot, color: Colors.textSecondary };
-              return (
-                <View key={slot} style={styles.timeSlot}>
-                  <View style={styles.slotHeader}>
-                    <Ionicons name={config.icon} size={18} color={config.color} />
-                    <Text style={[styles.slotLabel, { color: config.color }]}>{config.label}</Text>
-                    <Text style={styles.slotTime}>
-                      {items[0] ? formatMedicineTime(items[0].scheduledTime) : ''}
-                    </Text>
-                  </View>
-                  <View style={styles.medList}>
-                    {items.map((item) => (
-                      <MedicineCard
-                        key={item.medicineId}
-                        item={item}
-                        onMarkTaken={handleMarkTaken}
-                        onMarkSkipped={handleMarkSkipped}
-                      />
-                    ))}
-                  </View>
-                </View>
-              );
-            })
-          )
-        ) : (
-          <GlassCard>
-            <Text style={styles.historyPlaceholder}>
-              Medicine history and adherence calendar will be available once connected to the backend.
-            </Text>
-          </GlassCard>
-        )}
+            <GlassCard>
+              <Text style={styles.historyPlaceholder}>
+                Medicine history and adherence calendar coming soon. Total medicines taken: {medicineStats?.totalMedicinesTaken ?? 0}. Today's XP earned: {medicineStats?.todayMedicineXp ?? 0}.
+              </Text>
+            </GlassCard>
+          )}
 
-        <View style={{ height: 100 }} />
-      </ScrollView>
+          <View style={{ height: 100 }} />
+        </ScrollView>
+      )}
 
       {/* Add Medicine Sheet */}
       <AddMedicineSheet
         visible={showAddSheet}
         onClose={() => setShowAddSheet(false)}
+        onAdd={handleAddMedicine}
       />
     </View>
   );
@@ -279,12 +336,43 @@ function MedicineCard({
   );
 }
 
-function AddMedicineSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+function AddMedicineSheet({
+  visible,
+  onClose,
+  onAdd,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  onAdd: (name: string, dosage: string, timeSlotLabel: string, timeSlotTime: string) => void;
+}) {
   const [name, setName] = useState('');
   const [dosage, setDosage] = useState('');
+  const [selectedSlot, setSelectedSlot] = useState(TIME_SLOT_OPTIONS[0]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!name.trim() || !dosage.trim() || isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      await onAdd(name, dosage, selectedSlot.value, selectedSlot.time);
+      setName('');
+      setDosage('');
+      setSelectedSlot(TIME_SLOT_OPTIONS[0]);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleClose = () => {
+    setName('');
+    setDosage('');
+    setSelectedSlot(TIME_SLOT_OPTIONS[0]);
+    setIsSubmitting(false);
+    onClose();
+  };
 
   return (
-    <BottomSheet visible={visible} onClose={onClose} title="Add Medicine">
+    <BottomSheet visible={visible} onClose={handleClose} title="Add Medicine">
       <View style={styles.addForm}>
         <Input
           label="Medicine Name"
@@ -299,19 +387,45 @@ function AddMedicineSheet({ visible, onClose }: { visible: boolean; onClose: () 
           placeholder="e.g., 500mg"
           containerStyle={{ marginTop: Spacing.md }}
         />
-        <Text style={styles.addFormNote}>
-          Full medicine configuration (schedule, reminders, groups) will be available once connected to the backend.
-        </Text>
+
+        {/* Time Slot Selector */}
+        <Text style={styles.timeSlotLabel}>Schedule</Text>
+        <View style={styles.timeSlotRow}>
+          {TIME_SLOT_OPTIONS.map((option) => {
+            const isSelected = selectedSlot.value === option.value;
+            const config = TIME_SLOT_CONFIG[option.value];
+            return (
+              <Pressable
+                key={option.value}
+                onPress={() => setSelectedSlot(option)}
+                style={[
+                  styles.timeSlotChip,
+                  isSelected && { borderColor: config?.color ?? Colors.primary, backgroundColor: `${config?.color ?? Colors.primary}15` },
+                ]}
+              >
+                {config && <Ionicons name={config.icon} size={14} color={isSelected ? config.color : Colors.textMuted} />}
+                <Text
+                  style={[
+                    styles.timeSlotChipText,
+                    isSelected && { color: config?.color ?? Colors.primary, fontWeight: '600' },
+                  ]}
+                >
+                  {option.label}
+                </Text>
+                <Text style={[styles.timeSlotChipTime, isSelected && { color: config?.color ?? Colors.primary }]}>
+                  {formatMedicineTime(option.time)}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
         <View style={styles.addFormFooter}>
-          <Button title="Cancel" variant="ghost" onPress={onClose} />
+          <Button title="Cancel" variant="ghost" onPress={handleClose} />
           <Button
-            title="Add Medicine"
-            onPress={() => {
-              onClose();
-              setName('');
-              setDosage('');
-            }}
-            disabled={!name.trim() || !dosage.trim()}
+            title={isSubmitting ? 'Adding...' : 'Add Medicine'}
+            onPress={handleSubmit}
+            disabled={!name.trim() || !dosage.trim() || isSubmitting}
           />
         </View>
       </View>
@@ -323,6 +437,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
+  },
+  centered: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    marginTop: Spacing.md,
+    fontSize: FontSize.sm,
+    color: Colors.textMuted,
   },
   header: {
     flexDirection: 'row',
@@ -510,5 +634,36 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     gap: Spacing.md,
     marginTop: Spacing.xl,
+  },
+  timeSlotLabel: {
+    fontSize: FontSize.sm,
+    fontWeight: '600',
+    color: Colors.foreground,
+    marginTop: Spacing.md,
+    marginBottom: Spacing.sm,
+  },
+  timeSlotRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.sm,
+  },
+  timeSlotChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.glassBorder,
+    backgroundColor: Colors.surface,
+  },
+  timeSlotChipText: {
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
+  },
+  timeSlotChipTime: {
+    fontSize: FontSize.xs,
+    color: Colors.textDim,
   },
 });
