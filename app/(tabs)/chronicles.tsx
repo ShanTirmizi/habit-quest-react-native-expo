@@ -190,14 +190,6 @@ export default function ChroniclesScreen() {
         </View>
         {!isWriting && !isEditing ? (
           <View style={styles.headerActions}>
-            {hasEntryToday && todayEntry ? (
-              <Pressable
-                onPress={() => handleStartEditing(todayEntry)}
-                style={({ pressed }) => [styles.editBtn, pressed && { opacity: 0.7 }]}
-              >
-                <Ionicons name="pencil-outline" size={16} color={Colors.primary} />
-              </Pressable>
-            ) : null}
             <Pressable
               onPress={() => setIsWriting(true)}
               style={({ pressed }) => [styles.writeBtn, pressed && { opacity: 0.7 }]}

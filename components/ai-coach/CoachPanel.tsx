@@ -139,20 +139,47 @@ function InsightCard({ insight }: { insight: Insight }) {
 }
 
 // ---------------------------------------------------------------------------
+// Module-level cache — survives tab navigation, resets on app restart
+// ---------------------------------------------------------------------------
+
+let _cachedInsights: CoachingInsights | null = null;
+let _cachedAt = 0;
+let _cachedUserId: string | null = null;
+const CACHE_MAX_AGE = 24 * 60 * 60 * 1000; // 24 hours
+
+function getCachedInsights(userId: string): CoachingInsights | null {
+  if (
+    _cachedInsights &&
+    _cachedUserId === userId &&
+    Date.now() - _cachedAt < CACHE_MAX_AGE
+  ) {
+    return _cachedInsights;
+  }
+  return null;
+}
+
+function setCachedInsights(userId: string, insights: CoachingInsights) {
+  _cachedInsights = insights;
+  _cachedAt = Date.now();
+  _cachedUserId = userId;
+}
+
+// ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
 
 export function CoachPanel({ userId }: CoachPanelProps) {
   const generateInsights = useAction(api.coaching.generateInsights);
 
-  // State
-  const [insights, setInsights] = useState<CoachingInsights | null>(null);
+  // State — initialize from cache if available
+  const cached = getCachedInsights(userId);
+  const [insights, setInsights] = useState<CoachingInsights | null>(cached);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [insufficientData, setInsufficientData] = useState(false);
   const [expanded, setExpanded] = useState(true);
 
-  // Prevent duplicate fetches on re-render
+  // Prevent duplicate fetches within same mount
   const hasFetched = useRef(false);
 
   // Animated spin for refresh icon
@@ -184,7 +211,7 @@ export function CoachPanel({ userId }: CoachPanelProps) {
     outputRange: ['0deg', '360deg'],
   });
 
-  // Fetch insights
+  // Fetch insights from API and update cache
   const fetchInsights = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -198,7 +225,9 @@ export function CoachPanel({ userId }: CoachPanelProps) {
         setInsufficientData(true);
         setInsights(null);
       } else {
-        setInsights(result as CoachingInsights);
+        const typedResult = result as CoachingInsights;
+        setInsights(typedResult);
+        setCachedInsights(userId, typedResult);
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error';
@@ -210,15 +239,22 @@ export function CoachPanel({ userId }: CoachPanelProps) {
     }
   }, [generateInsights, userId, startSpin, stopSpin]);
 
-  // Auto-fetch on mount (only once)
+  // Auto-fetch on mount — only if no valid cache
   useEffect(() => {
-    if (!hasFetched.current) {
-      hasFetched.current = true;
-      fetchInsights();
-    }
-  }, [fetchInsights]);
+    if (hasFetched.current) return;
+    hasFetched.current = true;
 
-  // Refresh handler
+    const cachedResult = getCachedInsights(userId);
+    if (cachedResult) {
+      // Cache is fresh — use it, don't hit the API
+      setInsights(cachedResult);
+      return;
+    }
+
+    fetchInsights();
+  }, [fetchInsights, userId]);
+
+  // Refresh handler — always re-fetches (manual override)
   const handleRefresh = useCallback(() => {
     if (loading) return;
     fetchInsights();

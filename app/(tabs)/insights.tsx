@@ -349,7 +349,7 @@ function OverviewTab({ userId, progress, habits }: OverviewTabProps) {
       {/* ── Weekly Summary: 2x2 Bento Grid ── */}
       <Text style={styles.sectionTitle}>Weekly Summary</Text>
       <BentoGrid>
-        <BentoCell index={0}>
+        <BentoCell index={0} height={100}>
           <OversizedMetric
             value={stats.rate}
             label="Completion"
@@ -358,7 +358,7 @@ function OverviewTab({ userId, progress, habits }: OverviewTabProps) {
             size="md"
           />
         </BentoCell>
-        <BentoCell index={1}>
+        <BentoCell index={1} height={100}>
           <OversizedMetric
             value={stats.xpEarned}
             label="XP Earned"
@@ -367,7 +367,7 @@ function OverviewTab({ userId, progress, habits }: OverviewTabProps) {
             size="md"
           />
         </BentoCell>
-        <BentoCell index={2}>
+        <BentoCell index={2} height={100}>
           <OversizedMetric
             value={stats.completions}
             label="Completions"
@@ -375,7 +375,7 @@ function OverviewTab({ userId, progress, habits }: OverviewTabProps) {
             size="md"
           />
         </BentoCell>
-        <BentoCell index={3}>
+        <BentoCell index={3} height={100}>
           <OversizedMetric
             value={stats.bestDay}
             label="Best Day"
