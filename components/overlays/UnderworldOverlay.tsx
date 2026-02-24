@@ -2,7 +2,6 @@ import React, { useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { BlurView } from 'expo-blur';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -13,7 +12,7 @@ import Animated, {
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import type { Id } from '@/convex/_generated/dataModel';
-import { Colors, FontSize, Spacing, Radius } from '@/constants/theme';
+import { Colors, FontSize, Spacing, Radius, FontFamily } from '@/constants/theme';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { Button } from '@/components/ui/Button';
 import { useToast } from '@/contexts/toast-context';
@@ -67,7 +66,7 @@ export function UnderworldOverlay({ userId }: UnderworldOverlayProps) {
   return (
     <View style={styles.container}>
       <Animated.View style={[StyleSheet.absoluteFill, styles.pulseBg, pulseStyle]} />
-      <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFill} />
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: Colors.surface }]} />
       <View style={styles.content}>
         <View style={styles.headerRow}>
           <Ionicons name="skull" size={20} color={Colors.danger} />
@@ -95,10 +94,10 @@ const styles = StyleSheet.create({
     borderRadius: Radius.lg,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.2)',
+    borderColor: 'rgba(255, 107, 107, 0.2)',
   },
   pulseBg: {
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    backgroundColor: 'rgba(255, 107, 107, 0.1)',
   },
   content: {
     padding: Spacing.lg,
@@ -111,7 +110,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: FontSize.sm,
-    fontWeight: '800',
+    fontFamily: FontFamily.extrabold,
     color: Colors.danger,
     textTransform: 'uppercase',
     letterSpacing: 1,

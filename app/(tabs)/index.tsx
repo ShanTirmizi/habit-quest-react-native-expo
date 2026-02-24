@@ -8,19 +8,21 @@ import {
   RefreshControl,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import Constants from 'expo-constants';
-import { format } from 'date-fns';
+import { format, differenceInDays, parseISO } from 'date-fns';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
-import { Colors, FontSize, Spacing, Radius } from '@/constants/theme';
-import { StatsHeader } from '@/components/widgets/StatsHeader';
+import { Colors, FontSize, Spacing, Radius, FontFamily, Shadows } from '@/constants/theme';
+import { CircularProgress } from '@/components/ui/CircularProgress';
+import { ProgressBar } from '@/components/ui/ProgressBar';
+import { GradientCard } from '@/components/ui/GradientCard';
 import { HabitCard } from '@/components/habits/HabitCard';
 import { HabitDetailSheet } from '@/components/habits/HabitDetailSheet';
 import { AddHabitSheet } from '@/components/habits/AddHabitSheet';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { GlassCard } from '@/components/ui/GlassCard';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { SkeletonDashboard } from '@/components/ui/Skeleton';
 import { CompanionWidget } from '@/components/widgets/CompanionWidget';
@@ -29,33 +31,68 @@ import { UnderworldOverlay } from '@/components/overlays/UnderworldOverlay';
 import { LevelUpCelebration } from '@/components/overlays/LevelUpCelebration';
 import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/contexts/toast-context';
-import type { Habit, HabitCategory } from '@/types';
+import type { Habit, HabitCategory, Goal } from '@/types';
+import { GOAL_CATEGORY_CONFIG } from '@/types';
+
+const SPECIES_ICON: Record<string, keyof typeof Ionicons.glyphMap> = {
+  treant: 'leaf',
+  phoenix: 'flame',
+  owl: 'moon',
+  keeper: 'flower',
+};
+
+const SPECIES_COLOR: Record<string, string> = {
+  treant: Colors.categoryHealth,
+  phoenix: Colors.accent,
+  owl: Colors.categoryMind,
+  keeper: Colors.categoryLife,
+};
+
+const MOOD_EMOJI: Record<string, string> = {
+  happy: '😊',
+  content: '😌',
+  sleepy: '😴',
+  worried: '😟',
+};
 
 export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { signOut, userId, user } = useAuth();
   const { showToast } = useToast();
   const [showAddSheet, setShowAddSheet] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showCompanionSheet, setShowCompanionSheet] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedHabit, setSelectedHabit] = useState<Habit | null>(null);
   const [levelUpVisible, setLevelUpVisible] = useState(false);
   const [levelUpLevel, setLevelUpLevel] = useState(0);
   const missedChecked = useRef(false);
 
-  const today = format(new Date(), 'EEEE, MMM d');
   const todayDate = format(new Date(), 'yyyy-MM-dd');
 
-  // Time-of-day greeting (#8)
   const hour = new Date().getHours();
   const timeGreeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
   const firstName = user?.name?.split(' ')[0] ?? 'Adventurer';
 
-  // Fetch real data from Convex
   const rawHabits = useQuery(api.habits.getHabits, userId ? { userId } : 'skip');
   const progress = useQuery(api.progress.getProgress, userId ? { userId } : 'skip');
+  const companion = useQuery(api.companions.getCompanion, userId ? { userId } : 'skip');
+  const rawGoals = useQuery(api.goals.getGoals, userId ? { userId } : 'skip');
 
-  // Mutations
+  const activeGoals = useMemo(() => {
+    if (!rawGoals) return [];
+    return rawGoals
+      .filter((g: any) => g.status === 'active')
+      .map((g: any) => ({
+        id: g._id as string,
+        title: g.title as string,
+        category: g.category as string,
+        targetDate: g.targetDate as string,
+        milestones: g.milestones as any[] | undefined,
+      }));
+  }, [rawGoals]);
+
   const addHabitMutation = useMutation(api.habits.addHabit);
   const toggleCompletionMutation = useMutation(api.habits.toggleCompletion);
   const deleteHabitMutation = useMutation(api.habits.deleteHabit);
@@ -63,7 +100,6 @@ export default function DashboardScreen() {
   const addXpMutation = useMutation(api.progress.addXp);
   const checkMissedMutation = useMutation(api.progress.checkMissedHabitsOnLogin);
 
-  // Check missed habits on mount (#14)
   useEffect(() => {
     if (userId && !missedChecked.current) {
       missedChecked.current = true;
@@ -81,7 +117,6 @@ export default function DashboardScreen() {
     }
   }, [userId]);
 
-  // Map Convex habits to the Habit type the UI expects
   const habits: Habit[] = useMemo(() => {
     if (!rawHabits) return [];
     return rawHabits.map((h) => ({
@@ -102,7 +137,6 @@ export default function DashboardScreen() {
     }));
   }, [rawHabits]);
 
-  // Determine which habits are completed today
   const completedIds = useMemo(() => {
     const ids = new Set<string>();
     for (const habit of habits) {
@@ -128,7 +162,6 @@ export default function DashboardScreen() {
     [habits]
   );
 
-  // XP / Level calculations
   const totalXp = progress?.totalXp ?? 0;
   const level = progress?.level ?? 0;
   const currentHp = progress?.currentHp ?? 100;
@@ -144,6 +177,9 @@ export default function DashboardScreen() {
     ? Math.round((completedIds.size / habits.length) * 100)
     : 0;
 
+  const hpPercent = maxHp > 0 ? Math.round((currentHp / maxHp) * 100) : 100;
+  const hpColor = hpPercent > 60 ? Colors.hpHigh : hpPercent > 30 ? Colors.hpMedium : Colors.hpLow;
+
   const handleToggle = useCallback(async (id: string) => {
     if (!userId) return;
     try {
@@ -153,13 +189,11 @@ export default function DashboardScreen() {
         date: todayDate,
       });
 
-      // If just completed, show XP toast
       if (result.completed) {
         const habit = habits.find((h) => h.id === id);
         if (habit) {
           showToast(`${habit.name} completed!`, habit.xpReward, 'xp');
 
-          // Check for level up via addXp
           try {
             const xpResult = await addXpMutation({ userId, amount: habit.xpReward });
             if (xpResult.leveledUp) {
@@ -245,20 +279,51 @@ export default function DashboardScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.greeting}>{timeGreeting}, {firstName}</Text>
-          <Text style={styles.date}>{today}</Text>
+      {/* ── Top bar: Dr. Sage left, settings + add right ── */}
+      <View style={styles.topBar}>
+        <View style={styles.topBarLeft}>
+          {companion ? (
+            <Pressable
+              onPress={() => setShowCompanionSheet(true)}
+              style={({ pressed }) => [styles.sageButton, pressed && { opacity: 0.7 }]}
+              accessibilityLabel="Open Dr. Sage companion"
+              accessibilityRole="button"
+            >
+              <View style={[styles.sageAvatar, { borderColor: SPECIES_COLOR[companion.species] || Colors.primary }]}>
+                <Ionicons
+                  name={SPECIES_ICON[companion.species] || 'paw'}
+                  size={18}
+                  color={SPECIES_COLOR[companion.species] || Colors.primary}
+                />
+              </View>
+              <Text style={styles.sageMoodBadge}>
+                {MOOD_EMOJI[companion.mood] || '😊'}
+              </Text>
+            </Pressable>
+          ) : companion === null ? (
+            <Pressable
+              onPress={() => setShowCompanionSheet(true)}
+              style={({ pressed }) => [styles.sageButton, pressed && { opacity: 0.7 }]}
+              accessibilityLabel="Choose companion"
+              accessibilityRole="button"
+            >
+              <View style={[styles.sageAvatar, { borderColor: Colors.primary }]}>
+                <Ionicons name="paw" size={18} color={Colors.primary} />
+              </View>
+            </Pressable>
+          ) : null}
         </View>
-        <View style={styles.headerActions}>
+        <View style={styles.topBarCenter}>
+          <Text style={styles.topBarGreeting} numberOfLines={1}>{timeGreeting}, {firstName}</Text>
+        </View>
+        <View style={styles.topBarRight}>
           <Pressable
             onPress={() => setShowSettings(true)}
-            style={({ pressed }) => [styles.logoutButton, pressed && { opacity: 0.7 }]}
+            style={({ pressed }) => [styles.settingsButton, pressed && { opacity: 0.7 }]}
             accessibilityLabel="Settings"
             accessibilityRole="button"
           >
-            <Ionicons name="person-circle-outline" size={22} color={Colors.textSecondary} />
+            <Ionicons name="settings-outline" size={20} color={Colors.textSecondary} />
           </Pressable>
           <Pressable
             onPress={() => {
@@ -269,7 +334,7 @@ export default function DashboardScreen() {
             accessibilityLabel="Add new habit"
             accessibilityRole="button"
           >
-            <Ionicons name="add" size={24} color={Colors.background} />
+            <Ionicons name="add" size={24} color="#FFFFFF" />
           </Pressable>
         </View>
       </View>
@@ -291,38 +356,74 @@ export default function DashboardScreen() {
             />
           }
         >
-          {/* Underworld Overlay (#7) */}
+          {/* ── Compact Stats Strip ── */}
+          {habits.length > 0 ? (
+            <View style={styles.statsStrip}>
+              {/* Level ring */}
+              <View style={styles.statsItem}>
+                <CircularProgress
+                  progress={xpProgress}
+                  size={44}
+                  strokeWidth={4}
+                  color={Colors.primary}
+                  trackColor={Colors.surfaceRaised}
+                >
+                  <Text style={styles.statsLevelNum}>{level}</Text>
+                </CircularProgress>
+                <Text style={styles.statsItemLabel}>LVL</Text>
+              </View>
+
+              {/* Divider */}
+              <View style={styles.statsDivider} />
+
+              {/* XP */}
+              <View style={styles.statsItem}>
+                <Text style={styles.statsValue}>{totalXp.toLocaleString()}</Text>
+                <Text style={styles.statsItemLabel}>XP</Text>
+              </View>
+
+              {/* Divider */}
+              <View style={styles.statsDivider} />
+
+              {/* HP mini bar */}
+              <View style={styles.statsItemWide}>
+                <View style={styles.hpRow}>
+                  <Ionicons name="heart" size={14} color={hpColor} />
+                  <Text style={[styles.statsValue, { color: hpColor }]}>
+                    {currentHp}
+                  </Text>
+                </View>
+                <ProgressBar progress={hpPercent} color={hpColor} height={4} />
+              </View>
+
+              {/* Divider */}
+              <View style={styles.statsDivider} />
+
+              {/* Completion */}
+              <View style={styles.statsItem}>
+                <Text style={[styles.statsValue, { color: completionRate === 100 ? Colors.success : Colors.secondary }]}>
+                  {completedIds.size}/{habits.length}
+                </Text>
+                <Text style={styles.statsItemLabel}>DONE</Text>
+              </View>
+
+              {/* Divider */}
+              <View style={styles.statsDivider} />
+
+              {/* Streak */}
+              <View style={styles.statsItem}>
+                <Text style={[styles.statsValue, { color: Colors.accent }]}>
+                  {longestStreak}
+                </Text>
+                <Text style={styles.statsItemLabel}>STREAK</Text>
+              </View>
+            </View>
+          ) : null}
+
+          {/* Underworld Overlay */}
           {userId ? <UnderworldOverlay userId={userId} /> : null}
 
-          {/* Stats Header */}
-          {habits.length > 0 ? (
-            <StatsHeader
-              level={level}
-              totalXp={totalXp}
-              xpProgress={xpProgress}
-              xpToNext={xpToNext}
-              currentHp={currentHp}
-              maxHp={maxHp}
-              todayCompleted={completedIds.size}
-              todayTotal={habits.length}
-              longestStreak={longestStreak}
-            />
-          ) : null}
-
-          {/* Companion Widget (#5) */}
-          {userId ? (
-            <CompanionWidget
-              userId={userId}
-              completionRate={completionRate}
-              currentHp={currentHp}
-              maxHp={maxHp}
-            />
-          ) : null}
-
-          {/* Oracle Challenge (#6) */}
-          {userId ? <OracleChallengeCard userId={userId} /> : null}
-
-          {/* Habit List */}
+          {/* ── Habits (the main content, immediately visible) ── */}
           {habits.length === 0 ? (
             <EmptyState
               icon="flame-outline"
@@ -335,21 +436,28 @@ export default function DashboardScreen() {
             <View style={styles.habitSection}>
               {/* All Done Banner */}
               {allDone ? (
-                <GlassCard style={styles.allDoneBanner}>
-                  <Ionicons name="trophy" size={32} color={Colors.accent} />
-                  <Text style={styles.allDoneTitle}>All Done!</Text>
-                  <Text style={styles.allDoneText}>
-                    You&apos;ve completed all habits for today. Amazing work!
-                  </Text>
-                </GlassCard>
+                <GradientCard
+                  gradient={['rgba(0, 230, 118, 0.15)', 'rgba(255, 184, 0, 0.10)']}
+                  glowColor={Colors.success}
+                >
+                  <View style={styles.allDoneBanner}>
+                    <Ionicons name="trophy" size={40} color={Colors.accent} />
+                    <Text style={styles.allDoneTitle}>All Done!</Text>
+                    <Text style={styles.allDoneText}>
+                      You&apos;ve completed all habits for today. Amazing work!
+                    </Text>
+                  </View>
+                </GradientCard>
               ) : null}
 
               {/* Pending Habits */}
               {pendingHabits.length > 0 ? (
                 <View style={styles.habitGroup}>
-                  <Text style={styles.sectionTitle}>
-                    Pending ({pendingHabits.length})
-                  </Text>
+                  <View style={styles.sectionDivider}>
+                    <Text style={styles.sectionDividerText}>
+                      PENDING ({pendingHabits.length})
+                    </Text>
+                  </View>
                   <View style={styles.habitList}>
                     {pendingHabits.map((habit) => (
                       <HabitCard
@@ -367,9 +475,11 @@ export default function DashboardScreen() {
               {/* Completed Habits */}
               {completedHabits.length > 0 ? (
                 <View style={styles.habitGroup}>
-                  <Text style={styles.sectionTitle}>
-                    Completed ({completedHabits.length})
-                  </Text>
+                  <View style={styles.sectionDivider}>
+                    <Text style={styles.sectionDividerText}>
+                      COMPLETED ({completedHabits.length})
+                    </Text>
+                  </View>
                   <View style={styles.habitList}>
                     {completedHabits.map((habit) => (
                       <HabitCard
@@ -386,12 +496,79 @@ export default function DashboardScreen() {
             </View>
           )}
 
-          {/* Bottom Spacer */}
+          {/* ── Active Goals Strip ── */}
+          {activeGoals.length > 0 ? (
+            <View style={styles.goalsSection}>
+              <View style={styles.goalsSectionHeader}>
+                <Text style={styles.goalsSectionTitle}>Active Goals</Text>
+                <Pressable
+                  onPress={() => router.push('/(tabs)/goals')}
+                  style={({ pressed }) => [pressed && { opacity: 0.7 }]}
+                >
+                  <Text style={styles.goalsSeeAll}>See all</Text>
+                </Pressable>
+              </View>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.goalsScroll}
+              >
+                {activeGoals.map((goal) => {
+                  const catConfig = GOAL_CATEGORY_CONFIG[goal.category as keyof typeof GOAL_CATEGORY_CONFIG];
+                  const daysLeft = differenceInDays(parseISO(goal.targetDate), new Date());
+                  const completedM = goal.milestones?.filter((m: any) => m.completed).length ?? 0;
+                  const totalM = goal.milestones?.length ?? 0;
+                  return (
+                    <Pressable
+                      key={goal.id}
+                      onPress={() => router.push('/(tabs)/goals')}
+                      style={({ pressed }) => [styles.goalPill, pressed && { opacity: 0.8, transform: [{ scale: 0.97 }] }]}
+                    >
+                      <View style={[styles.goalPillIcon, { backgroundColor: catConfig?.color ? `${catConfig.color}20` : Colors.primaryBg }]}>
+                        <Ionicons
+                          name={(catConfig?.icon as keyof typeof Ionicons.glyphMap) || 'flag'}
+                          size={14}
+                          color={catConfig?.color || Colors.primary}
+                        />
+                      </View>
+                      <View style={styles.goalPillContent}>
+                        <Text style={styles.goalPillTitle} numberOfLines={1}>{goal.title}</Text>
+                        <View style={styles.goalPillMeta}>
+                          {totalM > 0 ? (
+                            <Text style={styles.goalPillProgress}>{completedM}/{totalM}</Text>
+                          ) : null}
+                          <Text style={[
+                            styles.goalPillDays,
+                            daysLeft < 14 && { color: Colors.warning },
+                            daysLeft < 0 && { color: Colors.danger },
+                          ]}>
+                            {daysLeft > 0 ? `${daysLeft}d` : daysLeft === 0 ? 'Today' : 'Overdue'}
+                          </Text>
+                        </View>
+                      </View>
+                    </Pressable>
+                  );
+                })}
+                {/* Add goal pill */}
+                <Pressable
+                  onPress={() => router.push('/(tabs)/goals')}
+                  style={({ pressed }) => [styles.goalPillAdd, pressed && { opacity: 0.7 }]}
+                >
+                  <Ionicons name="add" size={18} color={Colors.primary} />
+                </Pressable>
+              </ScrollView>
+            </View>
+          ) : null}
+
+          {/* Oracle Challenge */}
+          {userId ? <OracleChallengeCard userId={userId} /> : null}
+
+          {/* Bottom Spacer for floating tab bar */}
           <View style={{ height: 100 }} />
         </ScrollView>
       )}
 
-      {/* Habit Detail Sheet (#4) */}
+      {/* Habit Detail Sheet */}
       <HabitDetailSheet
         habit={selectedHabit}
         isCompleted={selectedHabit ? completedIds.has(selectedHabit.id) : false}
@@ -429,7 +606,19 @@ export default function DashboardScreen() {
         </View>
       </BottomSheet>
 
-      {/* Level Up Celebration (#9) */}
+      {/* Companion Sheet (Dr. Sage) — triggered from top bar avatar */}
+      {userId ? (
+        <CompanionWidget
+          userId={userId}
+          completionRate={completionRate}
+          currentHp={currentHp}
+          maxHp={maxHp}
+          externalVisible={showCompanionSheet}
+          onExternalClose={() => setShowCompanionSheet(false)}
+        />
+      ) : null}
+
+      {/* Level Up Celebration */}
       <LevelUpCelebration
         level={levelUpLevel}
         visible={levelUpVisible}
@@ -444,32 +633,56 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
-  header: {
+
+  // ── Top Bar ──
+  topBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: Spacing.xl,
-    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
   },
-  greeting: {
-    fontSize: FontSize['2xl'],
-    fontWeight: '800',
-    color: Colors.foreground,
+  topBarLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  date: {
+  topBarCenter: {
+    flex: 1,
+    alignItems: 'center',
+    paddingHorizontal: Spacing.sm,
+  },
+  topBarGreeting: {
     fontSize: FontSize.sm,
+    fontFamily: FontFamily.semibold,
     color: Colors.textSecondary,
-    marginTop: 2,
   },
-  headerActions: {
+  topBarRight: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,
   },
-  logoutButton: {
+  sageButton: {
+    position: 'relative',
+  },
+  sageAvatar: {
     width: 40,
     height: 40,
     borderRadius: 20,
+    borderWidth: 2,
+    backgroundColor: Colors.surfaceLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sageMoodBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -4,
+    fontSize: 12,
+  },
+  settingsButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: Colors.surfaceLight,
     alignItems: 'center',
     justifyContent: 'center',
@@ -481,15 +694,20 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    ...Shadows.glow(Colors.primary, 0.3),
   },
   addButtonPressed: {
     transform: [{ scale: 0.92 }],
     opacity: 0.9,
   },
+
+  // ── Loading ──
   loadingContainer: {
     flex: 1,
     paddingTop: Spacing.lg,
   },
+
+  // ── ScrollView ──
   scrollView: {
     flex: 1,
   },
@@ -497,38 +715,180 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     gap: Spacing.lg,
   },
+
+  // ── Compact Stats Strip ──
+  statsStrip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.surfaceLight,
+    borderRadius: Radius.xl,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingVertical: Spacing.sm + 2,
+    paddingHorizontal: Spacing.md,
+    ...Shadows.card,
+  },
+  statsItem: {
+    alignItems: 'center',
+    gap: 2,
+  },
+  statsItemWide: {
+    alignItems: 'center',
+    gap: 3,
+    width: 56,
+  },
+  statsLevelNum: {
+    fontSize: FontSize.sm,
+    fontFamily: FontFamily.extrabold,
+    color: Colors.primary,
+  },
+  statsValue: {
+    fontSize: FontSize.base,
+    fontFamily: FontFamily.bold,
+    color: Colors.foreground,
+  },
+  statsItemLabel: {
+    fontSize: 9,
+    fontFamily: FontFamily.semibold,
+    color: Colors.textMuted,
+    letterSpacing: 1,
+  },
+  statsDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: Colors.border,
+  },
+  hpRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+
+  // ── Goals Strip ──
+  goalsSection: {
+    gap: Spacing.sm,
+  },
+  goalsSectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  goalsSectionTitle: {
+    fontSize: FontSize.sm,
+    fontFamily: FontFamily.bold,
+    color: Colors.textSecondary,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  goalsSeeAll: {
+    fontSize: FontSize.sm,
+    fontFamily: FontFamily.semibold,
+    color: Colors.primary,
+  },
+  goalsScroll: {
+    gap: Spacing.sm,
+    paddingRight: Spacing.sm,
+  },
+  goalPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    backgroundColor: Colors.surfaceLight,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: Radius.lg,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm + 2,
+    minWidth: 150,
+    maxWidth: 200,
+  },
+  goalPillIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  goalPillContent: {
+    flex: 1,
+    gap: 2,
+  },
+  goalPillTitle: {
+    fontSize: FontSize.sm,
+    fontFamily: FontFamily.semibold,
+    color: Colors.foreground,
+  },
+  goalPillMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  goalPillProgress: {
+    fontSize: FontSize.xs,
+    fontFamily: FontFamily.medium,
+    color: Colors.textMuted,
+  },
+  goalPillDays: {
+    fontSize: FontSize.xs,
+    fontFamily: FontFamily.semibold,
+    color: Colors.textSecondary,
+  },
+  goalPillAdd: {
+    width: 40,
+    height: '100%' as any,
+    minHeight: 48,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderStyle: 'dashed',
+    backgroundColor: Colors.surfaceLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // ── Habits ──
   habitSection: {
     gap: Spacing.lg,
   },
   habitGroup: {
     gap: Spacing.sm,
   },
-  sectionTitle: {
-    fontSize: FontSize.sm,
-    fontWeight: '700',
+  sectionDivider: {
+    alignSelf: 'flex-start',
+    backgroundColor: Colors.surfaceLight,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs + 2,
+    borderRadius: Radius.full,
+  },
+  sectionDividerText: {
+    fontSize: FontSize.xs,
+    fontFamily: FontFamily.bold,
     color: Colors.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    paddingHorizontal: Spacing.xs,
+    letterSpacing: 1,
   },
   habitList: {
     gap: Spacing.sm,
   },
+
+  // ── All Done Banner ──
   allDoneBanner: {
     alignItems: 'center',
-    paddingVertical: Spacing['2xl'],
+    paddingVertical: Spacing.xl,
+    gap: Spacing.xs,
   },
   allDoneTitle: {
-    fontSize: FontSize.xl,
-    fontWeight: '800',
+    fontSize: FontSize['3xl'],
+    fontFamily: FontFamily.extrabold,
     color: Colors.success,
-    marginBottom: Spacing.xs,
   },
   allDoneText: {
     fontSize: FontSize.sm,
     color: Colors.textSecondary,
     textAlign: 'center',
   },
+
+  // ── Settings Sheet ──
   settingsContent: {
     paddingBottom: Spacing['2xl'],
     gap: Spacing.lg,
@@ -539,11 +899,11 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
     padding: Spacing.md,
     borderRadius: Radius.md,
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    backgroundColor: 'rgba(255, 107, 107, 0.1)',
   },
   signOutText: {
     fontSize: FontSize.base,
-    fontWeight: '600',
+    fontFamily: FontFamily.semibold,
     color: Colors.danger,
   },
   versionText: {

@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, FontSize, Spacing, Radius } from '@/constants/theme';
+import { Colors, FontSize, Spacing, Radius, FontFamily } from '@/constants/theme';
 import { CATEGORY_COLORS } from '@/constants/theme';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Input } from '@/components/ui/Input';
@@ -319,7 +319,7 @@ const styles = StyleSheet.create({
   },
   sectionLabel: {
     fontSize: FontSize.sm,
-    fontWeight: '600',
+    fontFamily: FontFamily.semibold,
     color: Colors.textSecondary,
   },
   optionRow: {
@@ -343,7 +343,7 @@ const styles = StyleSheet.create({
   },
   chipLabel: {
     fontSize: FontSize.sm,
-    fontWeight: '500',
+    fontFamily: FontFamily.medium,
     color: Colors.textSecondary,
   },
   xpChip: {
@@ -360,7 +360,7 @@ const styles = StyleSheet.create({
   },
   xpChipText: {
     fontSize: FontSize.sm,
-    fontWeight: '600',
+    fontFamily: FontFamily.semibold,
     color: Colors.textSecondary,
   },
   xpChipTextActive: {
@@ -380,7 +380,7 @@ const styles = StyleSheet.create({
   },
   freqChipText: {
     fontSize: FontSize.sm,
-    fontWeight: '500',
+    fontFamily: FontFamily.medium,
     color: Colors.textSecondary,
   },
   freqChipTextActive: {
@@ -407,7 +407,7 @@ const styles = StyleSheet.create({
   },
   dayText: {
     fontSize: FontSize.sm,
-    fontWeight: '600',
+    fontFamily: FontFamily.semibold,
     color: Colors.textSecondary,
   },
   dayTextActive: {
@@ -433,7 +433,7 @@ const styles = StyleSheet.create({
   },
   todLabel: {
     fontSize: FontSize.sm,
-    fontWeight: '500',
+    fontFamily: FontFamily.medium,
     color: Colors.textSecondary,
   },
   todLabelActive: {
@@ -447,7 +447,7 @@ const styles = StyleSheet.create({
   },
   advancedText: {
     fontSize: FontSize.sm,
-    fontWeight: '600',
+    fontFamily: FontFamily.semibold,
     color: Colors.textSecondary,
   },
   advancedSection: {

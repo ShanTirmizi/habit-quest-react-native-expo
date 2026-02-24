@@ -1,0 +1,572 @@
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { View, Text, StyleSheet, Pressable, Animated } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useAction } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import type { Id } from '@/convex/_generated/dataModel';
+import { Colors, FontSize, Spacing, Radius, FontFamily, Shadows } from '@/constants/theme';
+import { GradientCard } from '@/components/ui/GradientCard';
+import { Skeleton } from '@/components/ui/Skeleton';
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+interface Insight {
+  title: string;
+  body: string;
+  category: string;
+  actionable?: string;
+}
+
+interface CoachingInsights {
+  primaryInsight: Insight;
+  secondaryInsights: Insight[];
+  todayFocus: string;
+}
+
+interface CoachPanelProps {
+  userId: Id<'users'>;
+}
+
+// ---------------------------------------------------------------------------
+// Category mappings
+// ---------------------------------------------------------------------------
+
+const CATEGORY_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
+  pattern: 'trending-up',
+  streak: 'flame',
+  mood: 'heart',
+  strategy: 'bulb',
+  celebration: 'trophy',
+  recovery: 'refresh',
+  journal: 'book',
+};
+
+const CATEGORY_COLORS: Record<string, string> = {
+  pattern: Colors.secondary,
+  streak: Colors.accent,
+  mood: Colors.categoryHealth,
+  strategy: Colors.primary,
+  celebration: Colors.accent,
+  recovery: Colors.categoryMind,
+  journal: Colors.categoryLife,
+};
+
+const DEFAULT_ICON: keyof typeof Ionicons.glyphMap = 'sparkles';
+const DEFAULT_COLOR = Colors.textSecondary;
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function getCategoryIcon(category: string): keyof typeof Ionicons.glyphMap {
+  return CATEGORY_ICONS[category] ?? DEFAULT_ICON;
+}
+
+function getCategoryColor(category: string): string {
+  return CATEGORY_COLORS[category] ?? DEFAULT_COLOR;
+}
+
+// ---------------------------------------------------------------------------
+// Sub-components
+// ---------------------------------------------------------------------------
+
+function LoadingSkeleton() {
+  return (
+    <View style={styles.skeletonContainer}>
+      <Skeleton width="100%" height={18} />
+      <Skeleton width="75%" height={14} style={styles.skeletonRow} />
+      <Skeleton width="85%" height={14} style={styles.skeletonRow} />
+      <Skeleton width="60%" height={14} style={styles.skeletonRow} />
+    </View>
+  );
+}
+
+function ErrorState({ onRetry }: { onRetry: () => void }) {
+  return (
+    <View style={styles.stateContainer}>
+      <Ionicons name="moon" size={32} color={Colors.textMuted} />
+      <Text style={styles.stateTitle}>Dr. Sage is resting...</Text>
+      <Text style={styles.stateBody}>
+        Unable to generate insights right now. Please try again in a moment.
+      </Text>
+      <Pressable
+        onPress={onRetry}
+        style={({ pressed }) => [styles.retryButton, pressed && styles.pressedButton]}
+        accessibilityRole="button"
+        accessibilityLabel="Retry loading insights"
+      >
+        <Ionicons name="refresh" size={16} color={Colors.primary} />
+        <Text style={styles.retryButtonText}>Try Again</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+function InsufficientDataState() {
+  return (
+    <View style={styles.stateContainer}>
+      <Ionicons name="leaf" size={32} color={Colors.secondary} />
+      <Text style={styles.stateTitle}>Building your profile...</Text>
+      <Text style={styles.stateBody}>
+        Keep building habits and logging your progress. Dr. Sage will have
+        personalized insights for you soon.
+      </Text>
+    </View>
+  );
+}
+
+function InsightCard({ insight }: { insight: Insight }) {
+  const iconName = getCategoryIcon(insight.category);
+  const iconColor = getCategoryColor(insight.category);
+
+  return (
+    <View style={styles.secondaryCard}>
+      <View style={styles.insightHeader}>
+        <Ionicons name={iconName} size={18} color={iconColor} />
+        <Text style={styles.secondaryTitle}>{insight.title}</Text>
+      </View>
+      <Text style={styles.secondaryBody}>{insight.body}</Text>
+      {insight.actionable ? (
+        <View style={styles.actionableRow}>
+          <Ionicons name="bulb" size={14} color={Colors.accent} />
+          <Text style={styles.actionableText}>{insight.actionable}</Text>
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Main component
+// ---------------------------------------------------------------------------
+
+export function CoachPanel({ userId }: CoachPanelProps) {
+  const generateInsights = useAction(api.coaching.generateInsights);
+
+  // State
+  const [insights, setInsights] = useState<CoachingInsights | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [insufficientData, setInsufficientData] = useState(false);
+  const [expanded, setExpanded] = useState(true);
+
+  // Prevent duplicate fetches on re-render
+  const hasFetched = useRef(false);
+
+  // Animated spin for refresh icon
+  const spinValue = useRef(new Animated.Value(0)).current;
+  const spinAnimation = useRef<Animated.CompositeAnimation | null>(null);
+
+  const startSpin = useCallback(() => {
+    spinValue.setValue(0);
+    spinAnimation.current = Animated.loop(
+      Animated.timing(spinValue, {
+        toValue: 1,
+        duration: 1000,
+        useNativeDriver: true,
+      }),
+    );
+    spinAnimation.current.start();
+  }, [spinValue]);
+
+  const stopSpin = useCallback(() => {
+    if (spinAnimation.current) {
+      spinAnimation.current.stop();
+      spinAnimation.current = null;
+    }
+    spinValue.setValue(0);
+  }, [spinValue]);
+
+  const spin = spinValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+
+  // Fetch insights
+  const fetchInsights = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    setInsufficientData(false);
+    startSpin();
+
+    try {
+      const result = await generateInsights({ userId });
+
+      if (!result || (typeof result === 'object' && 'insufficientData' in result && result.insufficientData)) {
+        setInsufficientData(true);
+        setInsights(null);
+      } else {
+        setInsights(result as CoachingInsights);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      setError(message);
+      setInsights(null);
+    } finally {
+      setLoading(false);
+      stopSpin();
+    }
+  }, [generateInsights, userId, startSpin, stopSpin]);
+
+  // Auto-fetch on mount (only once)
+  useEffect(() => {
+    if (!hasFetched.current) {
+      hasFetched.current = true;
+      fetchInsights();
+    }
+  }, [fetchInsights]);
+
+  // Refresh handler
+  const handleRefresh = useCallback(() => {
+    if (loading) return;
+    fetchInsights();
+  }, [loading, fetchInsights]);
+
+  // Toggle collapse
+  const toggleExpanded = useCallback(() => {
+    setExpanded((prev) => !prev);
+  }, []);
+
+  // ----- Render helpers -----
+
+  const renderHeader = () => (
+    <Pressable
+      onPress={toggleExpanded}
+      style={styles.header}
+      accessibilityRole="button"
+      accessibilityLabel={expanded ? 'Collapse coach panel' : 'Expand coach panel'}
+    >
+      <View style={styles.headerLeft}>
+        <Text style={styles.headerEmoji}>{'\u{1F9D9}'}</Text>
+        <View>
+          <Text style={styles.headerTitle}>Dr. Sage</Text>
+          <Text style={styles.headerSubtitle}>AI Behavior Coach</Text>
+        </View>
+      </View>
+      <View style={styles.headerRight}>
+        <Pressable
+          onPress={handleRefresh}
+          style={({ pressed }) => [styles.iconButton, pressed && styles.pressedButton]}
+          accessibilityRole="button"
+          accessibilityLabel="Refresh insights"
+          hitSlop={8}
+        >
+          <Animated.View style={{ transform: [{ rotate: spin }] }}>
+            <Ionicons name="refresh" size={18} color={Colors.textSecondary} />
+          </Animated.View>
+        </Pressable>
+        <Ionicons
+          name={expanded ? 'chevron-up' : 'chevron-down'}
+          size={20}
+          color={Colors.textSecondary}
+          style={styles.chevron}
+        />
+      </View>
+    </Pressable>
+  );
+
+  const renderPrimaryInsight = (insight: Insight) => {
+    const iconName = getCategoryIcon(insight.category);
+    const iconColor = getCategoryColor(insight.category);
+
+    return (
+      <View style={styles.primarySection}>
+        <View style={styles.insightHeader}>
+          <Ionicons name={iconName} size={22} color={iconColor} />
+          <Text style={styles.primaryTitle}>{insight.title}</Text>
+        </View>
+        <Text style={styles.primaryBody}>{insight.body}</Text>
+        {insight.actionable ? (
+          <View style={styles.tryThisContainer}>
+            <Ionicons name="bulb" size={16} color={Colors.accent} />
+            <Text style={styles.tryThisLabel}>Try this: </Text>
+            <Text style={styles.tryThisText}>{insight.actionable}</Text>
+          </View>
+        ) : null}
+      </View>
+    );
+  };
+
+  const renderTodayFocus = (focus: string) => (
+    <View style={styles.todayFocusContainer}>
+      <View style={styles.todayFocusHeader}>
+        <Ionicons name="flag" size={18} color={Colors.primary} />
+        <Text style={styles.todayFocusTitle}>Today's Focus</Text>
+      </View>
+      <Text style={styles.todayFocusBody}>{focus}</Text>
+    </View>
+  );
+
+  const renderSecondaryInsights = (items: Insight[]) => {
+    if (items.length === 0) return null;
+
+    return (
+      <View style={styles.secondarySection}>
+        <Text style={styles.secondarySectionTitle}>Secondary Insights</Text>
+        {items.map((item, index) => (
+          <InsightCard key={`${item.category}-${index}`} insight={item} />
+        ))}
+      </View>
+    );
+  };
+
+  const renderBody = () => {
+    if (loading && !insights) {
+      return <LoadingSkeleton />;
+    }
+
+    if (error) {
+      return <ErrorState onRetry={handleRefresh} />;
+    }
+
+    if (insufficientData) {
+      return <InsufficientDataState />;
+    }
+
+    if (!insights) {
+      return null;
+    }
+
+    return (
+      <View style={styles.body}>
+        {renderPrimaryInsight(insights.primaryInsight)}
+        {renderTodayFocus(insights.todayFocus)}
+        {renderSecondaryInsights(insights.secondaryInsights)}
+      </View>
+    );
+  };
+
+  return (
+    <GradientCard
+      gradient={['#0D1117', '#131A24']}
+      glowColor={Colors.primaryGlow}
+      style={styles.container}
+    >
+      {renderHeader()}
+      {expanded ? renderBody() : null}
+    </GradientCard>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Styles
+// ---------------------------------------------------------------------------
+
+const styles = StyleSheet.create({
+  container: {
+    overflow: 'hidden',
+  },
+
+  // --- Header ---
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  headerEmoji: {
+    fontSize: 28,
+  },
+  headerTitle: {
+    fontFamily: FontFamily.extrabold,
+    fontSize: FontSize.lg,
+    color: Colors.foreground,
+  },
+  headerSubtitle: {
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.xs,
+    color: Colors.textSecondary,
+    marginTop: 1,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  iconButton: {
+    width: 34,
+    height: 34,
+    borderRadius: Radius.full,
+    backgroundColor: Colors.surfaceRaised,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chevron: {
+    marginLeft: Spacing.xs,
+  },
+  pressedButton: {
+    opacity: 0.6,
+  },
+
+  // --- Body ---
+  body: {
+    marginTop: Spacing.lg,
+  },
+
+  // --- Loading ---
+  skeletonContainer: {
+    marginTop: Spacing.lg,
+    gap: Spacing.md,
+  },
+  skeletonRow: {
+    marginTop: 0,
+  },
+
+  // --- State messages ---
+  stateContainer: {
+    marginTop: Spacing.lg,
+    alignItems: 'center',
+    paddingVertical: Spacing.xl,
+    gap: Spacing.sm,
+  },
+  stateTitle: {
+    fontFamily: FontFamily.semibold,
+    fontSize: FontSize.base,
+    color: Colors.foreground,
+    marginTop: Spacing.xs,
+  },
+  stateBody: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.sm,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
+    paddingHorizontal: Spacing.lg,
+  },
+  retryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    marginTop: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
+    borderRadius: Radius.full,
+    backgroundColor: Colors.primaryBg,
+  },
+  retryButtonText: {
+    fontFamily: FontFamily.semibold,
+    fontSize: FontSize.sm,
+    color: Colors.primary,
+  },
+
+  // --- Primary insight ---
+  primarySection: {
+    gap: Spacing.sm,
+  },
+  insightHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  primaryTitle: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.base,
+    color: Colors.foreground,
+    flexShrink: 1,
+  },
+  primaryBody: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.sm,
+    color: Colors.textSecondary,
+    lineHeight: 21,
+  },
+
+  // --- Try this ---
+  tryThisContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.xs,
+    backgroundColor: Colors.accentBg,
+    padding: Spacing.md,
+    borderRadius: Radius.md,
+    marginTop: Spacing.xs,
+  },
+  tryThisLabel: {
+    fontFamily: FontFamily.semibold,
+    fontSize: FontSize.sm,
+    color: Colors.accent,
+  },
+  tryThisText: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.sm,
+    color: Colors.foreground,
+    flexShrink: 1,
+    lineHeight: 20,
+  },
+
+  // --- Today's focus ---
+  todayFocusContainer: {
+    backgroundColor: Colors.primaryBg,
+    borderRadius: Radius.md,
+    padding: Spacing.md,
+    marginTop: Spacing.lg,
+    gap: Spacing.sm,
+  },
+  todayFocusHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  todayFocusTitle: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.sm,
+    color: Colors.primary,
+  },
+  todayFocusBody: {
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.sm,
+    color: Colors.foreground,
+    lineHeight: 21,
+  },
+
+  // --- Secondary insights ---
+  secondarySection: {
+    marginTop: Spacing.lg,
+    gap: Spacing.sm,
+  },
+  secondarySectionTitle: {
+    fontFamily: FontFamily.semibold,
+    fontSize: FontSize.sm,
+    color: Colors.textSecondary,
+    marginBottom: Spacing.xs,
+  },
+  secondaryCard: {
+    backgroundColor: Colors.surfaceLight,
+    borderRadius: Radius.md,
+    padding: Spacing.md,
+    gap: Spacing.xs,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  secondaryTitle: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.sm,
+    color: Colors.foreground,
+    flexShrink: 1,
+  },
+  secondaryBody: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.xs,
+    color: Colors.textSecondary,
+    lineHeight: 18,
+  },
+  actionableRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.xs,
+    marginTop: Spacing.xs,
+  },
+  actionableText: {
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.xs,
+    color: Colors.accent,
+    flexShrink: 1,
+    lineHeight: 17,
+  },
+});

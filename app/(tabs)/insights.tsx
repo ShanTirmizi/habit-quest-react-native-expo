@@ -1,10 +1,18 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
+  Pressable,
 } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withDelay,
+  Easing,
+} from 'react-native-reanimated';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { format } from 'date-fns';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -12,17 +20,27 @@ import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { useAuth } from '@/contexts/auth-context';
-import { Colors, FontSize, Spacing, Radius } from '@/constants/theme';
+import { Colors, FontSize, Spacing, Radius, FontFamily, Shadows } from '@/constants/theme';
 import { CATEGORY_COLORS } from '@/constants/theme';
-import { GlassCard } from '@/components/ui/GlassCard';
+import { GradientCard } from '@/components/ui/GradientCard';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { BadgePill } from '@/components/ui/BadgePill';
-import { SegmentedControl } from '@/components/ui/SegmentedControl';
+import { BentoGrid } from '@/components/ui/BentoGrid';
+import { BentoCell } from '@/components/ui/BentoCell';
+import { OversizedMetric } from '@/components/ui/OversizedMetric';
+import { CoachPanel } from '@/components/ai-coach/CoachPanel';
 import { getWeeklyBoss, getWeekStart } from '@/data/weekly-bosses';
 import type { HabitCategory } from '@/types';
 import type { Id } from '@/convex/_generated/dataModel';
 
 type InsightsTab = 'overview' | 'history' | 'achievements' | 'gamification';
+
+const TAB_CHIPS: { value: InsightsTab; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+  { value: 'overview', label: 'Overview', icon: 'grid-outline' },
+  { value: 'history', label: 'History', icon: 'calendar-outline' },
+  { value: 'achievements', label: 'Achievements', icon: 'trophy-outline' },
+  { value: 'gamification', label: 'Skills', icon: 'sparkles-outline' },
+];
 
 // Static achievement definitions (what achievements exist)
 const ACHIEVEMENT_DEFINITIONS: { id: string; name: string; icon: keyof typeof Ionicons.glyphMap; description: string }[] = [
@@ -123,6 +141,37 @@ function computeWeeklyStats(habits: Array<{ category: HabitCategory; xpReward: n
   };
 }
 
+// ─── Animated Vertical Bar ────────────────────────────────────────────────────
+function AnimatedBar({ percentage, color, label, delay }: { percentage: number; color: string; label: string; delay: number }) {
+  const MAX_HEIGHT = 100;
+  const barHeight = useSharedValue(0);
+
+  useEffect(() => {
+    barHeight.value = withDelay(
+      delay,
+      withTiming((percentage / 100) * MAX_HEIGHT, { duration: 600, easing: Easing.out(Easing.cubic) })
+    );
+  }, [percentage]);
+
+  const animatedBarStyle = useAnimatedStyle(() => ({
+    height: barHeight.value,
+  }));
+
+  return (
+    <View style={styles.barColumn}>
+      <Text style={[styles.barPercent, { color }]}>{percentage}%</Text>
+      <View style={styles.barTrack}>
+        <Animated.View style={[styles.barFill, { backgroundColor: color }, animatedBarStyle]} />
+      </View>
+      <Text style={styles.barLabel}>{label}</Text>
+    </View>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ROOT SCREEN
+// ═══════════════════════════════════════════════════════════════════════════════
+
 export default function InsightsScreen() {
   const insets = useSafeAreaInsets();
   const [tab, setTab] = useState<InsightsTab>('overview');
@@ -165,25 +214,40 @@ export default function InsightsScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
+      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Insights</Text>
       </View>
 
-      <View style={styles.tabContainer}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <SegmentedControl
-            segments={[
-              { label: 'Overview', value: 'overview' },
-              { label: 'History', value: 'history' },
-              { label: 'Achievements', value: 'achievements' },
-              { label: 'Skills', value: 'gamification' },
-            ]}
-            selectedValue={tab}
-            onValueChange={(v) => setTab(v as InsightsTab)}
-          />
+      {/* Tab Chips */}
+      <View style={styles.chipContainer}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipScroll}>
+          {TAB_CHIPS.map((chip) => {
+            const isActive = tab === chip.value;
+            return (
+              <Pressable
+                key={chip.value}
+                onPress={() => setTab(chip.value)}
+                style={[
+                  styles.chip,
+                  isActive ? styles.chipActive : styles.chipInactive,
+                ]}
+              >
+                <Ionicons
+                  name={chip.icon}
+                  size={14}
+                  color={isActive ? '#FFFFFF' : Colors.textMuted}
+                />
+                <Text style={[styles.chipText, isActive ? styles.chipTextActive : styles.chipTextInactive]}>
+                  {chip.label}
+                </Text>
+              </Pressable>
+            );
+          })}
         </ScrollView>
       </View>
 
+      {/* Content */}
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -198,6 +262,10 @@ export default function InsightsScreen() {
     </View>
   );
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// OVERVIEW TAB
+// ═══════════════════════════════════════════════════════════════════════════════
 
 interface OverviewTabProps {
   userId: Id<'users'>;
@@ -238,76 +306,106 @@ function OverviewTab({ userId, progress, habits }: OverviewTabProps) {
 
   return (
     <View style={styles.tabContent}>
-      {/* Weekly Boss */}
-      <GlassCard>
-        <View style={styles.bossHeader}>
-          <Ionicons name={bossData.icon} size={32} color={Colors.danger} />
-          <View style={styles.bossInfo}>
-            <Text style={styles.bossName}>{bossData.name}</Text>
-            <Text style={styles.bossStatus}>
-              {bossData.defeated ? 'Defeated!' : `${bossData.completions}/${bossData.required} hits`}
-            </Text>
-          </View>
-          <BadgePill label={bossData.defeated ? 'Defeated' : 'This Week'} color={bossData.defeated ? Colors.success : Colors.danger} />
-        </View>
-        <ProgressBar
-          progress={bossData.progress}
-          color={bossData.defeated ? Colors.success : Colors.danger}
-          height={8}
-        />
-      </GlassCard>
+      {/* ── Dr. Sage AI Coach ── */}
+      <CoachPanel userId={userId} />
 
-      {/* Weekly Summary */}
-      <GlassCard>
-        <Text style={styles.cardTitle}>Weekly Summary</Text>
-        <View style={styles.summaryGrid}>
-          <View style={styles.summaryItem}>
-            <Text style={styles.summaryValue}>{stats.rate}%</Text>
-            <Text style={styles.summaryLabel}>Completion</Text>
-          </View>
-          <View style={styles.summaryItem}>
-            <Text style={[styles.summaryValue, { color: Colors.primary }]}>
-              {stats.xpEarned}
-            </Text>
-            <Text style={styles.summaryLabel}>XP Earned</Text>
-          </View>
-          <View style={styles.summaryItem}>
-            <Text style={[styles.summaryValue, { color: Colors.accent }]}>
-              {stats.completions}
-            </Text>
-            <Text style={styles.summaryLabel}>Completions</Text>
-          </View>
-          <View style={styles.summaryItem}>
-            <Text style={styles.summaryValue}>{stats.bestDay}</Text>
-            <Text style={styles.summaryLabel}>Best Day</Text>
-          </View>
-        </View>
-      </GlassCard>
-
-      {/* Category Breakdown */}
-      <GlassCard>
-        <Text style={styles.cardTitle}>Categories</Text>
-        <View style={styles.categoryList}>
-          {(Object.entries(stats.categories) as [HabitCategory, number][]).map(([cat, rate]) => (
-            <View key={cat} style={styles.categoryRow}>
-              <Text style={[styles.categoryLabel, { color: CATEGORY_COLORS[cat] }]}>
-                {cat.charAt(0).toUpperCase() + cat.slice(1)}
+      {/* ── Weekly Boss Card (dramatic) ── */}
+      <GradientCard
+        gradient={bossData.defeated ? ['rgba(0,230,118,0.12)', 'transparent'] : ['rgba(255,107,107,0.12)', 'transparent']}
+        glowColor={bossData.defeated ? Colors.success : undefined}
+      >
+        <View style={styles.bossRow}>
+          <Ionicons name={bossData.icon} size={36} color={bossData.defeated ? Colors.success : Colors.danger} />
+          <View style={{ flex: 1, marginLeft: Spacing.md }}>
+            <View style={styles.bossNameRow}>
+              <Text style={[styles.bossName, bossData.defeated && { color: Colors.success }]}>
+                {bossData.name}
               </Text>
-              <View style={styles.categoryBarContainer}>
-                <ProgressBar
-                  progress={rate}
-                  color={CATEGORY_COLORS[cat]}
-                  height={6}
-                />
-              </View>
-              <Text style={styles.categoryPercent}>{rate}%</Text>
+              {bossData.defeated ? (
+                <BadgePill label="DEFEATED" color={Colors.success} />
+              ) : null}
             </View>
+            <ProgressBar
+              progress={bossData.progress}
+              color={bossData.defeated ? Colors.success : Colors.danger}
+              height={14}
+              glowColor={bossData.defeated ? Colors.success : Colors.danger}
+              style={{ marginTop: Spacing.sm }}
+            />
+          </View>
+        </View>
+        <View style={styles.bossDamageRow}>
+          <Text style={[styles.bossDamageNumber, { color: bossData.defeated ? Colors.success : Colors.danger }]}>
+            {bossData.completions}
+          </Text>
+          <Text style={styles.bossDamageSlash}>/</Text>
+          <Text style={[styles.bossDamageNumber, { color: Colors.textSecondary }]}>
+            {bossData.required}
+          </Text>
+          <Text style={styles.bossDamageLabel}>hits</Text>
+        </View>
+      </GradientCard>
+
+      {/* ── Weekly Summary: 2x2 Bento Grid ── */}
+      <Text style={styles.sectionTitle}>Weekly Summary</Text>
+      <BentoGrid>
+        <BentoCell index={0}>
+          <OversizedMetric
+            value={stats.rate}
+            label="Completion"
+            color={Colors.secondary}
+            suffix="%"
+            size="md"
+          />
+        </BentoCell>
+        <BentoCell index={1}>
+          <OversizedMetric
+            value={stats.xpEarned}
+            label="XP Earned"
+            color={Colors.primary}
+            suffix="XP"
+            size="md"
+          />
+        </BentoCell>
+        <BentoCell index={2}>
+          <OversizedMetric
+            value={stats.completions}
+            label="Completions"
+            color={Colors.accent}
+            size="md"
+          />
+        </BentoCell>
+        <BentoCell index={3}>
+          <OversizedMetric
+            value={stats.bestDay}
+            label="Best Day"
+            size="md"
+          />
+        </BentoCell>
+      </BentoGrid>
+
+      {/* ── Category Breakdown: Vertical Bar Chart ── */}
+      <GradientCard>
+        <Text style={styles.cardTitle}>Categories</Text>
+        <View style={styles.barChart}>
+          {(Object.entries(stats.categories) as [HabitCategory, number][]).map(([cat, rate], idx) => (
+            <AnimatedBar
+              key={cat}
+              percentage={rate}
+              color={CATEGORY_COLORS[cat]}
+              label={cat.charAt(0).toUpperCase() + cat.slice(1)}
+              delay={idx * 100}
+            />
           ))}
         </View>
-      </GlassCard>
+      </GradientCard>
     </View>
   );
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// HISTORY TAB
+// ═══════════════════════════════════════════════════════════════════════════════
 
 interface HistoryTabProps {
   userId: Id<'users'>;
@@ -413,18 +511,27 @@ function HistoryTab({ userId, habits }: HistoryTabProps) {
   const DAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
   const SHOW_DAY_INDICES = [1, 3, 5]; // M, W, F
 
+  // Determine today's index in the heatmap grid
+  const todayGridIndex = useMemo(() => {
+    const now = new Date();
+    const diffMs = now.getTime() - gridStart.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    return diffDays >= 0 && diffDays < weeks * days ? diffDays : -1;
+  }, [gridStart]);
+
   return (
     <View style={styles.tabContent}>
-      <GlassCard>
+      {/* ── Heatmap Calendar ── */}
+      <GradientCard>
         <Text style={styles.cardTitle}>Completion Calendar</Text>
         {/* Month labels */}
         <View style={styles.heatMonthRow}>
-          <View style={{ width: 18 }} />
+          <View style={{ width: 22 }} />
           <View style={{ flex: 1, position: 'relative', height: 16 }}>
             {monthLabels.map((m, i) => (
               <Text
                 key={`${m.label}-${i}`}
-                style={[styles.heatMonthLabel, { left: m.weekIdx * 17 }]}
+                style={[styles.heatMonthLabel, { left: m.weekIdx * 22 }]}
               >
                 {m.label}
               </Text>
@@ -445,14 +552,17 @@ function HistoryTab({ userId, habits }: HistoryTabProps) {
             {Array.from({ length: weeks }).map((_, weekIdx) => (
               <View key={weekIdx} style={styles.heatWeek}>
                 {Array.from({ length: days }).map((_, dayIdx) => {
-                  const value = heatData[weekIdx * days + dayIdx];
+                  const idx = weekIdx * days + dayIdx;
+                  const value = heatData[idx];
                   const opacity = value > 0.8 ? 1 : value > 0.5 ? 0.6 : value > 0.2 ? 0.3 : 0.08;
+                  const isToday = idx === todayGridIndex;
                   return (
                     <View
                       key={dayIdx}
                       style={[
                         styles.heatCell,
                         { backgroundColor: Colors.primary, opacity },
+                        isToday && styles.heatCellToday,
                       ]}
                     />
                   );
@@ -461,43 +571,59 @@ function HistoryTab({ userId, habits }: HistoryTabProps) {
             ))}
           </View>
         </View>
+        {/* Legend */}
         <View style={styles.heatLegend}>
           <Text style={styles.heatLegendText}>Less</Text>
           {[0.08, 0.3, 0.6, 1].map((op) => (
             <View
               key={op}
-              style={[styles.heatLegendCell, { backgroundColor: Colors.primary, opacity: op }]}
+              style={[styles.heatLegendDot, { backgroundColor: Colors.primary, opacity: op }]}
             />
           ))}
           <Text style={styles.heatLegendText}>More</Text>
         </View>
-      </GlassCard>
+      </GradientCard>
 
-      {/* Streak Summary */}
-      <GlassCard>
-        <Text style={styles.cardTitle}>Streak Summary</Text>
-        <View style={styles.summaryGrid}>
-          <View style={styles.summaryItem}>
-            <Text style={styles.summaryValue}>{streakStats.bestCurrentStreak}</Text>
-            <Text style={styles.summaryLabel}>Current Best</Text>
-          </View>
-          <View style={styles.summaryItem}>
-            <Text style={[styles.summaryValue, { color: Colors.accent }]}>{streakStats.longestEverStreak}</Text>
-            <Text style={styles.summaryLabel}>Longest Ever</Text>
-          </View>
-          <View style={styles.summaryItem}>
-            <Text style={[styles.summaryValue, { color: Colors.primary }]}>{streakStats.activeStreaksCount}</Text>
-            <Text style={styles.summaryLabel}>Active Streaks</Text>
-          </View>
-          <View style={styles.summaryItem}>
-            <Text style={styles.summaryValue}>{streakStats.totalHabits}</Text>
-            <Text style={styles.summaryLabel}>Total Habits</Text>
-          </View>
-        </View>
-      </GlassCard>
+      {/* ── Streak Summary: 4 oversized metrics in a row ── */}
+      <BentoGrid>
+        <BentoCell index={0} height={100}>
+          <OversizedMetric
+            value={streakStats.bestCurrentStreak}
+            label="Current Best"
+            size="md"
+          />
+        </BentoCell>
+        <BentoCell index={1} height={100}>
+          <OversizedMetric
+            value={streakStats.longestEverStreak}
+            label="Longest Ever"
+            color={Colors.accent}
+            size="md"
+          />
+        </BentoCell>
+        <BentoCell index={2} height={100}>
+          <OversizedMetric
+            value={streakStats.activeStreaksCount}
+            label="Active Streaks"
+            color={Colors.primary}
+            size="md"
+          />
+        </BentoCell>
+        <BentoCell index={3} height={100}>
+          <OversizedMetric
+            value={streakStats.totalHabits}
+            label="Total Habits"
+            size="md"
+          />
+        </BentoCell>
+      </BentoGrid>
     </View>
   );
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ACHIEVEMENTS TAB
+// ═══════════════════════════════════════════════════════════════════════════════
 
 interface AchievementsTabProps {
   userId: Id<'users'>;
@@ -519,58 +645,58 @@ function AchievementsTab({ userId, progress }: AchievementsTabProps) {
 
   return (
     <View style={styles.tabContent}>
-      <View style={styles.achievementHeader}>
-        <Text style={styles.achievementCount}>
-          {unlocked}/{total} Unlocked
-        </Text>
-        <ProgressBar
-          progress={(unlocked / total) * 100}
+      {/* Progress counter */}
+      <GradientCard gradient={['rgba(255,184,0,0.12)', 'transparent']}>
+        <OversizedMetric
+          value={unlocked}
+          label="Unlocked"
           color={Colors.accent}
-          height={4}
-          style={{ flex: 1, marginLeft: Spacing.md }}
+          suffix={`/${total}`}
+          size="lg"
         />
-      </View>
+      </GradientCard>
 
-      <View style={styles.achievementGrid}>
+      {/* Medal Grid */}
+      <View style={styles.medalGrid}>
         {achievements.map((achievement) => (
-          <GlassCard
-            key={achievement.id}
-            style={{
-              ...styles.achievementCard,
-              ...(!achievement.unlocked ? styles.achievementLocked : {}),
-            }}
-          >
-            <View style={{ position: 'relative' }}>
+          <View key={achievement.id} style={styles.medalWrapper}>
+            <View
+              style={[
+                styles.medal,
+                achievement.unlocked ? styles.medalUnlocked : styles.medalLocked,
+              ]}
+            >
               <Ionicons
                 name={achievement.icon}
                 size={28}
                 color={achievement.unlocked ? Colors.accent : Colors.textDim}
-                style={!achievement.unlocked ? { opacity: 0.3 } : undefined}
+                style={!achievement.unlocked ? { opacity: 0.4 } : undefined}
               />
               {!achievement.unlocked ? (
-                <View style={styles.lockOverlay}>
+                <View style={styles.medalLockOverlay}>
                   <Ionicons name="lock-closed" size={10} color={Colors.textDim} />
                 </View>
               ) : null}
             </View>
             <Text
               style={[
-                styles.achievementName,
+                styles.medalName,
                 !achievement.unlocked && { color: Colors.textDim },
               ]}
               numberOfLines={1}
             >
               {achievement.name}
             </Text>
-            <Text style={styles.achievementDesc} numberOfLines={2}>
-              {achievement.description}
-            </Text>
-          </GlassCard>
+          </View>
         ))}
       </View>
     </View>
   );
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// GAMIFICATION / SKILLS TAB
+// ═══════════════════════════════════════════════════════════════════════════════
 
 interface GamificationTabProps {
   userId: Id<'users'>;
@@ -599,21 +725,35 @@ function GamificationTab({ userId, progress }: GamificationTabProps) {
 
   return (
     <View style={styles.tabContent}>
-      <Text style={styles.skillTreeTitle}>Skill Tree</Text>
+      <Text style={styles.sectionTitle}>Skill Tree</Text>
       {categories.map((cat) => {
         const catSkills = skills.filter((s) => s.category === cat);
+        const catColor = categoryColors[cat];
         return (
-          <GlassCard key={cat}>
-            <Text style={[styles.skillCategoryTitle, { color: categoryColors[cat] }]}>
-              {cat.charAt(0).toUpperCase() + cat.slice(1)}
-            </Text>
+          <GradientCard key={cat}>
+            {/* Category header with color bar */}
+            <View style={styles.skillCatHeader}>
+              <View style={[styles.skillCatBar, { backgroundColor: catColor }]} />
+              <Text style={[styles.skillCatTitle, { color: catColor }]}>
+                {cat.charAt(0).toUpperCase() + cat.slice(1)}
+              </Text>
+            </View>
             <View style={styles.skillList}>
               {catSkills.map((skill) => (
                 <View
                   key={skill.id}
-                  style={[styles.skillItem, skill.unlocked && styles.skillItemUnlocked]}
+                  style={[
+                    styles.skillCard,
+                    skill.unlocked ? styles.skillCardUnlocked : styles.skillCardLocked,
+                  ]}
                 >
-                  <Ionicons name={skill.icon} size={20} color={skill.unlocked ? categoryColors[cat] : Colors.textMuted} />
+                  <View style={[styles.skillIconWrap, { backgroundColor: skill.unlocked ? `${catColor}20` : Colors.surfaceLight }]}>
+                    <Ionicons
+                      name={skill.icon}
+                      size={20}
+                      color={skill.unlocked ? catColor : Colors.textMuted}
+                    />
+                  </View>
                   <View style={styles.skillInfo}>
                     <Text
                       style={[
@@ -626,21 +766,28 @@ function GamificationTab({ userId, progress }: GamificationTabProps) {
                     <Text style={styles.skillDesc}>{skill.description}</Text>
                   </View>
                   {skill.unlocked ? (
-                    <Ionicons name="checkmark-circle" size={20} color={Colors.success} />
+                    <Ionicons name="checkmark-circle" size={22} color={Colors.success} />
                   ) : (
-                    <Text style={styles.skillCost}>{skill.xpCost} XP</Text>
+                    <View style={styles.skillCostBadge}>
+                      <Text style={styles.skillCostText}>{skill.xpCost} XP</Text>
+                    </View>
                   )}
                 </View>
               ))}
             </View>
-          </GlassCard>
+          </GradientCard>
         );
       })}
     </View>
   );
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// STYLES
+// ═══════════════════════════════════════════════════════════════════════════════
+
 const styles = StyleSheet.create({
+  // ── Layout ──
   container: {
     flex: 1,
     backgroundColor: Colors.background,
@@ -659,13 +806,9 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.md,
   },
   title: {
-    fontSize: FontSize['2xl'],
-    fontWeight: '800',
+    fontSize: FontSize['3xl'],
+    fontFamily: FontFamily.extrabold,
     color: Colors.foreground,
-  },
-  tabContainer: {
-    paddingHorizontal: Spacing.xl,
-    marginBottom: Spacing.md,
   },
   scrollView: {
     flex: 1,
@@ -676,108 +819,161 @@ const styles = StyleSheet.create({
   tabContent: {
     gap: Spacing.lg,
   },
+
+  // ── Tab Chips ──
+  chipContainer: {
+    paddingBottom: Spacing.md,
+  },
+  chipScroll: {
+    paddingHorizontal: Spacing.xl,
+    gap: Spacing.sm,
+  },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: Radius.full,
+  },
+  chipActive: {
+    backgroundColor: Colors.primary,
+  },
+  chipInactive: {
+    backgroundColor: Colors.surfaceLight,
+  },
+  chipText: {
+    fontSize: FontSize.sm,
+  },
+  chipTextActive: {
+    color: '#FFFFFF',
+    fontFamily: FontFamily.semibold,
+  },
+  chipTextInactive: {
+    color: Colors.textMuted,
+    fontFamily: FontFamily.medium,
+  },
+
+  // ── Section title ──
+  sectionTitle: {
+    fontSize: FontSize.lg,
+    fontFamily: FontFamily.bold,
+    color: Colors.foreground,
+  },
   cardTitle: {
     fontSize: FontSize.base,
-    fontWeight: '700',
+    fontFamily: FontFamily.bold,
     color: Colors.foreground,
     marginBottom: Spacing.md,
   },
-  // Boss
-  bossHeader: {
+
+  // ── Boss Card ──
+  bossRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.md,
-    marginBottom: Spacing.md,
   },
-  bossIcon: {
-    width: 32,
+  bossNameRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-  },
-  bossInfo: {
-    flex: 1,
+    gap: Spacing.sm,
+    marginBottom: 2,
   },
   bossName: {
-    fontSize: FontSize.base,
-    fontWeight: '700',
-    color: Colors.foreground,
+    fontSize: FontSize.xl,
+    fontFamily: FontFamily.extrabold,
+    color: Colors.danger,
   },
-  bossStatus: {
+  bossDamageRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'center',
+    marginTop: Spacing.md,
+    gap: 4,
+  },
+  bossDamageNumber: {
+    fontSize: FontSize['3xl'],
+    fontFamily: FontFamily.extrabold,
+  },
+  bossDamageSlash: {
+    fontSize: FontSize.xl,
+    fontFamily: FontFamily.bold,
+    color: Colors.textMuted,
+  },
+  bossDamageLabel: {
+    fontSize: FontSize.sm,
+    fontFamily: FontFamily.semibold,
+    color: Colors.textMuted,
+    marginLeft: 4,
+  },
+
+  // ── Vertical Bar Chart ──
+  barChart: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'flex-end',
+    paddingTop: Spacing.md,
+  },
+  barColumn: {
+    alignItems: 'center',
+    gap: 6,
+    width: 50,
+  },
+  barPercent: {
+    fontSize: FontSize.sm,
+    fontFamily: FontFamily.bold,
+  },
+  barTrack: {
+    width: 50,
+    height: 100,
+    backgroundColor: Colors.surfaceRaised,
+    borderRadius: Radius.sm,
+    justifyContent: 'flex-end',
+    overflow: 'hidden',
+  },
+  barFill: {
+    width: '100%',
+    borderRadius: Radius.sm,
+  },
+  barLabel: {
     fontSize: FontSize.xs,
+    fontFamily: FontFamily.semibold,
     color: Colors.textSecondary,
   },
-  // Summary
-  summaryGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  summaryItem: {
-    width: '50%',
-    alignItems: 'center',
-    paddingVertical: Spacing.md,
-  },
-  summaryValue: {
-    fontSize: FontSize.xl,
-    fontWeight: '800',
-    color: Colors.foreground,
-  },
-  summaryLabel: {
-    fontSize: FontSize.xs,
-    color: Colors.textMuted,
-    marginTop: 2,
-  },
-  // Categories
-  categoryList: {
-    gap: Spacing.md,
-  },
-  categoryRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-  },
-  categoryLabel: {
-    width: 60,
-    fontSize: FontSize.sm,
-    fontWeight: '600',
-  },
-  categoryBarContainer: {
-    flex: 1,
-  },
-  categoryPercent: {
-    width: 36,
-    textAlign: 'right',
-    fontSize: FontSize.sm,
-    fontWeight: '700',
-    color: Colors.foreground,
-  },
-  // Heat map
+
+  // ── Heatmap ──
   heatMap: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 3,
+    gap: 4,
   },
   heatWeek: {
-    gap: 3,
+    gap: 4,
   },
   heatCell: {
-    width: 14,
-    height: 14,
-    borderRadius: 3,
+    width: 18,
+    height: 18,
+    borderRadius: Radius.xs,
+  },
+  heatCellToday: {
+    borderWidth: 2,
+    borderColor: Colors.primary,
   },
   heatLegend: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
+    gap: 6,
     marginTop: Spacing.md,
   },
   heatLegendText: {
     fontSize: 10,
     color: Colors.textDim,
+    fontFamily: FontFamily.medium,
   },
-  heatLegendCell: {
+  heatLegendDot: {
     width: 12,
     height: 12,
-    borderRadius: 2,
+    borderRadius: 6,
   },
   heatMonthRow: {
     flexDirection: 'row',
@@ -787,126 +983,140 @@ const styles = StyleSheet.create({
     position: 'absolute',
     fontSize: 10,
     color: Colors.textDim,
+    fontFamily: FontFamily.medium,
   },
   heatDayLabels: {
-    gap: 3,
+    gap: 4,
     marginRight: 4,
     justifyContent: 'center',
   },
   heatDayLabel: {
-    height: 14,
+    height: 18,
     fontSize: 10,
     color: Colors.textDim,
-    lineHeight: 14,
+    lineHeight: 18,
     textAlign: 'right',
-    width: 14,
+    width: 18,
+    fontFamily: FontFamily.medium,
   },
-  placeholderText: {
-    fontSize: FontSize.sm,
-    color: Colors.textSecondary,
-    textAlign: 'center',
-    padding: Spacing.lg,
-  },
-  // Achievements
-  achievementHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: Spacing.md,
-  },
-  achievementCount: {
-    fontSize: FontSize.sm,
-    fontWeight: '700',
-    color: Colors.accent,
-    minWidth: 80,
-  },
-  achievementGrid: {
+
+  // ── Achievements: Circular Medals ──
+  medalGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: Spacing.sm,
+    justifyContent: 'center',
+    gap: Spacing.lg,
   },
-  achievementCard: {
-    width: '48%',
+  medalWrapper: {
     alignItems: 'center',
-    padding: Spacing.md,
+    width: 80,
   },
-  achievementLocked: {
-    opacity: 0.6,
+  medal: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
   },
-  achievementIcon: {
-    marginBottom: Spacing.xs,
+  medalUnlocked: {
+    backgroundColor: Colors.surfaceRaised,
+    borderWidth: 2,
+    borderColor: Colors.accent,
+    ...Shadows.glow(Colors.accentGlow, 0.5),
   },
-  lockOverlay: {
+  medalLocked: {
+    backgroundColor: Colors.surfaceLight,
+    borderWidth: 2,
+    borderColor: Colors.textDim,
+    borderStyle: 'dashed',
+  },
+  medalLockOverlay: {
     position: 'absolute',
     bottom: -2,
-    right: -4,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
+    right: -2,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
     backgroundColor: Colors.surfaceLight,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
-  achievementName: {
-    fontSize: FontSize.sm,
-    fontWeight: '700',
-    color: Colors.foreground,
-    textAlign: 'center',
-  },
-  achievementDesc: {
+  medalName: {
     fontSize: FontSize.xs,
-    color: Colors.textMuted,
-    textAlign: 'center',
-    marginTop: 2,
-  },
-  // Skills
-  skillTreeTitle: {
-    fontSize: FontSize.lg,
-    fontWeight: '700',
+    fontFamily: FontFamily.semibold,
     color: Colors.foreground,
+    textAlign: 'center',
   },
-  skillCategoryTitle: {
-    fontSize: FontSize.base,
-    fontWeight: '700',
+
+  // ── Skills / Gamification ──
+  skillCatHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
     marginBottom: Spacing.md,
+  },
+  skillCatBar: {
+    width: 4,
+    height: 20,
+    borderRadius: 2,
+  },
+  skillCatTitle: {
+    fontSize: FontSize.base,
+    fontFamily: FontFamily.bold,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
   skillList: {
     gap: Spacing.sm,
   },
-  skillItem: {
+  skillCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.md,
-    padding: Spacing.sm,
-    borderRadius: Radius.md,
+    padding: Spacing.md,
+    borderRadius: Radius.lg,
+  },
+  skillCardUnlocked: {
+    backgroundColor: Colors.surfaceRaised,
+    borderWidth: 1,
+    borderColor: Colors.borderStrong,
+  },
+  skillCardLocked: {
     backgroundColor: Colors.surfaceLight,
     opacity: 0.6,
   },
-  skillItemUnlocked: {
-    opacity: 1,
-    borderWidth: 1,
-    borderColor: Colors.glassBorder,
-  },
-  skillIcon: {
-    width: 20,
+  skillIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   skillInfo: {
     flex: 1,
   },
   skillName: {
     fontSize: FontSize.sm,
-    fontWeight: '600',
+    fontFamily: FontFamily.semibold,
     color: Colors.foreground,
   },
   skillDesc: {
     fontSize: FontSize.xs,
     color: Colors.textMuted,
+    marginTop: 2,
   },
-  skillCost: {
+  skillCostBadge: {
+    backgroundColor: Colors.accentBg,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 3,
+    borderRadius: Radius.full,
+  },
+  skillCostText: {
     fontSize: FontSize.xs,
-    fontWeight: '700',
+    fontFamily: FontFamily.bold,
     color: Colors.accent,
   },
 });

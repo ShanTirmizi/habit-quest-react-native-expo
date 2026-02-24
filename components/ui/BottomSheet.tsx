@@ -12,7 +12,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Colors, Radius, Spacing, FontSize } from '@/constants/theme';
+import { Colors, Radius, Spacing, FontSize, FontFamily } from '@/constants/theme';
 
 interface BottomSheetProps {
   visible: boolean;
@@ -97,7 +97,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: Radius['2xl'],
     borderWidth: 1,
     borderBottomWidth: 0,
-    borderColor: Colors.glassBorder,
+    borderColor: Colors.border,
     maxHeight: SCREEN_HEIGHT * 0.85,
     paddingTop: Spacing.sm,
     paddingHorizontal: Spacing.xl,
@@ -106,13 +106,13 @@ const styles = StyleSheet.create({
     width: 36,
     height: 4,
     borderRadius: 2,
-    backgroundColor: Colors.borderLight,
+    backgroundColor: Colors.textDim,
     alignSelf: 'center',
     marginBottom: Spacing.lg,
   },
   title: {
     fontSize: FontSize.lg,
-    fontWeight: '700',
+    fontFamily: FontFamily.bold,
     color: Colors.foreground,
     marginBottom: Spacing.lg,
   },

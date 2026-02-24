@@ -10,7 +10,7 @@ import Animated, {
   withDelay,
   runOnJS,
 } from 'react-native-reanimated';
-import { Colors, FontSize } from '@/constants/theme';
+import { Colors, FontSize, FontFamily, Spacing } from '@/constants/theme';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -158,12 +158,12 @@ const styles = StyleSheet.create({
   },
   levelNumber: {
     fontSize: 48,
-    fontWeight: '900',
+    fontFamily: FontFamily.extrabold,
     color: Colors.primary,
   },
   levelUpText: {
     fontSize: FontSize['4xl'],
-    fontWeight: '900',
+    fontFamily: FontFamily.extrabold,
     color: Colors.accent,
     textAlign: 'center',
   },

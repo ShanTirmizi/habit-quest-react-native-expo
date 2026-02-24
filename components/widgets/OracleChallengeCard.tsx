@@ -6,7 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import type { Id } from '@/convex/_generated/dataModel';
-import { Colors, FontSize, Spacing, Radius } from '@/constants/theme';
+import { Colors, FontSize, Spacing, Radius, FontFamily } from '@/constants/theme';
 import { Button } from '@/components/ui/Button';
 import { useToast } from '@/contexts/toast-context';
 
@@ -90,8 +90,8 @@ export function OracleChallengeCard({ userId }: OracleChallengeCardProps) {
 
   if (challenge === undefined) return null;
 
-  const isAccepted = challenge.status === 'accepted';
-  const isPending = challenge.status === 'pending';
+  const isAccepted = challenge.accepted && !challenge.completed;
+  const isPending = !challenge.accepted && !challenge.completed;
 
   return (
     <View style={styles.wrapper}>
@@ -107,12 +107,14 @@ export function OracleChallengeCard({ userId }: OracleChallengeCardProps) {
           <Text style={styles.title}>Oracle Challenge</Text>
           <Text style={styles.xpBadge}>+{challenge.xpReward} XP</Text>
         </View>
-        <Text style={styles.challengeText}>{challenge.description}</Text>
+        <Text style={styles.challengeText}>{challenge.challengeText}</Text>
         <View style={styles.actions}>
           {isPending ? (
             <>
               <Button title="Accept" onPress={handleAccept} size="sm" />
-              <Button title="Dismiss" onPress={handleDismiss} size="sm" variant="ghost" />
+              {!challenge.accepted && (
+                <Button title="Dismiss" onPress={handleDismiss} size="sm" variant="ghost" />
+              )}
             </>
           ) : isAccepted ? (
             <Button title="Complete" onPress={handleComplete} size="sm" />
@@ -142,14 +144,14 @@ const styles = StyleSheet.create({
   title: {
     flex: 1,
     fontSize: FontSize.sm,
-    fontWeight: '700',
+    fontFamily: FontFamily.bold,
     color: Colors.categoryMind,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   xpBadge: {
     fontSize: FontSize.xs,
-    fontWeight: '800',
+    fontFamily: FontFamily.extrabold,
     color: Colors.primary,
   },
   description: {

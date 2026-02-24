@@ -1,6 +1,6 @@
 import React, { forwardRef } from 'react';
 import { TextInput, View, Text, StyleSheet, ViewStyle, TextInputProps } from 'react-native';
-import { Colors, Radius, FontSize, Spacing } from '@/constants/theme';
+import { Colors, Radius, FontSize, Spacing, FontFamily } from '@/constants/theme';
 
 interface InputProps extends TextInputProps {
   label?: string;
@@ -31,19 +31,20 @@ Input.displayName = 'Input';
 const styles = StyleSheet.create({
   label: {
     fontSize: FontSize.sm,
-    fontWeight: '600',
+    fontFamily: FontFamily.semibold,
     color: Colors.textSecondary,
     marginBottom: Spacing.xs,
   },
   input: {
-    backgroundColor: Colors.surfaceLight,
+    backgroundColor: Colors.surface,
     borderWidth: 1,
     borderColor: Colors.border,
-    borderRadius: Radius.md,
+    borderRadius: Radius.lg,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm + 2,
     fontSize: FontSize.base,
     color: Colors.foreground,
+    fontFamily: FontFamily.regular,
   },
   inputError: {
     borderColor: Colors.danger,
@@ -52,5 +53,6 @@ const styles = StyleSheet.create({
     fontSize: FontSize.xs,
     color: Colors.danger,
     marginTop: Spacing.xs,
+    fontFamily: FontFamily.regular,
   },
 });

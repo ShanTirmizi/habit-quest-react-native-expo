@@ -10,7 +10,7 @@ import Animated, {
   withTiming,
   runOnJS,
 } from 'react-native-reanimated';
-import { Colors, FontSize, Spacing, Radius } from '@/constants/theme';
+import { Colors, FontSize, Spacing, Radius, FontFamily, Shadows } from '@/constants/theme';
 import { useToast, type ToastType } from '@/contexts/toast-context';
 
 const ICON_MAP: Record<ToastType, keyof typeof Ionicons.glyphMap> = {
@@ -102,21 +102,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.md,
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.lg,
+    backgroundColor: Colors.surfaceLight,
+    borderRadius: Radius.xl,
     borderWidth: 1,
-    borderColor: Colors.glassBorder,
+    borderColor: Colors.border,
     paddingVertical: Spacing.md,
     paddingHorizontal: Spacing.lg,
+    ...Shadows.cardRaised,
   },
   message: {
     flex: 1,
     fontSize: FontSize.sm,
-    fontWeight: '600',
+    fontFamily: FontFamily.semibold,
     color: Colors.foreground,
   },
   xp: {
     fontSize: FontSize.base,
-    fontWeight: '800',
+    fontFamily: FontFamily.extrabold,
   },
 });

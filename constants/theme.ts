@@ -1,73 +1,84 @@
-// Sanctuary Dark Theme - HabitQuest Design System
+// HabitQuest — Radical Design System
+// Dark midnight-blue base, electric accents, bento grid layout, oversized metrics
+
 export const Colors = {
-  // Core
-  background: '#06060A',
-  surface: '#0F0F14',
-  surfaceLight: '#1A1A22',
-  surfaceHover: '#22222E',
-  border: '#2A2A36',
-  borderLight: '#3A3A48',
+  // Backgrounds — midnight blue undertone
+  background: '#060810',
+  surface: '#0D1117',
+  surfaceLight: '#161B22',
+  surfaceRaised: '#1C2333',
+  surfaceHover: '#242D3D',
 
-  // Primary (Teal)
-  primary: '#00E5CC',
-  primaryDim: '#00B8A3',
-  primaryGlow: 'rgba(0, 229, 204, 0.4)',
-  primaryBg: 'rgba(0, 229, 204, 0.08)',
-  primaryBgHover: 'rgba(0, 229, 204, 0.15)',
+  // Primary — electric orange
+  primary: '#FF6B2C',
+  primaryDim: '#CC5520',
+  primaryGlow: 'rgba(255, 107, 44, 0.40)',
+  primaryBg: 'rgba(255, 107, 44, 0.12)',
+  primaryBgHover: 'rgba(255, 107, 44, 0.20)',
 
-  // Accent (Amber)
+  // Secondary — neon cyan (for contrast emphasis)
+  secondary: '#00E5CC',
+  secondaryDim: '#00B8A3',
+  secondaryGlow: 'rgba(0, 229, 204, 0.35)',
+  secondaryBg: 'rgba(0, 229, 204, 0.10)',
+
+  // Gold — XP, achievements, premium moments (more saturated)
   accent: '#FFB800',
-  accentDim: '#CC9300',
-  accentGlow: 'rgba(255, 184, 0, 0.4)',
-  accentBg: 'rgba(255, 184, 0, 0.08)',
+  accentDim: '#D49A00',
+  accentGlow: 'rgba(255, 184, 0, 0.40)',
+  accentBg: 'rgba(255, 184, 0, 0.10)',
 
-  // Text
-  foreground: '#FAFAFA',
-  textSecondary: '#A1A1AA',
-  textMuted: '#71717A',
-  textDim: '#52525B',
+  // Text — cool off-whites
+  foreground: '#E6EDF3',
+  textSecondary: '#8B949E',
+  textMuted: '#484F58',
+  textDim: '#30363D',
 
-  // Category Colors
-  categoryHealth: '#00FF88',
-  categoryCareer: '#4D9FFF',
-  categoryMind: '#B366FF',
-  categoryLife: '#FFB800',
+  // Categories — vivid
+  categoryHealth: '#00E676',
+  categoryCareer: '#448AFF',
+  categoryMind: '#B388FF',
+  categoryLife: '#FFD740',
 
   // Category Backgrounds
-  categoryHealthBg: 'rgba(0, 255, 136, 0.08)',
-  categoryCareerBg: 'rgba(77, 159, 255, 0.08)',
-  categoryMindBg: 'rgba(179, 102, 255, 0.08)',
-  categoryLifeBg: 'rgba(255, 184, 0, 0.08)',
+  categoryHealthBg: 'rgba(0, 230, 118, 0.10)',
+  categoryCareerBg: 'rgba(68, 138, 255, 0.10)',
+  categoryMindBg: 'rgba(179, 136, 255, 0.10)',
+  categoryLifeBg: 'rgba(255, 215, 64, 0.10)',
 
   // Rarity
-  rarityCommon: '#9CA3AF',
-  rarityUncommon: '#4ADE80',
-  rarityRare: '#60A5FA',
-  rarityEpic: '#A78BFA',
-  rarityLegendary: '#FBBF24',
+  rarityCommon: '#8B949E',
+  rarityUncommon: '#00E676',
+  rarityRare: '#448AFF',
+  rarityEpic: '#B388FF',
+  rarityLegendary: '#FFB800',
 
-  // Status Colors
-  success: '#22C55E',
-  warning: '#F59E0B',
-  danger: '#EF4444',
-  info: '#3B82F6',
+  // Status
+  success: '#00E676',
+  warning: '#FFB800',
+  danger: '#FF6B6B',
+  info: '#448AFF',
 
-  // HP Colors
-  hpHigh: '#22C55E',
-  hpMedium: '#F59E0B',
-  hpLow: '#EF4444',
-  hpCritical: '#DC2626',
+  // HP
+  hpHigh: '#00E676',
+  hpMedium: '#FFB800',
+  hpLow: '#FF6B6B',
+  hpCritical: '#FF4444',
 
-  // Mood Colors
-  moodGreat: '#FBBF24',
-  moodGood: '#4ADE80',
-  moodOkay: '#60A5FA',
-  moodRough: '#9CA3AF',
+  // Mood
+  moodGreat: '#FFB800',
+  moodGood: '#00E676',
+  moodOkay: '#448AFF',
+  moodRough: '#8B949E',
+
+  // Borders
+  border: 'rgba(255, 255, 255, 0.06)',
+  borderStrong: 'rgba(255, 255, 255, 0.12)',
+  glassBorder: 'rgba(255, 255, 255, 0.06)',
 
   // Misc
-  overlay: 'rgba(0, 0, 0, 0.6)',
-  glass: 'rgba(15, 15, 20, 0.8)',
-  glassBorder: 'rgba(255, 255, 255, 0.06)',
+  overlay: 'rgba(0, 0, 0, 0.75)',
+  glass: 'rgba(13, 17, 23, 0.92)',
 } as const;
 
 // Category color mapping
@@ -85,6 +96,14 @@ export const CATEGORY_BG_COLORS: Record<string, string> = {
   life: Colors.categoryLifeBg,
 };
 
+// Category gradient pairs for gradient cards
+export const CATEGORY_GRADIENTS: Record<string, [string, string]> = {
+  health: ['#00E676', '#00C853'],
+  career: ['#448AFF', '#2962FF'],
+  mind: ['#B388FF', '#7C4DFF'],
+  life: ['#FFD740', '#FFAB00'],
+};
+
 export const RARITY_COLORS: Record<string, string> = {
   common: Colors.rarityCommon,
   uncommon: Colors.rarityUncommon,
@@ -93,37 +112,85 @@ export const RARITY_COLORS: Record<string, string> = {
   legendary: Colors.rarityLegendary,
 };
 
-// Spacing scale
+// Font Family — Sora (geometric, modern)
+export const FontFamily = {
+  regular: 'Sora_400Regular',
+  medium: 'Sora_500Medium',
+  semibold: 'Sora_600SemiBold',
+  bold: 'Sora_700Bold',
+  extrabold: 'Sora_800ExtraBold',
+} as const;
+
+// Spacing
 export const Spacing = {
   xs: 4,
   sm: 8,
-  md: 12,
-  lg: 16,
-  xl: 20,
-  '2xl': 24,
-  '3xl': 32,
-  '4xl': 40,
-  '5xl': 48,
+  md: 14,
+  lg: 20,
+  xl: 28,
+  '2xl': 36,
+  '3xl': 48,
+  '4xl': 64,
+  '5xl': 80,
 } as const;
 
-// Font sizes
+// Font sizes — with oversized metric sizes
 export const FontSize = {
   xs: 11,
   sm: 13,
   base: 15,
-  lg: 17,
-  xl: 20,
-  '2xl': 24,
-  '3xl': 30,
-  '4xl': 36,
+  lg: 18,
+  xl: 22,
+  '2xl': 28,
+  '3xl': 36,
+  '4xl': 48,
+  '5xl': 64,
+  '6xl': 80,
 } as const;
 
 // Border radius
 export const Radius = {
-  sm: 6,
-  md: 10,
-  lg: 14,
-  xl: 18,
-  '2xl': 24,
+  xs: 6,
+  sm: 10,
+  md: 14,
+  lg: 18,
+  xl: 24,
+  '2xl': 32,
   full: 9999,
+} as const;
+
+// Bento grid constants
+export const BentoGap = 14;
+export const BentoRadius = 20;
+
+// Shadow presets
+export const Shadows = {
+  card: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  cardRaised: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.35,
+    shadowRadius: 24,
+    elevation: 8,
+  },
+  glow: (color: string, intensity = 0.35) => ({
+    shadowColor: color,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: intensity,
+    shadowRadius: 20,
+    elevation: 8,
+  }),
+  neonGlow: (color: string) => ({
+    shadowColor: color,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 24,
+    elevation: 10,
+  }),
 } as const;

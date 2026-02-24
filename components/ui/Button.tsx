@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pressable, Text, StyleSheet, ViewStyle, ActivityIndicator } from 'react-native';
-import { Colors, Radius, FontSize, Spacing } from '@/constants/theme';
+import { Colors, Radius, FontSize, Spacing, FontFamily } from '@/constants/theme';
 
 interface ButtonProps {
   title: string;
@@ -64,7 +64,7 @@ const VARIANT_STYLES = {
     container: {
       backgroundColor: Colors.primary,
     },
-    textColor: Colors.background,
+    textColor: '#FFFFFF',
   },
   secondary: {
     container: {
@@ -125,14 +125,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: Radius.md,
+    borderRadius: Radius.lg,
     gap: Spacing.sm,
   },
   fullWidth: {
     width: '100%',
   },
   text: {
-    fontWeight: '600',
+    fontFamily: FontFamily.semibold,
   },
   pressed: {
     opacity: 0.85,

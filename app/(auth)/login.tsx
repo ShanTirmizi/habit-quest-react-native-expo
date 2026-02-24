@@ -11,9 +11,10 @@ import {
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { makeRedirectUri } from 'expo-auth-session';
 import { openAuthSessionAsync } from 'expo-web-browser';
-import { Colors, FontSize, Spacing, Radius } from '@/constants/theme';
+import { Colors, FontSize, Spacing, Radius, FontFamily, Shadows } from '@/constants/theme';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/contexts/auth-context';
@@ -63,7 +64,6 @@ export default function LoginScreen() {
     try {
       const { redirect } = await signIn('google', { redirectTo });
       if (Platform.OS === 'web') {
-        // Web handles redirect automatically
         return;
       }
       if (redirect) {
@@ -99,7 +99,13 @@ export default function LoginScreen() {
         {/* Hero */}
         <View style={styles.hero}>
           <View style={styles.logoContainer}>
-            <Ionicons name="shield-half" size={32} color={Colors.primary} />
+            <LinearGradient
+              colors={[Colors.primaryBg, 'transparent']}
+              style={StyleSheet.absoluteFill}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            />
+            <Ionicons name="shield-half" size={36} color={Colors.primary} />
           </View>
           <Text style={styles.appName}>HabitQuest</Text>
           <Text style={styles.tagline}>Level up your life, one habit at a time</Text>
@@ -136,15 +142,16 @@ export default function LoginScreen() {
             containerStyle={{ marginTop: Spacing.md }}
           />
 
-          <Button
-            title={mode === 'login' ? 'Sign In' : 'Create Account'}
-            onPress={handleEmailAuth}
-            loading={loading}
-            disabled={!email || !password}
-            fullWidth
-            size="lg"
-            style={{ marginTop: Spacing.xl }}
-          />
+          <View style={styles.mainButtonWrap}>
+            <Button
+              title={mode === 'login' ? 'Sign In' : 'Create Account'}
+              onPress={handleEmailAuth}
+              loading={loading}
+              disabled={!email || !password}
+              fullWidth
+              size="lg"
+            />
+          </View>
 
           {/* Divider */}
           <View style={styles.divider}>
@@ -183,10 +190,12 @@ export default function LoginScreen() {
           {([
             { icon: 'flame' as const, color: Colors.accent, text: 'Track habits & build streaks' },
             { icon: 'shield' as const, color: Colors.primary, text: 'Defeat weekly bosses' },
-            { icon: 'analytics' as const, color: Colors.info, text: 'AI-powered insights' },
+            { icon: 'compass' as const, color: Colors.secondary, text: 'AI-powered insights' },
           ]).map((f, i) => (
             <View key={i} style={styles.featureItem}>
-              <Ionicons name={f.icon} size={18} color={f.color} />
+              <View style={[styles.featureIcon, { backgroundColor: f.color + '15' }]}>
+                <Ionicons name={f.icon} size={16} color={f.color} />
+              </View>
               <Text style={styles.featureText}>{f.text}</Text>
             </View>
           ))}
@@ -211,28 +220,36 @@ const styles = StyleSheet.create({
     marginBottom: Spacing['3xl'],
   },
   logoContainer: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: Colors.primaryBg,
-    borderWidth: 2,
-    borderColor: Colors.primary,
+    width: 80,
+    height: 80,
+    borderRadius: 24,
+    backgroundColor: Colors.surfaceRaised,
+    borderWidth: 1,
+    borderColor: Colors.primaryGlow,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: Spacing.lg,
+    overflow: 'hidden',
+    ...Shadows.glow(Colors.primary, 0.25),
   },
   appName: {
-    fontSize: FontSize['3xl'],
-    fontWeight: '900',
+    fontSize: FontSize['4xl'],
+    fontFamily: FontFamily.extrabold,
     color: Colors.foreground,
-    letterSpacing: -0.5,
+    letterSpacing: -1,
   },
   tagline: {
     fontSize: FontSize.sm,
+    fontFamily: FontFamily.medium,
     color: Colors.textSecondary,
     marginTop: Spacing.xs,
   },
   form: {},
+  mainButtonWrap: {
+    marginTop: Spacing.xl,
+    ...Shadows.glow(Colors.primary, 0.2),
+    borderRadius: Radius.md,
+  },
   divider: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -246,6 +263,7 @@ const styles = StyleSheet.create({
   dividerText: {
     color: Colors.textMuted,
     fontSize: FontSize.sm,
+    fontFamily: FontFamily.medium,
     marginHorizontal: Spacing.md,
   },
   oauthBtn: {
@@ -256,12 +274,12 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surfaceLight,
     borderWidth: 1,
     borderColor: Colors.border,
-    borderRadius: Radius.md,
+    borderRadius: Radius.lg,
     paddingVertical: Spacing.md,
   },
   oauthText: {
     fontSize: FontSize.base,
-    fontWeight: '600',
+    fontFamily: FontFamily.semibold,
     color: Colors.foreground,
   },
   toggleRow: {
@@ -274,10 +292,11 @@ const styles = StyleSheet.create({
   toggleText: {
     fontSize: FontSize.sm,
     color: Colors.textSecondary,
+    fontFamily: FontFamily.regular,
   },
   toggleLink: {
     fontSize: FontSize.sm,
-    fontWeight: '700',
+    fontFamily: FontFamily.bold,
     color: Colors.primary,
   },
   features: {
@@ -289,8 +308,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.md,
   },
+  featureIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   featureText: {
     fontSize: FontSize.sm,
+    fontFamily: FontFamily.medium,
     color: Colors.textSecondary,
   },
 });

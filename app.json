@@ -11,7 +11,7 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#06060A"
+      "backgroundColor": "#060810"
     },
     "ios": {
       "supportsTablet": true,
@@ -23,7 +23,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#06060A"
+        "backgroundColor": "#060810"
       },
       "edgeToEdgeEnabled": true,
       "package": "com.habitquest.app"

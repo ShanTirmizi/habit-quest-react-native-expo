@@ -10,6 +10,7 @@
 
 import type * as auth from "../auth.js";
 import type * as chat from "../chat.js";
+import type * as coaching from "../coaching.js";
 import type * as companions from "../companions.js";
 import type * as goals from "../goals.js";
 import type * as habits from "../habits.js";
@@ -31,6 +32,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   chat: typeof chat;
+  coaching: typeof coaching;
   companions: typeof companions;
   goals: typeof goals;
   habits: typeof habits;

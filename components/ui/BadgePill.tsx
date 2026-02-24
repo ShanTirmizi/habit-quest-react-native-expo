@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Radius, FontSize, Spacing } from '@/constants/theme';
+import { Colors, Radius, FontSize, Spacing, FontFamily } from '@/constants/theme';
 
 interface BadgePillProps {
   label: string;
@@ -64,6 +64,6 @@ const styles = StyleSheet.create({
     marginRight: 2,
   },
   label: {
-    fontWeight: '600',
+    fontFamily: FontFamily.semibold,
   },
 });
