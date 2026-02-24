@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, Pressable, Alert, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { format, parseISO } from 'date-fns';
-import { Colors, FontSize, Spacing, Radius } from '@/constants/theme';
+import { Colors, FontSize, Spacing, Radius, FontFamily } from '@/constants/theme';
 import { CATEGORY_COLORS } from '@/constants/theme';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
@@ -217,7 +217,7 @@ const styles = StyleSheet.create({
   },
   statValue: {
     fontSize: FontSize.lg,
-    fontWeight: '800',
+    fontFamily: FontFamily.extrabold,
     color: Colors.foreground,
   },
   statLabel: {
@@ -226,7 +226,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: FontSize.sm,
-    fontWeight: '700',
+    fontFamily: FontFamily.bold,
     color: Colors.textSecondary,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -240,7 +240,7 @@ const styles = StyleSheet.create({
     color: Colors.foreground,
   },
   intentionLabel: {
-    fontWeight: '700',
+    fontFamily: FontFamily.bold,
     color: Colors.primary,
   },
   rationaleSection: {

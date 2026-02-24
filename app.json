@@ -11,11 +11,12 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#06060A"
+      "backgroundColor": "#060810"
     },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.habitquest.app",
+      "usesAppleSignIn": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -23,7 +24,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#06060A"
+        "backgroundColor": "#060810"
       },
       "edgeToEdgeEnabled": true,
       "package": "com.habitquest.app"
@@ -36,7 +37,14 @@
       "expo-router",
       "expo-secure-store",
       "expo-web-browser",
-      "expo-font"
+      "expo-font",
+      "expo-apple-authentication",
+      [
+        "expo-notifications",
+        {
+          "color": "#FF6B2C"
+        }
+      ]
     ],
     "extra": {
       "router": {},

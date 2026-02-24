@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, FontSize, Spacing, Radius } from '@/constants/theme';
+import { Colors, FontSize, Spacing, Radius, FontFamily } from '@/constants/theme';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { HealthBar } from './HealthBar';
@@ -116,12 +116,12 @@ const styles = StyleSheet.create({
   },
   levelNumber: {
     fontSize: FontSize.lg,
-    fontWeight: '800',
+    fontFamily: FontFamily.extrabold,
     color: Colors.primary,
   },
   levelLabel: {
     fontSize: FontSize.sm,
-    fontWeight: '700',
+    fontFamily: FontFamily.bold,
     color: Colors.foreground,
   },
   xpTotal: {
@@ -137,7 +137,7 @@ const styles = StyleSheet.create({
   },
   statValue: {
     fontSize: FontSize.base,
-    fontWeight: '700',
+    fontFamily: FontFamily.bold,
     color: Colors.foreground,
   },
   statLabel: {
@@ -153,7 +153,7 @@ const styles = StyleSheet.create({
   },
   progressLabel: {
     fontSize: FontSize.xs,
-    fontWeight: '600',
+    fontFamily: FontFamily.semibold,
     color: Colors.textSecondary,
   },
   progressText: {
@@ -170,7 +170,7 @@ const styles = StyleSheet.create({
   },
   completionText: {
     fontSize: FontSize.xs,
-    fontWeight: '700',
+    fontFamily: FontFamily.bold,
     color: Colors.accent,
     minWidth: 60,
     textAlign: 'right',

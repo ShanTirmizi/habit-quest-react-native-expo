@@ -1,5 +1,14 @@
-import React, { useEffect, useCallback, useState } from 'react';
-import { View, Text, StyleSheet, TextInput, Pressable } from 'react-native';
+import React, { useEffect, useCallback, useState, useRef } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  Pressable,
+  ScrollView,
+  ActivityIndicator,
+  Keyboard,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import Animated, {
@@ -12,7 +21,7 @@ import Animated, {
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import type { Id } from '@/convex/_generated/dataModel';
-import { Colors, FontSize, Spacing, Radius } from '@/constants/theme';
+import { Colors, FontSize, Spacing, Radius, FontFamily, Shadows } from '@/constants/theme';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
@@ -39,26 +48,67 @@ const MOOD_EMOJI: Record<string, string> = {
   worried: '😟',
 };
 
+// Local Dr. Sage responses when no AI backend action is available
+const SAGE_RESPONSES = [
+  "Keep up the great work! Every small step counts toward your bigger goals.",
+  "I've noticed your dedication lately. Consistency is the real superpower!",
+  "Remember, progress isn't always linear. You're doing better than you think.",
+  "What a great time to check in! How are you feeling about your habits today?",
+  "Your commitment to self-improvement inspires me. Let's keep this momentum going!",
+  "Sometimes the hardest part is just showing up. And here you are!",
+  "I believe in you. Every habit you build is shaping a stronger version of yourself.",
+  "Take a moment to appreciate how far you've come. You deserve that recognition.",
+  "Challenges are just opportunities in disguise. What's on your mind?",
+  "The fact that you're here, checking in, already says a lot about your character.",
+];
+
+type TabType = 'info' | 'chat';
+
+interface ChatMessage {
+  _id?: string;
+  role: 'user' | 'assistant';
+  content: string;
+  _creationTime?: number;
+}
+
 interface CompanionWidgetProps {
   userId: Id<'users'>;
   completionRate: number;
   currentHp: number;
   maxHp: number;
+  /** When provided, the parent controls sheet visibility externally (e.g. from top bar avatar) */
+  externalVisible?: boolean;
+  onExternalClose?: () => void;
 }
 
-export function CompanionWidget({ userId, completionRate, currentHp, maxHp }: CompanionWidgetProps) {
+export function CompanionWidget({
+  userId,
+  completionRate,
+  currentHp,
+  maxHp,
+  externalVisible,
+  onExternalClose,
+}: CompanionWidgetProps) {
   const { showToast } = useToast();
-  const [showDetail, setShowDetail] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [newName, setNewName] = useState('');
+  const [activeTab, setActiveTab] = useState<TabType>('info');
+  const [chatInput, setChatInput] = useState('');
+  const [isSending, setIsSending] = useState(false);
+  const [localMessages, setLocalMessages] = useState<ChatMessage[]>([]);
+
+  const sessionIdRef = useRef<string>(Date.now().toString());
+  const chatListRef = useRef<ScrollView>(null);
 
   const companion = useQuery(api.companions.getCompanion, { userId });
   const unclaimedGifts = useQuery(api.companions.getUnclaimedGiftsCount, { userId });
+  const recentMessages = useQuery(api.chat.getRecentMessages, { userId, limit: 30 });
 
   const getOrCreateMutation = useMutation(api.companions.getOrCreateCompanion);
   const updateMoodMutation = useMutation(api.companions.updateMood);
   const updateNameMutation = useMutation(api.companions.updateName);
   const claimGiftMutation = useMutation(api.companions.claimGift);
+  const saveMessageMutation = useMutation(api.chat.saveMessage);
 
   // Breathing pulse for gift indicator
   const giftScale = useSharedValue(1);
@@ -86,6 +136,31 @@ export function CompanionWidget({ userId, completionRate, currentHp, maxHp }: Co
       updateMoodMutation({ userId, completionRate, hpCritical }).catch(() => {});
     }
   }, [companion?._id, completionRate, currentHp]);
+
+  // Clear local messages when backend messages update (they are now persisted)
+  useEffect(() => {
+    if (recentMessages) {
+      setLocalMessages([]);
+    }
+  }, [recentMessages?.length]);
+
+  // Use external visibility when provided
+  const isVisible = externalVisible ?? false;
+
+  // Reset session ID and tab when the sheet opens
+  useEffect(() => {
+    if (isVisible) {
+      sessionIdRef.current = Date.now().toString();
+    }
+  }, [isVisible]);
+
+  const handleClose = () => {
+    setEditingName(false);
+    setActiveTab('info');
+    setChatInput('');
+    setLocalMessages([]);
+    onExternalClose?.();
+  };
 
   const handleChooseCompanion = useCallback(async () => {
     try {
@@ -120,21 +195,100 @@ export function CompanionWidget({ userId, completionRate, currentHp, maxHp }: Co
     }
   }, [userId, claimGiftMutation, showToast]);
 
-  // No companion yet
+  const generateSageResponse = useCallback((userMessage: string): string => {
+    // Pick a contextual response based on simple keyword matching, or random fallback
+    const lower = userMessage.toLowerCase();
+    if (lower.includes('help') || lower.includes('struggle') || lower.includes('hard')) {
+      return "I hear you. Struggles are a natural part of growth. What specifically feels challenging right now? Sometimes breaking it down helps.";
+    }
+    if (lower.includes('happy') || lower.includes('great') || lower.includes('awesome') || lower.includes('good')) {
+      return "That's wonderful to hear! Positive momentum is powerful. What's been going well for you?";
+    }
+    if (lower.includes('tired') || lower.includes('exhausted') || lower.includes('burned') || lower.includes('burnout')) {
+      return "Rest is part of the journey, not a detour from it. Consider taking a lighter day today and being gentle with yourself.";
+    }
+    if (lower.includes('habit') || lower.includes('routine') || lower.includes('streak')) {
+      return "Building habits is like building a muscle -- it gets stronger with consistent practice. Even small reps count!";
+    }
+    if (lower.includes('motivation') || lower.includes('motivate') || lower.includes('inspire')) {
+      return "Motivation comes and goes, but discipline stays. That said, reconnecting with your 'why' can reignite that spark. What got you started?";
+    }
+    if (lower.includes('hello') || lower.includes('hi') || lower.includes('hey')) {
+      return "Hello there! Great to see you. How's your quest going today?";
+    }
+    // Random fallback
+    return SAGE_RESPONSES[Math.floor(Math.random() * SAGE_RESPONSES.length)];
+  }, []);
+
+  const handleSendMessage = useCallback(async () => {
+    const text = chatInput.trim();
+    if (!text || isSending) return;
+
+    Keyboard.dismiss();
+    setChatInput('');
+    setIsSending(true);
+
+    const userMsg: ChatMessage = { role: 'user', content: text };
+    setLocalMessages((prev) => [...prev, userMsg]);
+
+    try {
+      // Save user message to backend
+      await saveMessageMutation({
+        userId,
+        role: 'user',
+        content: text,
+        sessionId: sessionIdRef.current,
+      });
+
+      // Generate a local Dr. Sage response
+      const sageReply = generateSageResponse(text);
+      const sageMsg: ChatMessage = { role: 'assistant', content: sageReply };
+      setLocalMessages((prev) => [...prev, sageMsg]);
+
+      // Save the assistant response to backend
+      await saveMessageMutation({
+        userId,
+        role: 'assistant',
+        content: sageReply,
+        sessionId: sessionIdRef.current,
+      });
+
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch {
+      showToast('Failed to send message', undefined, 'error');
+    } finally {
+      setIsSending(false);
+    }
+  }, [chatInput, isSending, userId, saveMessageMutation, generateSageResponse, showToast]);
+
+  // Merge backend messages with any local (optimistic) ones not yet in backend
+  const allMessages: ChatMessage[] = (() => {
+    const backend = recentMessages ?? [];
+    // If local messages exist, they were added after the last backend snapshot.
+    // Once the query refreshes and includes them, localMessages gets cleared.
+    return [...backend, ...localMessages];
+  })();
+
+  // No companion yet -- show summon CTA in the sheet
   if (companion === null) {
     return (
-      <GlassCard onPress={handleChooseCompanion}>
-        <View style={styles.ctaRow}>
+      <BottomSheet visible={isVisible} onClose={handleClose} title="Dr. Sage">
+        <View style={styles.ctaContent}>
           <View style={styles.ctaIconCircle}>
-            <Ionicons name="paw" size={20} color={Colors.primary} />
+            <Ionicons name="paw" size={40} color={Colors.primary} />
           </View>
-          <View style={styles.ctaContent}>
-            <Text style={styles.ctaTitle}>Choose Your Companion</Text>
-            <Text style={styles.ctaSubtitle}>A loyal friend to join your quest</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={18} color={Colors.textDim} />
+          <Text style={styles.ctaTitle}>Choose Your Companion</Text>
+          <Text style={styles.ctaSubtitle}>
+            A loyal friend to join your quest. They&apos;ll react to your progress, evolve as you level up, and bring you gifts!
+          </Text>
+          <Button
+            title="Summon Companion"
+            onPress={handleChooseCompanion}
+            fullWidth
+            size="lg"
+          />
         </View>
-      </GlassCard>
+      </BottomSheet>
     );
   }
 
@@ -145,172 +299,279 @@ export function CompanionWidget({ userId, completionRate, currentHp, maxHp }: Co
   const speciesColor = SPECIES_COLOR[companion.species] || Colors.primary;
   const moodEmoji = MOOD_EMOJI[companion.mood] || '😊';
 
-  return (
-    <>
-      <GlassCard onPress={() => setShowDetail(true)}>
-        <View style={styles.row}>
-          <View style={[styles.iconCircle, { borderColor: speciesColor }]}>
-            <Ionicons name={speciesIcon} size={20} color={speciesColor} />
-          </View>
-          <View style={styles.info}>
-            <View style={styles.nameRow}>
-              <Text style={styles.name}>{companion.name}</Text>
-              <Text style={styles.mood}>{moodEmoji}</Text>
-            </View>
-            <Text style={styles.meta}>
-              Stage {companion.evolutionStage} {companion.species.charAt(0).toUpperCase() + companion.species.slice(1)}
+  // ---- Tab Switcher ----
+  const renderTabSwitcher = () => (
+    <View style={styles.tabSwitcher}>
+      <Pressable
+        onPress={() => setActiveTab('info')}
+        style={[styles.tabPill, activeTab === 'info' && styles.tabPillActive]}
+      >
+        <Ionicons
+          name="information-circle-outline"
+          size={16}
+          color={activeTab === 'info' ? '#fff' : Colors.textSecondary}
+        />
+        <Text style={[styles.tabPillText, activeTab === 'info' && styles.tabPillTextActive]}>
+          Info
+        </Text>
+      </Pressable>
+      <Pressable
+        onPress={() => setActiveTab('chat')}
+        style={[styles.tabPill, activeTab === 'chat' && styles.tabPillActive]}
+      >
+        <Ionicons
+          name="chatbubble-outline"
+          size={16}
+          color={activeTab === 'chat' ? '#fff' : Colors.textSecondary}
+        />
+        <Text style={[styles.tabPillText, activeTab === 'chat' && styles.tabPillTextActive]}>
+          Chat
+        </Text>
+      </Pressable>
+    </View>
+  );
+
+  // ---- Info Tab Content ----
+  const renderInfoTab = () => (
+    <View style={styles.detailContent}>
+      <View style={[styles.detailIcon, { borderColor: speciesColor, ...Shadows.glow(speciesColor, 0.3) }]}>
+        <Ionicons name={speciesIcon} size={40} color={speciesColor} />
+      </View>
+
+      <View style={styles.detailStats}>
+        <View style={styles.detailStat}>
+          <Text style={styles.detailStatValue}>{companion.evolutionStage}</Text>
+          <Text style={styles.detailStatLabel}>Stage</Text>
+        </View>
+        <View style={styles.detailStat}>
+          <Text style={styles.detailStatValue}>{companion.totalXp}</Text>
+          <Text style={styles.detailStatLabel}>XP</Text>
+        </View>
+        <View style={styles.detailStat}>
+          <Text style={styles.detailStatValue}>{moodEmoji}</Text>
+          <Text style={styles.detailStatLabel}>{companion.mood}</Text>
+        </View>
+      </View>
+
+      <Text style={styles.speciesLabel}>
+        Stage {companion.evolutionStage} {companion.species.charAt(0).toUpperCase() + companion.species.slice(1)}
+      </Text>
+
+      {/* Unclaimed Gifts Banner */}
+      {unclaimedGifts && unclaimedGifts > 0 ? (
+        <Animated.View style={giftAnimStyle}>
+          <View style={styles.giftBanner}>
+            <Ionicons name="gift" size={18} color={Colors.accent} />
+            <Text style={styles.giftBannerText}>
+              {unclaimedGifts} unclaimed gift{unclaimedGifts > 1 ? 's' : ''}!
             </Text>
           </View>
-          {unclaimedGifts && unclaimedGifts > 0 ? (
-            <Animated.View style={giftAnimStyle}>
-              <View style={styles.giftBadge}>
-                <Ionicons name="gift" size={16} color={Colors.accent} />
-                <Text style={styles.giftCount}>{unclaimedGifts}</Text>
-              </View>
-            </Animated.View>
-          ) : null}
-          <Ionicons name="chevron-forward" size={16} color={Colors.textDim} />
+        </Animated.View>
+      ) : null}
+
+      {/* Name editing */}
+      {editingName ? (
+        <View style={styles.nameEditRow}>
+          <TextInput
+            style={styles.nameInput}
+            value={newName}
+            onChangeText={setNewName}
+            placeholder="New name..."
+            placeholderTextColor={Colors.textDim}
+            autoFocus
+          />
+          <Button title="Save" size="sm" onPress={handleSaveName} disabled={!newName.trim()} />
         </View>
-      </GlassCard>
+      ) : (
+        <Pressable onPress={() => { setNewName(companion.name); setEditingName(true); }}>
+          <Text style={styles.editNameLink}>Rename companion</Text>
+        </Pressable>
+      )}
 
-      {/* Detail Sheet */}
-      <BottomSheet visible={showDetail} onClose={() => { setShowDetail(false); setEditingName(false); }} title={companion.name}>
-        <View style={styles.detailContent}>
-          <View style={[styles.detailIcon, { borderColor: speciesColor }]}>
-            <Ionicons name={speciesIcon} size={40} color={speciesColor} />
-          </View>
-
-          <View style={styles.detailStats}>
-            <View style={styles.detailStat}>
-              <Text style={styles.detailStatValue}>{companion.evolutionStage}</Text>
-              <Text style={styles.detailStatLabel}>Stage</Text>
-            </View>
-            <View style={styles.detailStat}>
-              <Text style={styles.detailStatValue}>{companion.totalXp}</Text>
-              <Text style={styles.detailStatLabel}>XP</Text>
-            </View>
-            <View style={styles.detailStat}>
-              <Text style={styles.detailStatValue}>{moodEmoji}</Text>
-              <Text style={styles.detailStatLabel}>{companion.mood}</Text>
-            </View>
-          </View>
-
-          {/* Name editing */}
-          {editingName ? (
-            <View style={styles.nameEditRow}>
-              <TextInput
-                style={styles.nameInput}
-                value={newName}
-                onChangeText={setNewName}
-                placeholder="New name..."
-                placeholderTextColor={Colors.textDim}
-                autoFocus
-              />
-              <Button title="Save" size="sm" onPress={handleSaveName} disabled={!newName.trim()} />
-            </View>
-          ) : (
-            <Pressable onPress={() => { setNewName(companion.name); setEditingName(true); }}>
-              <Text style={styles.editNameLink}>Rename companion</Text>
+      {/* Gifts */}
+      {companion.gifts && companion.gifts.length > 0 ? (
+        <View style={styles.giftSection}>
+          <Text style={styles.giftSectionTitle}>Unclaimed Gifts</Text>
+          {companion.gifts.filter((g: any) => !g.claimed).map((gift: any) => (
+            <Pressable
+              key={gift.id}
+              onPress={() => handleClaimGift(gift.id)}
+              style={({ pressed }) => [styles.giftItem, pressed && { opacity: 0.7 }]}
+            >
+              <Ionicons name="gift" size={16} color={Colors.accent} />
+              <Text style={styles.giftLabel}>{gift.type.replace('_', ' ')}</Text>
+              <Text style={styles.giftClaim}>Claim</Text>
             </Pressable>
-          )}
-
-          {/* Gifts */}
-          {companion.gifts && companion.gifts.length > 0 ? (
-            <View style={styles.giftSection}>
-              <Text style={styles.giftSectionTitle}>Unclaimed Gifts</Text>
-              {companion.gifts.filter((g: any) => !g.claimed).map((gift: any) => (
-                <Pressable
-                  key={gift.id}
-                  onPress={() => handleClaimGift(gift.id)}
-                  style={({ pressed }) => [styles.giftItem, pressed && { opacity: 0.7 }]}
-                >
-                  <Ionicons name="gift" size={16} color={Colors.accent} />
-                  <Text style={styles.giftLabel}>{gift.type.replace('_', ' ')}</Text>
-                  <Text style={styles.giftClaim}>Claim</Text>
-                </Pressable>
-              ))}
-            </View>
-          ) : null}
+          ))}
         </View>
-      </BottomSheet>
-    </>
+      ) : null}
+    </View>
+  );
+
+  // ---- Chat Message Bubble ----
+  const renderMessage = ({ item }: { item: ChatMessage }) => {
+    const isUser = item.role === 'user';
+    return (
+      <View style={[styles.messageBubbleRow, isUser ? styles.messageBubbleRowUser : styles.messageBubbleRowAssistant]}>
+        {!isUser && (
+          <View style={[styles.chatAvatar, { borderColor: speciesColor }]}>
+            <Ionicons name={speciesIcon} size={14} color={speciesColor} />
+          </View>
+        )}
+        <View style={[styles.messageBubble, isUser ? styles.messageBubbleUser : styles.messageBubbleAssistant]}>
+          <Text style={[styles.messageText, isUser ? styles.messageTextUser : styles.messageTextAssistant]}>
+            {item.content}
+          </Text>
+        </View>
+      </View>
+    );
+  };
+
+  // ---- Chat Tab Content ----
+  const renderChatTab = () => (
+    <View style={styles.chatContainer}>
+      {/* Messages list */}
+      <ScrollView
+        ref={chatListRef}
+        style={styles.chatMessageList}
+        contentContainerStyle={styles.chatMessageListContent}
+        showsVerticalScrollIndicator={false}
+        onContentSizeChange={() => {
+          chatListRef.current?.scrollToEnd({ animated: true });
+        }}
+        nestedScrollEnabled
+      >
+        {allMessages.length === 0 ? (
+          <View style={styles.chatEmptyState}>
+            <View style={[styles.chatEmptyAvatar, { borderColor: speciesColor }]}>
+              <Ionicons name={speciesIcon} size={28} color={speciesColor} />
+            </View>
+            <Text style={styles.chatEmptyTitle}>Chat with {companion.name}</Text>
+            <Text style={styles.chatEmptySubtitle}>
+              Ask for advice, share your progress, or just say hello!
+            </Text>
+          </View>
+        ) : (
+          allMessages.map((msg, index) => (
+            <View key={msg._id ?? `local-${index}`}>
+              {renderMessage({ item: msg })}
+            </View>
+          ))
+        )}
+      </ScrollView>
+
+      {/* Thinking indicator */}
+      {isSending && (
+        <View style={styles.thinkingRow}>
+          <View style={[styles.chatAvatar, { borderColor: speciesColor }]}>
+            <Ionicons name={speciesIcon} size={14} color={speciesColor} />
+          </View>
+          <View style={styles.thinkingBubble}>
+            <ActivityIndicator size="small" color={Colors.textSecondary} />
+            <Text style={styles.thinkingText}>{companion.name} is thinking...</Text>
+          </View>
+        </View>
+      )}
+
+      {/* Input bar */}
+      <View style={styles.chatInputBar}>
+        <TextInput
+          style={styles.chatTextInput}
+          value={chatInput}
+          onChangeText={setChatInput}
+          placeholder={`Message ${companion.name}...`}
+          placeholderTextColor={Colors.textDim}
+          multiline
+          maxLength={500}
+          returnKeyType="default"
+          blurOnSubmit={false}
+        />
+        <Pressable
+          onPress={handleSendMessage}
+          disabled={!chatInput.trim() || isSending}
+          style={({ pressed }) => [
+            styles.sendButton,
+            (!chatInput.trim() || isSending) && styles.sendButtonDisabled,
+            pressed && { opacity: 0.8 },
+          ]}
+        >
+          <Ionicons
+            name="send"
+            size={18}
+            color={!chatInput.trim() || isSending ? Colors.textDim : '#fff'}
+          />
+        </Pressable>
+      </View>
+    </View>
+  );
+
+  return (
+    <BottomSheet visible={isVisible} onClose={handleClose} title={companion.name}>
+      {renderTabSwitcher()}
+      {activeTab === 'info' ? renderInfoTab() : renderChatTab()}
+    </BottomSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  row: {
+  // Tab switcher
+  tabSwitcher: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-  },
-  iconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.2)',
-  },
-  info: {
-    flex: 1,
-  },
-  nameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  name: {
-    fontSize: FontSize.base,
-    fontWeight: '700',
-    color: Colors.foreground,
-  },
-  mood: {
-    fontSize: 14,
-  },
-  meta: {
-    fontSize: FontSize.xs,
-    color: Colors.textSecondary,
-  },
-  giftBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    alignSelf: 'center',
+    backgroundColor: Colors.surfaceLight,
+    borderRadius: Radius.full,
+    padding: 3,
+    marginBottom: Spacing.lg,
     gap: 2,
-    backgroundColor: Colors.accentBg,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+  },
+  tabPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
     borderRadius: Radius.full,
   },
-  giftCount: {
-    fontSize: FontSize.xs,
-    fontWeight: '700',
-    color: Colors.accent,
+  tabPillActive: {
+    backgroundColor: Colors.primary,
   },
-  ctaRow: {
-    flexDirection: 'row',
+  tabPillText: {
+    fontSize: FontSize.sm,
+    fontFamily: FontFamily.semibold,
+    color: Colors.textSecondary,
+  },
+  tabPillTextActive: {
+    color: '#fff',
+  },
+
+  // CTA (no companion yet)
+  ctaContent: {
     alignItems: 'center',
-    gap: Spacing.md,
+    gap: Spacing.lg,
+    paddingBottom: Spacing['3xl'],
   },
   ctaIconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     backgroundColor: Colors.primaryBg,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  ctaContent: {
-    flex: 1,
-  },
   ctaTitle: {
-    fontSize: FontSize.base,
-    fontWeight: '700',
+    fontSize: FontSize.xl,
+    fontFamily: FontFamily.extrabold,
     color: Colors.foreground,
   },
   ctaSubtitle: {
-    fontSize: FontSize.xs,
+    fontSize: FontSize.sm,
     color: Colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
+    paddingHorizontal: Spacing.lg,
   },
+
+  // Detail sheet (Info tab)
   detailContent: {
     alignItems: 'center',
     gap: Spacing.lg,
@@ -334,12 +595,31 @@ const styles = StyleSheet.create({
   },
   detailStatValue: {
     fontSize: FontSize.xl,
-    fontWeight: '800',
+    fontFamily: FontFamily.extrabold,
     color: Colors.foreground,
   },
   detailStatLabel: {
     fontSize: FontSize.xs,
     color: Colors.textMuted,
+  },
+  speciesLabel: {
+    fontSize: FontSize.sm,
+    fontFamily: FontFamily.medium,
+    color: Colors.textSecondary,
+  },
+  giftBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    backgroundColor: Colors.accentBg,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
+    borderRadius: Radius.full,
+  },
+  giftBannerText: {
+    fontSize: FontSize.sm,
+    fontFamily: FontFamily.bold,
+    color: Colors.accent,
   },
   nameEditRow: {
     flexDirection: 'row',
@@ -361,7 +641,7 @@ const styles = StyleSheet.create({
   editNameLink: {
     fontSize: FontSize.sm,
     color: Colors.primary,
-    fontWeight: '600',
+    fontFamily: FontFamily.semibold,
   },
   giftSection: {
     width: '100%',
@@ -369,7 +649,7 @@ const styles = StyleSheet.create({
   },
   giftSectionTitle: {
     fontSize: FontSize.sm,
-    fontWeight: '700',
+    fontFamily: FontFamily.bold,
     color: Colors.textSecondary,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -386,12 +666,166 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: FontSize.sm,
     color: Colors.foreground,
-    fontWeight: '500',
+    fontFamily: FontFamily.medium,
     textTransform: 'capitalize',
   },
   giftClaim: {
     fontSize: FontSize.sm,
-    fontWeight: '700',
+    fontFamily: FontFamily.bold,
     color: Colors.accent,
+  },
+
+  // ---- Chat tab ----
+  chatContainer: {
+    minHeight: 320,
+    paddingBottom: Spacing.md,
+  },
+  chatMessageList: {
+    maxHeight: 280,
+    minHeight: 200,
+  },
+  chatMessageListContent: {
+    paddingVertical: Spacing.sm,
+    gap: Spacing.sm,
+  },
+
+  // Message bubbles
+  messageBubbleRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: Spacing.sm,
+    paddingHorizontal: Spacing.xs,
+  },
+  messageBubbleRowUser: {
+    justifyContent: 'flex-end',
+  },
+  messageBubbleRowAssistant: {
+    justifyContent: 'flex-start',
+  },
+  chatAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.2)',
+  },
+  messageBubble: {
+    maxWidth: '75%',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm + 2,
+    borderRadius: Radius.lg,
+  },
+  messageBubbleUser: {
+    backgroundColor: Colors.primary,
+    borderBottomRightRadius: Radius.xs,
+  },
+  messageBubbleAssistant: {
+    backgroundColor: Colors.surfaceLight,
+    borderBottomLeftRadius: Radius.xs,
+  },
+  messageText: {
+    fontSize: FontSize.sm,
+    lineHeight: 19,
+    fontFamily: FontFamily.regular,
+  },
+  messageTextUser: {
+    color: '#fff',
+  },
+  messageTextAssistant: {
+    color: Colors.foreground,
+  },
+
+  // Thinking indicator
+  thinkingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    paddingHorizontal: Spacing.xs,
+    paddingVertical: Spacing.xs,
+  },
+  thinkingBubble: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    backgroundColor: Colors.surfaceLight,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: Radius.lg,
+    borderBottomLeftRadius: Radius.xs,
+  },
+  thinkingText: {
+    fontSize: FontSize.xs,
+    fontFamily: FontFamily.medium,
+    color: Colors.textSecondary,
+    fontStyle: 'italic',
+  },
+
+  // Chat empty state
+  chatEmptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing['2xl'],
+    gap: Spacing.sm,
+  },
+  chatEmptyAvatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.2)',
+    marginBottom: Spacing.sm,
+  },
+  chatEmptyTitle: {
+    fontSize: FontSize.base,
+    fontFamily: FontFamily.bold,
+    color: Colors.foreground,
+  },
+  chatEmptySubtitle: {
+    fontSize: FontSize.sm,
+    fontFamily: FontFamily.regular,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    paddingHorizontal: Spacing.lg,
+    lineHeight: 19,
+  },
+
+  // Chat input bar
+  chatInputBar: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: Spacing.sm,
+    marginTop: Spacing.sm,
+    paddingTop: Spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+  },
+  chatTextInput: {
+    flex: 1,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: Radius.lg,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm + 2,
+    fontSize: FontSize.sm,
+    fontFamily: FontFamily.regular,
+    color: Colors.foreground,
+    maxHeight: 80,
+    minHeight: 40,
+  },
+  sendButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sendButtonDisabled: {
+    backgroundColor: Colors.surfaceLight,
   },
 });

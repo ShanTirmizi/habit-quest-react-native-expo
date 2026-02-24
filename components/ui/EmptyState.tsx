@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, FontSize, Spacing, Radius } from '@/constants/theme';
+import { Colors, FontSize, Spacing, Radius, FontFamily } from '@/constants/theme';
 
 interface EmptyStateProps {
   icon: keyof typeof Ionicons.glyphMap;
@@ -51,13 +51,14 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: FontSize.lg,
-    fontWeight: '700',
+    fontFamily: FontFamily.bold,
     color: Colors.foreground,
     marginBottom: Spacing.sm,
     textAlign: 'center',
   },
   description: {
     fontSize: FontSize.sm,
+    fontFamily: FontFamily.regular,
     color: Colors.textSecondary,
     textAlign: 'center',
     lineHeight: 20,
@@ -68,14 +69,14 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
     paddingHorizontal: Spacing['2xl'],
     paddingVertical: Spacing.md,
-    borderRadius: Radius.md,
+    borderRadius: Radius.lg,
   },
   buttonPressed: {
     opacity: 0.85,
   },
   buttonText: {
-    color: Colors.background,
+    color: '#FFFFFF',
     fontSize: FontSize.sm,
-    fontWeight: '700',
+    fontFamily: FontFamily.bold,
   },
 });

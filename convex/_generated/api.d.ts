@@ -8,14 +8,17 @@
  * @module
  */
 
+import type * as accountDeletion from "../accountDeletion.js";
 import type * as auth from "../auth.js";
 import type * as chat from "../chat.js";
+import type * as coaching from "../coaching.js";
 import type * as companions from "../companions.js";
 import type * as goals from "../goals.js";
 import type * as habits from "../habits.js";
 import type * as http from "../http.js";
 import type * as journal from "../journal.js";
 import type * as medicines from "../medicines.js";
+import type * as notifications from "../notifications.js";
 import type * as oracle from "../oracle.js";
 import type * as progress from "../progress.js";
 import type * as quests from "../quests.js";
@@ -29,14 +32,17 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  accountDeletion: typeof accountDeletion;
   auth: typeof auth;
   chat: typeof chat;
+  coaching: typeof coaching;
   companions: typeof companions;
   goals: typeof goals;
   habits: typeof habits;
   http: typeof http;
   journal: typeof journal;
   medicines: typeof medicines;
+  notifications: typeof notifications;
   oracle: typeof oracle;
   progress: typeof progress;
   quests: typeof quests;

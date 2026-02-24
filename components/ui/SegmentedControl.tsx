@@ -6,7 +6,7 @@ import Animated, {
   withTiming,
   Easing,
 } from 'react-native-reanimated';
-import { Colors, Radius, FontSize, Spacing } from '@/constants/theme';
+import { Colors, Radius, FontSize, Spacing, FontFamily } from '@/constants/theme';
 
 interface Segment {
   label: string;
@@ -109,7 +109,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     borderRadius: Radius.sm,
     borderWidth: 1,
-    borderColor: Colors.glassBorder,
+    borderColor: Colors.border,
   },
   segment: {
     flex: 1,
@@ -124,12 +124,12 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: FontSize.sm,
-    fontWeight: '500',
+    fontFamily: FontFamily.medium,
     color: Colors.textMuted,
   },
   labelActive: {
     color: Colors.foreground,
-    fontWeight: '600',
+    fontFamily: FontFamily.semibold,
   },
   badge: {
     minWidth: 18,
@@ -145,7 +145,7 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     fontSize: 10,
-    fontWeight: '700',
+    fontFamily: FontFamily.bold,
     color: Colors.textMuted,
   },
   badgeTextActive: {

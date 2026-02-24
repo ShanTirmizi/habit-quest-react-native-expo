@@ -10,8 +10,18 @@ import ReAnimated, {
   interpolate,
   runOnJS,
 } from 'react-native-reanimated';
-import { Colors, FontSize, Spacing, Radius } from '@/constants/theme';
-import { CATEGORY_COLORS, CATEGORY_BG_COLORS } from '@/constants/theme';
+import { LinearGradient } from 'expo-linear-gradient';
+import {
+  Colors,
+  FontSize,
+  Spacing,
+  Radius,
+  FontFamily,
+  Shadows,
+  CATEGORY_COLORS,
+  CATEGORY_BG_COLORS,
+  CATEGORY_GRADIENTS,
+} from '@/constants/theme';
 import type { Habit, HabitCategory, TimeOfDay } from '@/types';
 import { BadgePill } from '@/components/ui/BadgePill';
 
@@ -34,6 +44,7 @@ const SWIPE_THRESHOLD = 70;
 export function HabitCard({ habit, isCompleted, onToggle, onPress }: HabitCardProps) {
   const categoryColor = CATEGORY_COLORS[habit.category] || Colors.textSecondary;
   const categoryBg = CATEGORY_BG_COLORS[habit.category] || Colors.surfaceLight;
+  const categoryGradient = CATEGORY_GRADIENTS[habit.category] || [Colors.textDim, Colors.textDim];
   const checkboxScale = useRef(new Animated.Value(1)).current;
 
   // Swipe-to-complete
@@ -87,9 +98,16 @@ export function HabitCard({ habit, isCompleted, onToggle, onPress }: HabitCardPr
 
   return (
     <View style={styles.swipeContainer}>
-      {/* Green reveal behind */}
-      <ReAnimated.View style={[styles.revealBg, revealStyle]}>
-        <Ionicons name="checkmark-circle" size={28} color="#fff" />
+      {/* Gradient reveal behind card on swipe */}
+      <ReAnimated.View style={[styles.revealBgWrapper, revealStyle]}>
+        <LinearGradient
+          colors={['#00E676', '#00A152']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.revealBg}
+        >
+          <Ionicons name="checkmark-circle" size={28} color="#fff" />
+        </LinearGradient>
       </ReAnimated.View>
 
       <GestureDetector gesture={panGesture}>
@@ -98,65 +116,88 @@ export function HabitCard({ habit, isCompleted, onToggle, onPress }: HabitCardPr
             onPress={handlePress}
             style={({ pressed }) => [
               styles.card,
-              { borderLeftColor: categoryColor },
+              isCompleted && styles.cardCompleted,
               pressed && styles.cardPressed,
             ]}
             accessibilityRole="checkbox"
             accessibilityState={{ checked: isCompleted }}
             accessibilityLabel={`${habit.name}, ${habit.category}, ${habit.xpReward} XP${isCompleted ? ', completed' : ''}`}
           >
-            <Animated.View style={{ transform: [{ scale: checkboxScale }] }}>
-              <Pressable
-                onPress={handleToggle}
-                hitSlop={8}
-                style={({ pressed }) => [
-                  styles.checkbox,
-                  isCompleted && { backgroundColor: categoryColor, borderColor: categoryColor },
-                  !isCompleted && { borderColor: Colors.border },
-                  pressed && { transform: [{ scale: 0.9 }] },
-                ]}
-              >
-                {isCompleted ? (
-                  <Ionicons name="checkmark" size={14} color={Colors.background} />
-                ) : null}
-              </Pressable>
-            </Animated.View>
+            {/* Category gradient left strip */}
+            {isCompleted ? (
+              <View style={[styles.gradientStrip, { backgroundColor: Colors.textDim }]} />
+            ) : (
+              <LinearGradient
+                colors={categoryGradient}
+                start={{ x: 0.5, y: 0 }}
+                end={{ x: 0.5, y: 1 }}
+                style={styles.gradientStrip}
+              />
+            )}
 
-            <View style={styles.content}>
-              <Text
-                style={[styles.name, isCompleted && styles.nameCompleted]}
-                numberOfLines={1}
-              >
-                {habit.name}
-              </Text>
+            {/* Main content row — padded left to clear the strip */}
+            <View style={styles.contentRow}>
+              {/* Circular animated checkbox */}
+              <Animated.View style={{ transform: [{ scale: checkboxScale }] }}>
+                <Pressable
+                  onPress={handleToggle}
+                  hitSlop={8}
+                  style={({ pressed }) => [
+                    styles.checkbox,
+                    isCompleted && { backgroundColor: categoryColor, borderColor: categoryColor },
+                    !isCompleted && { borderColor: Colors.borderStrong },
+                    pressed && { transform: [{ scale: 0.9 }] },
+                  ]}
+                >
+                  {isCompleted ? (
+                    <Ionicons name="checkmark" size={15} color="#fff" />
+                  ) : null}
+                </Pressable>
+              </Animated.View>
 
-              <View style={styles.metaRow}>
-                <BadgePill
-                  label={habit.category.charAt(0).toUpperCase() + habit.category.slice(1)}
-                  color={categoryColor}
-                  bgColor={categoryBg}
-                  size="sm"
-                />
-                <Text style={styles.xp}>+{habit.xpReward} XP</Text>
-                {habit.streak > 0 ? (
-                  <View style={styles.streakBadge}>
-                    <Ionicons name="flame" size={12} color={Colors.accent} />
-                    <Text style={styles.streakText}>{habit.streak}</Text>
-                  </View>
-                ) : null}
-                {habit.notes && habit.notes.length > 0 ? (
-                  <Ionicons name="chatbubble-outline" size={12} color={Colors.textDim} />
-                ) : null}
+              {/* Text content */}
+              <View style={styles.content}>
+                <Text
+                  style={[styles.name, isCompleted && styles.nameCompleted]}
+                  numberOfLines={1}
+                >
+                  {habit.name}
+                </Text>
+
+                <View style={styles.metaRow}>
+                  <BadgePill
+                    label={habit.category.charAt(0).toUpperCase() + habit.category.slice(1)}
+                    color={categoryColor}
+                    bgColor={categoryBg}
+                    size="sm"
+                  />
+                  {habit.timeOfDay && TIME_ICON_NAMES[habit.timeOfDay] ? (
+                    <Ionicons
+                      name={TIME_ICON_NAMES[habit.timeOfDay]!}
+                      size={13}
+                      color={Colors.textSecondary}
+                    />
+                  ) : null}
+                  {habit.notes && habit.notes.length > 0 ? (
+                    <Ionicons name="chatbubble-outline" size={12} color={Colors.textSecondary} />
+                  ) : null}
+                </View>
               </View>
             </View>
 
-            <View style={styles.rightSection}>
-              {habit.timeOfDay && TIME_ICON_NAMES[habit.timeOfDay] ? (
-                <Ionicons name={TIME_ICON_NAMES[habit.timeOfDay]!} size={16} color={Colors.textDim} />
-              ) : null}
-              <Ionicons name="chevron-forward" size={16} color={Colors.textDim} />
+            {/* XP pill — top-right corner */}
+            <View style={styles.xpPill}>
+              <Text style={styles.xpPillText}>+{habit.xpReward} XP</Text>
             </View>
           </Pressable>
+
+          {/* Floating streak badge — overlaps bottom-right of card */}
+          {habit.streak > 0 ? (
+            <View style={styles.streakFloat}>
+              <Ionicons name="flame" size={11} color={Colors.accent} />
+              <Text style={styles.streakFloatText}>{habit.streak}</Text>
+            </View>
+          ) : null}
         </ReAnimated.View>
       </GestureDetector>
     </View>
@@ -166,35 +207,56 @@ export function HabitCard({ habit, isCompleted, onToggle, onPress }: HabitCardPr
 const styles = StyleSheet.create({
   swipeContainer: {
     position: 'relative',
+    overflow: 'visible',
+    borderRadius: Radius.xl,
+    marginBottom: 6,
+  },
+  revealBgWrapper: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: Radius.xl,
     overflow: 'hidden',
-    borderRadius: Radius.lg,
   },
   revealBg: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: Colors.success,
-    borderRadius: Radius.lg,
+    flex: 1,
     alignItems: 'flex-start',
     justifyContent: 'center',
     paddingLeft: Spacing.xl,
   },
   card: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    position: 'relative',
     backgroundColor: Colors.surface,
-    borderRadius: Radius.lg,
+    borderRadius: Radius.xl,
     borderWidth: 1,
-    borderColor: Colors.glassBorder,
-    borderLeftWidth: 3,
+    borderColor: Colors.border,
     padding: Spacing.md,
-    gap: Spacing.md,
+    overflow: 'hidden',
+    ...Shadows.card,
+  },
+  cardCompleted: {
+    opacity: 0.5,
   },
   cardPressed: {
     backgroundColor: Colors.surfaceHover,
   },
+  gradientStrip: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 4,
+    borderTopLeftRadius: Radius.xl,
+    borderBottomLeftRadius: Radius.xl,
+  },
+  contentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingLeft: 12,
+    gap: Spacing.md,
+  },
   checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 6,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
@@ -202,20 +264,15 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     gap: 4,
-  },
-  rightSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
+    paddingRight: 60,
   },
   name: {
     fontSize: FontSize.base,
-    fontWeight: '600',
+    fontFamily: FontFamily.semibold,
     color: Colors.foreground,
-    flex: 1,
   },
   nameCompleted: {
-    color: Colors.textMuted,
+    color: Colors.textDim,
     textDecorationLine: 'line-through',
   },
   metaRow: {
@@ -223,19 +280,37 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.sm,
   },
-  xp: {
-    fontSize: FontSize.xs,
-    color: Colors.primary,
-    fontWeight: '600',
+  xpPill: {
+    position: 'absolute',
+    top: Spacing.md,
+    right: Spacing.md,
+    backgroundColor: Colors.primaryBg,
+    borderRadius: Radius.full,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
   },
-  streakBadge: {
+  xpPillText: {
+    fontSize: FontSize.xs,
+    fontFamily: FontFamily.bold,
+    color: Colors.primary,
+  },
+  streakFloat: {
+    position: 'absolute',
+    bottom: -6,
+    right: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 2,
+    gap: 3,
+    backgroundColor: Colors.accentBg,
+    borderRadius: Radius.full,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
-  streakText: {
+  streakFloatText: {
     fontSize: FontSize.xs,
+    fontFamily: FontFamily.bold,
     color: Colors.accent,
-    fontWeight: '700',
   },
 });

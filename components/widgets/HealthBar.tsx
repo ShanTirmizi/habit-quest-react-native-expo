@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, FontSize, Spacing, Radius } from '@/constants/theme';
+import { Colors, FontSize, Spacing, Radius, FontFamily } from '@/constants/theme';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 
 interface HealthBarProps {
@@ -66,12 +66,12 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: FontSize.xs,
-    fontWeight: '600',
+    fontFamily: FontFamily.semibold,
     color: Colors.textSecondary,
   },
   value: {
     fontSize: FontSize.xs,
-    fontWeight: '700',
+    fontFamily: FontFamily.bold,
   },
   criticalRow: {
     flexDirection: 'row',
@@ -93,7 +93,7 @@ const styles = StyleSheet.create({
   },
   compactText: {
     fontSize: FontSize.xs,
-    fontWeight: '700',
+    fontFamily: FontFamily.bold,
     minWidth: 44,
     textAlign: 'right',
   },

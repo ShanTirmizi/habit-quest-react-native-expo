@@ -44,7 +44,7 @@ export function Skeleton({ width = '100%', height = 16, borderRadius = Radius.md
       ]}
     >
       <LinearGradient
-        colors={[Colors.surfaceLight, Colors.surface, Colors.surfaceLight]}
+        colors={[Colors.surfaceLight, Colors.surfaceRaised, Colors.surfaceLight]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
         style={StyleSheet.absoluteFill}
@@ -114,7 +114,7 @@ const skeletonStyles = StyleSheet.create({
     backgroundColor: Colors.surface,
     borderRadius: Radius.lg,
     borderWidth: 1,
-    borderColor: Colors.glassBorder,
+    borderColor: Colors.border,
     padding: Spacing.md,
   },
   habitContent: {
@@ -129,7 +129,7 @@ const skeletonStyles = StyleSheet.create({
     backgroundColor: Colors.surface,
     borderRadius: Radius.lg,
     borderWidth: 1,
-    borderColor: Colors.glassBorder,
+    borderColor: Colors.border,
     padding: Spacing.lg,
     gap: Spacing.md,
   },

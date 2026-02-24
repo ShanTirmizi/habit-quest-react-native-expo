@@ -15,8 +15,8 @@ import { format, differenceInDays, parseISO } from 'date-fns';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { useAuth } from '@/contexts/auth-context';
-import { Colors, FontSize, Spacing, Radius } from '@/constants/theme';
-import { GlassCard } from '@/components/ui/GlassCard';
+import { Colors, FontSize, Spacing, Radius, FontFamily, Shadows } from '@/constants/theme';
+import { GradientCard } from '@/components/ui/GradientCard';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { BadgePill } from '@/components/ui/BadgePill';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -99,8 +99,8 @@ export default function GoalsScreen() {
             <Skeleton width={70} height={28} borderRadius={Radius.full} />
             <Skeleton width={80} height={28} borderRadius={Radius.full} />
           </View>
-          <Skeleton height={140} borderRadius={Radius.lg} />
-          <Skeleton height={140} borderRadius={Radius.lg} />
+          <Skeleton height={140} borderRadius={Radius.xl} />
+          <Skeleton height={140} borderRadius={Radius.xl} />
         </View>
       </View>
     );
@@ -109,20 +109,25 @@ export default function GoalsScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
-        <View>
+        <View style={styles.headerLeft}>
           <Text style={styles.title}>Goals</Text>
-          <Text style={styles.subtitle}>
-            {activeCount} active · {achievedCount} achieved
-          </Text>
+          <View style={styles.badgeRow}>
+            <View style={styles.activeBadge}>
+              <Text style={styles.activeBadgeText}>{activeCount} active</Text>
+            </View>
+            <View style={styles.achievedBadge}>
+              <Text style={styles.achievedBadgeText}>{achievedCount} achieved</Text>
+            </View>
+          </View>
         </View>
         <Pressable
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             setShowAddSheet(true);
           }}
-          style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.7 }]}
+          style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.7, transform: [{ scale: 0.92 }] }]}
         >
-          <Ionicons name="add" size={22} color={Colors.primary} />
+          <Ionicons name="add" size={24} color="#FFFFFF" />
         </Pressable>
       </View>
 
@@ -255,7 +260,7 @@ function GoalCard({ goal, onPress }: { goal: Goal; onPress: () => void }) {
   const progress = totalMilestones > 0 ? (completedMilestones / totalMilestones) * 100 : 0;
 
   return (
-    <GlassCard onPress={onPress} style={styles.goalCard}>
+    <GradientCard onPress={onPress} style={styles.goalCard}>
       <View style={styles.goalTop}>
         <Ionicons name={categoryConfig.icon as keyof typeof Ionicons.glyphMap} size={24} color={categoryConfig.color} />
         <BadgePill
@@ -297,7 +302,7 @@ function GoalCard({ goal, onPress }: { goal: Goal; onPress: () => void }) {
           {daysRemaining > 0 ? `${daysRemaining}d left` : daysRemaining === 0 ? 'Today!' : 'Overdue'}
         </Text>
       </View>
-    </GlassCard>
+    </GradientCard>
   );
 }
 
@@ -497,10 +502,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: Spacing.xl,
     paddingVertical: Spacing.md,
+    paddingBottom: Spacing.lg,
+  },
+  headerLeft: {
+    gap: Spacing.sm,
   },
   title: {
-    fontSize: FontSize['2xl'],
-    fontWeight: '800',
+    fontSize: FontSize['3xl'],
+    fontFamily: FontFamily.extrabold,
     color: Colors.foreground,
   },
   subtitle: {
@@ -508,13 +517,40 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     marginTop: 2,
   },
+  badgeRow: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+  },
+  activeBadge: {
+    backgroundColor: `${Colors.primary}18`,
+    paddingHorizontal: Spacing.sm + 2,
+    paddingVertical: 3,
+    borderRadius: Radius.full,
+  },
+  activeBadgeText: {
+    fontSize: FontSize.xs,
+    fontFamily: FontFamily.semibold,
+    color: Colors.primary,
+  },
+  achievedBadge: {
+    backgroundColor: `${Colors.success}18`,
+    paddingHorizontal: Spacing.sm + 2,
+    paddingVertical: 3,
+    borderRadius: Radius.full,
+  },
+  achievedBadgeText: {
+    fontSize: FontSize.xs,
+    fontFamily: FontFamily.semibold,
+    color: Colors.success,
+  },
   addBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: Colors.primaryBg,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    ...Shadows.neonGlow(Colors.primary),
   },
   loadingContainer: {
     flex: 1,
@@ -543,12 +579,12 @@ const styles = StyleSheet.create({
   },
   filterChipText: {
     fontSize: FontSize.sm,
-    fontWeight: '500',
+    fontFamily: FontFamily.medium,
     color: Colors.textMuted,
   },
   filterChipTextActive: {
     color: Colors.primary,
-    fontWeight: '600',
+    fontFamily: FontFamily.semibold,
   },
   scrollView: {
     flex: 1,
@@ -561,6 +597,8 @@ const styles = StyleSheet.create({
   },
   goalCard: {
     gap: Spacing.sm,
+    borderRadius: Radius.xl,
+    ...Shadows.card,
   },
   goalTop: {
     flexDirection: 'row',
@@ -572,7 +610,7 @@ const styles = StyleSheet.create({
   },
   goalTitle: {
     fontSize: FontSize.base,
-    fontWeight: '700',
+    fontFamily: FontFamily.bold,
     color: Colors.foreground,
   },
   goalDesc: {
@@ -595,7 +633,7 @@ const styles = StyleSheet.create({
   },
   goalDays: {
     fontSize: FontSize.xs,
-    fontWeight: '600',
+    fontFamily: FontFamily.semibold,
     color: Colors.textSecondary,
   },
   // Detail
@@ -621,12 +659,12 @@ const styles = StyleSheet.create({
   },
   detailMetaValue: {
     fontSize: FontSize.sm,
-    fontWeight: '600',
+    fontFamily: FontFamily.semibold,
     color: Colors.foreground,
   },
   detailSectionTitle: {
     fontSize: FontSize.sm,
-    fontWeight: '700',
+    fontFamily: FontFamily.bold,
     color: Colors.textSecondary,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -639,7 +677,7 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
     paddingVertical: Spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.glassBorder,
+    borderBottomColor: Colors.border,
   },
   milestoneCheck: {
     width: 20,
@@ -656,7 +694,7 @@ const styles = StyleSheet.create({
   },
   milestoneTitle: {
     fontSize: FontSize.sm,
-    fontWeight: '600',
+    fontFamily: FontFamily.semibold,
     color: Colors.foreground,
   },
   milestoneTitleDone: {
@@ -676,7 +714,7 @@ const styles = StyleSheet.create({
   },
   checkInDate: {
     fontSize: FontSize.sm,
-    fontWeight: '600',
+    fontFamily: FontFamily.semibold,
     color: Colors.textSecondary,
     width: 50,
   },
@@ -691,7 +729,7 @@ const styles = StyleSheet.create({
   },
   formLabel: {
     fontSize: FontSize.sm,
-    fontWeight: '600',
+    fontFamily: FontFamily.semibold,
     color: Colors.textSecondary,
     marginBottom: Spacing.sm,
   },
@@ -716,7 +754,7 @@ const styles = StyleSheet.create({
   },
   categoryChipText: {
     fontSize: FontSize.sm,
-    fontWeight: '500',
+    fontFamily: FontFamily.medium,
     color: Colors.textSecondary,
   },
   addFormFooter: {

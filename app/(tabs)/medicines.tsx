@@ -16,14 +16,16 @@ import * as Haptics from 'expo-haptics';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { useAuth } from '@/contexts/auth-context';
-import { Colors, FontSize, Spacing, Radius } from '@/constants/theme';
+import { Colors, FontSize, Spacing, Radius, FontFamily, Shadows, BentoRadius } from '@/constants/theme';
 import { GlassCard } from '@/components/ui/GlassCard';
+import { GradientCard } from '@/components/ui/GradientCard';
 import { BadgePill } from '@/components/ui/BadgePill';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
+import { ConcentricRings } from '@/components/ui/ConcentricRings';
 import { format, parseISO } from 'date-fns';
 import type { TodayMedicineScheduleItem, MedicineCompletionStatus } from '@/types';
 import { formatMedicineTime } from '@/types';
@@ -183,10 +185,14 @@ export default function MedicinesScreen() {
   if (!userId) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }, styles.centered]}>
-        <Text style={styles.historyPlaceholder}>Please sign in to view your medicines.</Text>
+        <Text style={styles.signInText}>Please sign in to view your medicines.</Text>
       </View>
     );
   }
+
+  const takenProgress = stats.total > 0 ? Math.round((stats.taken / stats.total) * 100) : 0;
+  const streakProgress = Math.min(100, Math.round((medicineStreak / 30) * 100));
+  const slotEntries = Object.entries(groupedSchedule);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -204,25 +210,36 @@ export default function MedicinesScreen() {
           onPress={() => setShowAddSheet(true)}
           style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.7 }]}
         >
-          <Ionicons name="add" size={22} color={Colors.primary} />
+          <Ionicons name="add" size={24} color={Colors.background} />
         </Pressable>
       </View>
 
-      {/* Stats Banner */}
-      <View style={styles.statsBanner}>
-        <View style={styles.statCard}>
-          <Text style={styles.statNumber}>{stats.taken}</Text>
-          <Text style={styles.statLabel}>Taken</Text>
-        </View>
-        <View style={styles.statDivider} />
-        <View style={styles.statCard}>
-          <Text style={[styles.statNumber, { color: Colors.accent }]}>{stats.pending}</Text>
-          <Text style={styles.statLabel}>Pending</Text>
-        </View>
-        <View style={styles.statDivider} />
-        <View style={styles.statCard}>
-          <Text style={[styles.statNumber, { color: Colors.primary }]}>{stats.percentage}%</Text>
-          <Text style={styles.statLabel}>Adherence</Text>
+      {/* Concentric Rings Stats */}
+      <View style={styles.ringsSection}>
+        <ConcentricRings
+          size={160}
+          strokeWidth={8}
+          rings={[
+            { progress: stats.percentage, color: Colors.primary, label: 'Adherence' },
+            { progress: takenProgress, color: Colors.secondary, label: 'Taken' },
+            { progress: streakProgress, color: Colors.accent, label: 'Streak' },
+          ]}
+        >
+          <Text style={styles.ringsCenterNumber}>{stats.percentage}%</Text>
+        </ConcentricRings>
+        <View style={styles.ringsLegend}>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: Colors.primary }]} />
+            <Text style={styles.legendLabel}>Adherence</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: Colors.secondary }]} />
+            <Text style={styles.legendLabel}>Taken</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: Colors.accent }]} />
+            <Text style={styles.legendLabel}>Streak</Text>
+          </View>
         </View>
       </View>
 
@@ -270,30 +287,36 @@ export default function MedicinesScreen() {
                 onAction={() => setShowAddSheet(true)}
               />
             ) : (
-              Object.entries(groupedSchedule).map(([slot, items]) => {
-                const config = TIME_SLOT_CONFIG[slot] || { icon: 'medkit-outline' as keyof typeof Ionicons.glyphMap, label: slot, color: Colors.textSecondary };
-                return (
-                  <View key={slot} style={styles.timeSlot}>
-                    <View style={styles.slotHeader}>
-                      <Ionicons name={config.icon} size={18} color={config.color} />
-                      <Text style={[styles.slotLabel, { color: config.color }]}>{config.label}</Text>
-                      <Text style={styles.slotTime}>
-                        {items[0] ? formatMedicineTime(items[0].scheduledTime) : ''}
-                      </Text>
+              <View style={styles.timelineContainer}>
+                {slotEntries.map(([slot, items]) => {
+                  const config = TIME_SLOT_CONFIG[slot] || { icon: 'medkit-outline' as keyof typeof Ionicons.glyphMap, label: slot, color: Colors.textSecondary };
+
+                  return (
+                    <View key={slot} style={styles.slotSection}>
+                      <View style={styles.slotHeader}>
+                        <View style={[styles.slotDot, { backgroundColor: config.color }]} />
+                        <Ionicons name={config.icon} size={16} color={config.color} />
+                        <Text style={[styles.slotLabel, { color: config.color }]}>
+                          {config.label}
+                        </Text>
+                        <Text style={styles.slotTime}>
+                          {items[0] ? formatMedicineTime(items[0].scheduledTime) : ''}
+                        </Text>
+                      </View>
+                      <View style={styles.slotCards}>
+                        {items.map((item) => (
+                          <MedicineCard
+                            key={`${item.medicineId}_${item.scheduledTime}`}
+                            item={item}
+                            onMarkTaken={handleMarkTaken}
+                            onMarkSkipped={handleMarkSkipped}
+                          />
+                        ))}
+                      </View>
                     </View>
-                    <View style={styles.medList}>
-                      {items.map((item) => (
-                        <MedicineCard
-                          key={`${item.medicineId}_${item.scheduledTime}`}
-                          item={item}
-                          onMarkTaken={handleMarkTaken}
-                          onMarkSkipped={handleMarkSkipped}
-                        />
-                      ))}
-                    </View>
-                  </View>
-                );
-              })
+                  );
+                })}
+              </View>
             )
           ) : (
             <MedicineHistoryView
@@ -448,7 +471,7 @@ function MedicineHistoryView({
   return (
     <View style={{ gap: Spacing.md }}>
       {grouped.map(([date, items]) => (
-        <GlassCard key={date}>
+        <GradientCard key={date}>
           <Text style={styles.historyDateTitle}>
             {format(parseISO(date), 'EEEE, MMM d')}
           </Text>
@@ -470,7 +493,7 @@ function MedicineHistoryView({
               </View>
             ))}
           </View>
-        </GlassCard>
+        </GradientCard>
       ))}
     </View>
   );
@@ -529,7 +552,7 @@ function AddMedicineSheet({
         />
 
         {/* Time Slot Selector */}
-        <Text style={styles.timeSlotLabel}>Schedule</Text>
+        <Text style={styles.timeSlotLabelText}>Schedule</Text>
         <View style={styles.timeSlotRow}>
           {TIME_SLOT_OPTIONS.map((option) => {
             const isSelected = selectedSlot.value === option.value;
@@ -547,7 +570,7 @@ function AddMedicineSheet({
                 <Text
                   style={[
                     styles.timeSlotChipText,
-                    isSelected && { color: config?.color ?? Colors.primary, fontWeight: '600' },
+                    isSelected && { color: config?.color ?? Colors.primary, fontFamily: FontFamily.semibold },
                   ]}
                 >
                   {option.label}
@@ -583,11 +606,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  loadingText: {
-    marginTop: Spacing.md,
+  signInText: {
     fontSize: FontSize.sm,
-    color: Colors.textMuted,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    padding: Spacing['2xl'],
   },
+
+  // Header
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -601,91 +627,107 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
   },
   title: {
-    fontSize: FontSize['2xl'],
-    fontWeight: '800',
+    fontSize: FontSize['3xl'],
+    fontFamily: FontFamily.extrabold,
     color: Colors.foreground,
   },
   addBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: Colors.primaryBg,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    ...Shadows.glow(Colors.primaryGlow, 0.5),
   },
-  statsBanner: {
-    flexDirection: 'row',
-    marginHorizontal: Spacing.xl,
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.glassBorder,
-    padding: Spacing.md,
-    marginBottom: Spacing.md,
-  },
-  statCard: {
-    flex: 1,
+
+  // Concentric Rings Stats
+  ringsSection: {
     alignItems: 'center',
+    paddingVertical: Spacing.md,
+    marginBottom: Spacing.sm,
   },
-  statNumber: {
-    fontSize: FontSize.xl,
-    fontWeight: '800',
-    color: Colors.success,
+  ringsCenterNumber: {
+    fontSize: FontSize['2xl'],
+    fontFamily: FontFamily.extrabold,
+    color: Colors.foreground,
+    textAlign: 'center',
   },
-  statLabel: {
+  ringsLegend: {
+    flexDirection: 'row',
+    gap: Spacing.lg,
+    marginTop: Spacing.md,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+  },
+  legendDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  legendLabel: {
     fontSize: FontSize.xs,
-    color: Colors.textMuted,
-    marginTop: 2,
+    fontFamily: FontFamily.medium,
+    color: Colors.textSecondary,
   },
-  statDivider: {
-    width: 1,
-    backgroundColor: Colors.border,
-  },
+
+  // Tabs
   tabContainer: {
     paddingHorizontal: Spacing.xl,
     marginBottom: Spacing.md,
   },
+
+  // ScrollView
   scrollView: {
     flex: 1,
   },
   scrollContent: {
     paddingHorizontal: Spacing.lg,
+  },
+
+  // Time Slot Sections
+  timelineContainer: {
     gap: Spacing.lg,
   },
-  timeSlot: {
+  slotSection: {
     gap: Spacing.sm,
   },
   slotHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,
-    paddingHorizontal: Spacing.xs,
   },
-  slotIcon: {
-    fontSize: 16,
+  slotDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
   },
   slotLabel: {
     fontSize: FontSize.sm,
-    fontWeight: '700',
+    fontFamily: FontFamily.bold,
   },
   slotTime: {
     fontSize: FontSize.xs,
     color: Colors.textDim,
+    fontFamily: FontFamily.regular,
   },
-  medList: {
+  slotCards: {
     gap: Spacing.sm,
   },
+
+  // Medicine Card
   medCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.surface,
+    backgroundColor: Colors.surfaceLight,
     borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.glassBorder,
     padding: Spacing.md,
   },
   medCardTaken: {
-    opacity: 0.7,
+    opacity: 0.6,
   },
   medInfo: {
     flex: 1,
@@ -693,7 +735,7 @@ const styles = StyleSheet.create({
   },
   medName: {
     fontSize: FontSize.base,
-    fontWeight: '600',
+    fontFamily: FontFamily.semibold,
     color: Colors.foreground,
   },
   medNameTaken: {
@@ -703,7 +745,7 @@ const styles = StyleSheet.create({
   medDosage: {
     fontSize: FontSize.sm,
     color: Colors.primary,
-    fontWeight: '500',
+    fontFamily: FontFamily.medium,
   },
   medInstructions: {
     fontSize: FontSize.xs,
@@ -721,7 +763,7 @@ const styles = StyleSheet.create({
   takenText: {
     fontSize: FontSize.xs,
     color: Colors.success,
-    fontWeight: '600',
+    fontFamily: FontFamily.semibold,
   },
   skippedBadge: {
     paddingHorizontal: Spacing.sm,
@@ -732,11 +774,12 @@ const styles = StyleSheet.create({
   skippedText: {
     fontSize: FontSize.xs,
     color: Colors.danger,
-    fontWeight: '600',
+    fontFamily: FontFamily.semibold,
   },
   actionButtons: {
     flexDirection: 'row',
     gap: Spacing.sm,
+    alignItems: 'center',
   },
   takeBtn: {
     width: 36,
@@ -750,19 +793,15 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: Colors.surfaceLight,
+    backgroundColor: Colors.surfaceRaised,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  historyPlaceholder: {
-    fontSize: FontSize.sm,
-    color: Colors.textSecondary,
-    textAlign: 'center',
-    padding: Spacing['2xl'],
-  },
+
+  // History
   historyDateTitle: {
     fontSize: FontSize.sm,
-    fontWeight: '700',
+    fontFamily: FontFamily.bold,
     color: Colors.foreground,
     marginBottom: Spacing.sm,
   },
@@ -774,7 +813,7 @@ const styles = StyleSheet.create({
   },
   historyMedName: {
     fontSize: FontSize.sm,
-    fontWeight: '600',
+    fontFamily: FontFamily.semibold,
     color: Colors.foreground,
   },
   historyMedTime: {
@@ -783,17 +822,13 @@ const styles = StyleSheet.create({
   },
   historyXp: {
     fontSize: FontSize.xs,
-    fontWeight: '700',
+    fontFamily: FontFamily.bold,
     color: Colors.primary,
   },
+
+  // Add Medicine Sheet
   addForm: {
     paddingBottom: Spacing['2xl'],
-  },
-  addFormNote: {
-    fontSize: FontSize.xs,
-    color: Colors.textDim,
-    marginTop: Spacing.md,
-    fontStyle: 'italic',
   },
   addFormFooter: {
     flexDirection: 'row',
@@ -801,9 +836,9 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
     marginTop: Spacing.xl,
   },
-  timeSlotLabel: {
+  timeSlotLabelText: {
     fontSize: FontSize.sm,
-    fontWeight: '600',
+    fontFamily: FontFamily.semibold,
     color: Colors.foreground,
     marginTop: Spacing.md,
     marginBottom: Spacing.sm,
@@ -821,7 +856,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.xs,
     borderRadius: Radius.md,
     borderWidth: 1,
-    borderColor: Colors.glassBorder,
+    borderColor: Colors.border,
     backgroundColor: Colors.surface,
   },
   timeSlotChipText: {

@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { Colors, FontSize, Spacing } from '@/constants/theme';
+import { Colors, FontSize, Spacing, FontFamily } from '@/constants/theme';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 
 interface XpBarProps {
@@ -46,12 +46,12 @@ const styles = StyleSheet.create({
   },
   levelText: {
     fontSize: FontSize.sm,
-    fontWeight: '800',
+    fontFamily: FontFamily.extrabold,
     color: Colors.primary,
   },
   xpText: {
     fontSize: FontSize.xs,
-    fontWeight: '600',
+    fontFamily: FontFamily.semibold,
     color: Colors.textSecondary,
   },
   nextLevel: {

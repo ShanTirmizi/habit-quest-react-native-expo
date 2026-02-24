@@ -23,7 +23,7 @@ interface ProgressBarProps {
 export function ProgressBar({
   progress,
   color = Colors.primary,
-  trackColor = Colors.surfaceLight,
+  trackColor = Colors.surfaceRaised,
   height = 8,
   style,
   animated = true,

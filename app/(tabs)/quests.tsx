@@ -16,8 +16,8 @@ import * as Haptics from 'expo-haptics';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { useAuth } from '@/contexts/auth-context';
-import { Colors, FontSize, Spacing, Radius } from '@/constants/theme';
-import { GlassCard } from '@/components/ui/GlassCard';
+import { Colors, FontSize, Spacing, Radius, FontFamily, Shadows } from '@/constants/theme';
+import { GradientCard } from '@/components/ui/GradientCard';
 import { BadgePill } from '@/components/ui/BadgePill';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { BottomSheet } from '@/components/ui/BottomSheet';
@@ -33,6 +33,7 @@ export default function QuestsScreen() {
   const { showToast } = useToast();
   const [showAddSheet, setShowAddSheet] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [completedExpanded, setCompletedExpanded] = useState(false);
 
   const rawQuests = useQuery(api.quests.getQuests, userId ? { userId } : 'skip');
   const addQuestMutation = useMutation(api.quests.addQuest);
@@ -134,21 +135,27 @@ export default function QuestsScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
+      {/* Header */}
       <View style={styles.header}>
-        <View>
-          <Text style={styles.title}>Side Quests</Text>
-          <Text style={styles.subtitle}>
-            {pendingQuests.length} active · {completedQuests.length} completed
-          </Text>
+        <View style={styles.headerLeft}>
+          <Text style={styles.title}>Quests</Text>
+          <View style={styles.badgeRow}>
+            <View style={styles.activeBadge}>
+              <Text style={styles.activeBadgeText}>{pendingQuests.length} active</Text>
+            </View>
+            <View style={styles.completedBadge}>
+              <Text style={styles.completedBadgeText}>{completedQuests.length} completed</Text>
+            </View>
+          </View>
         </View>
         <Pressable
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             setShowAddSheet(true);
           }}
-          style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.7 }]}
+          style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.7, transform: [{ scale: 0.92 }] }]}
         >
-          <Ionicons name="add" size={22} color={Colors.primary} />
+          <Ionicons name="add" size={24} color="#FFFFFF" />
         </Pressable>
       </View>
 
@@ -156,9 +163,9 @@ export default function QuestsScreen() {
         <View style={styles.loadingContainer}>
           <View style={{ gap: Spacing.sm, paddingHorizontal: Spacing.lg }}>
             <Skeleton width="40%" height={12} />
-            <Skeleton height={70} borderRadius={Radius.lg} />
-            <Skeleton height={70} borderRadius={Radius.lg} />
-            <Skeleton height={70} borderRadius={Radius.lg} />
+            <Skeleton height={120} borderRadius={Radius.xl} />
+            <Skeleton height={120} borderRadius={Radius.xl} />
+            <Skeleton height={120} borderRadius={Radius.xl} />
           </View>
         </View>
       ) : (
@@ -187,12 +194,12 @@ export default function QuestsScreen() {
             />
           ) : (
             <>
+              {/* Active Quests */}
               {pendingQuests.length > 0 ? (
                 <View style={styles.section}>
-                  <Text style={styles.sectionTitle}>Active Quests</Text>
-                  <View style={styles.questList}>
+                  <View style={styles.activeQuestList}>
                     {pendingQuests.map((quest) => (
-                      <QuestCard
+                      <ActiveQuestCard
                         key={quest.id}
                         quest={quest}
                         onComplete={handleComplete}
@@ -203,19 +210,40 @@ export default function QuestsScreen() {
                 </View>
               ) : null}
 
+              {/* Completed Quests - Collapsible */}
               {completedQuests.length > 0 ? (
-                <View style={styles.section}>
-                  <Text style={styles.sectionTitle}>Completed</Text>
-                  <View style={styles.questList}>
-                    {completedQuests.map((quest) => (
-                      <QuestCard
-                        key={quest.id}
-                        quest={quest}
-                        onUncomplete={handleUncomplete}
-                        onDelete={handleDelete}
-                      />
-                    ))}
-                  </View>
+                <View style={styles.completedSection}>
+                  <Pressable
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      setCompletedExpanded(!completedExpanded);
+                    }}
+                    style={({ pressed }) => [
+                      styles.completedHeader,
+                      pressed && { opacity: 0.7 },
+                    ]}
+                  >
+                    <Text style={styles.completedHeaderText}>
+                      COMPLETED ({completedQuests.length})
+                    </Text>
+                    <Ionicons
+                      name={completedExpanded ? 'chevron-up' : 'chevron-down'}
+                      size={16}
+                      color={Colors.textSecondary}
+                    />
+                  </Pressable>
+                  {completedExpanded ? (
+                    <View style={styles.completedList}>
+                      {completedQuests.map((quest) => (
+                        <CompletedQuestRow
+                          key={quest.id}
+                          quest={quest}
+                          onUncomplete={handleUncomplete}
+                          onDelete={handleDelete}
+                        />
+                      ))}
+                    </View>
+                  ) : null}
                 </View>
               ) : null}
             </>
@@ -233,15 +261,15 @@ export default function QuestsScreen() {
   );
 }
 
-function QuestCard({
+/* ─── Active Quest Card ──────────────────────────────────────────────────── */
+
+function ActiveQuestCard({
   quest,
   onComplete,
-  onUncomplete,
   onDelete,
 }: {
   quest: SideQuest;
-  onComplete?: (id: string) => void;
-  onUncomplete?: (id: string) => void;
+  onComplete: (id: string) => void;
   onDelete: (id: string) => void;
 }) {
   const priorityConfig = QUEST_PRIORITY_CONFIG[quest.priority];
@@ -253,54 +281,101 @@ function QuestCard({
       Animated.spring(btnScale, { toValue: 1.15, useNativeDriver: true, speed: 50, bounciness: 0 }),
       Animated.spring(btnScale, { toValue: 1, useNativeDriver: true, speed: 50, bounciness: 0 }),
     ]).start();
-    onComplete?.(quest.id);
+    onComplete(quest.id);
   }, [quest.id, onComplete, btnScale]);
 
   return (
-    <GlassCard style={styles.questCard}>
-      <View style={styles.questContent}>
-        <View style={styles.questTop}>
-          <Text style={[styles.questTitle, quest.completed && styles.questTitleDone]}>
-            {quest.title}
-          </Text>
-          <Pressable onPress={() => onDelete(quest.id)} hitSlop={8}>
-            <Ionicons name="trash-outline" size={16} color={Colors.textDim} />
-          </Pressable>
-        </View>
-        {quest.description ? (
-          <Text style={styles.questDesc} numberOfLines={2}>
-            {quest.description}
-          </Text>
-        ) : null}
-        <View style={styles.questMeta}>
-          <BadgePill
-            label={priorityConfig.label}
-            color={priorityConfig.color}
-            size="sm"
-          />
-          <Text style={styles.questXp}>+{quest.xpReward} XP</Text>
+    <GradientCard style={styles.activeCard}>
+      {/* Top Row: Title + Delete */}
+      <View style={styles.activeCardTopRow}>
+        <Text style={styles.activeCardTitle} numberOfLines={2}>
+          {quest.title}
+        </Text>
+        <Pressable
+          onPress={() => onDelete(quest.id)}
+          hitSlop={10}
+          style={({ pressed }) => [styles.deleteBtn, pressed && { opacity: 0.5 }]}
+        >
+          <Ionicons name="trash-outline" size={17} color={Colors.textDim} />
+        </Pressable>
+      </View>
+
+      {/* Description */}
+      {quest.description ? (
+        <Text style={styles.activeCardDesc} numberOfLines={2}>
+          {quest.description}
+        </Text>
+      ) : null}
+
+      {/* Bottom Row: Priority + XP */}
+      <View style={styles.activeCardBottomRow}>
+        <BadgePill
+          label={priorityConfig.label}
+          color={priorityConfig.color}
+          size="sm"
+        />
+        <View style={styles.xpBadge}>
+          <Text style={styles.xpBadgeText}>+{quest.xpReward} XP</Text>
         </View>
       </View>
-      {!quest.completed && onComplete ? (
-        <Animated.View style={{ transform: [{ scale: btnScale }] }}>
-          <Pressable
-            onPress={handleComplete}
-            style={({ pressed }) => [styles.completeBtn, pressed && { opacity: 0.7 }]}
-          >
-            <Ionicons name="checkmark" size={20} color={Colors.background} />
-          </Pressable>
-        </Animated.View>
-      ) : quest.completed && onUncomplete ? (
+
+      {/* Complete Button */}
+      <Animated.View style={{ transform: [{ scale: btnScale }] }}>
         <Pressable
-          onPress={() => onUncomplete(quest.id)}
-          style={({ pressed }) => [styles.undoBtn, pressed && { opacity: 0.7 }]}
+          onPress={handleComplete}
+          style={({ pressed }) => [
+            styles.completeButton,
+            pressed && { opacity: 0.8, transform: [{ scale: 0.97 }] },
+          ]}
         >
-          <Ionicons name="arrow-undo" size={16} color={Colors.textMuted} />
+          <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" style={{ marginRight: 6 }} />
+          <Text style={styles.completeButtonText}>Complete</Text>
         </Pressable>
-      ) : null}
-    </GlassCard>
+      </Animated.View>
+    </GradientCard>
   );
 }
+
+/* ─── Completed Quest Row ────────────────────────────────────────────────── */
+
+function CompletedQuestRow({
+  quest,
+  onUncomplete,
+  onDelete,
+}: {
+  quest: SideQuest;
+  onUncomplete: (id: string) => void;
+  onDelete: (id: string) => void;
+}) {
+  return (
+    <View style={styles.completedRow}>
+      <Text style={styles.completedRowTitle} numberOfLines={1}>
+        {quest.title}
+      </Text>
+      <View style={styles.completedRowRight}>
+        <View style={styles.completedXpBadge}>
+          <Text style={styles.completedXpText}>+{quest.xpReward} XP</Text>
+        </View>
+        <Pressable
+          onPress={() => onUncomplete(quest.id)}
+          hitSlop={8}
+          style={({ pressed }) => [styles.undoBtn, pressed && { opacity: 0.5 }]}
+        >
+          <Ionicons name="arrow-undo" size={15} color={Colors.textMuted} />
+        </Pressable>
+        <Pressable
+          onPress={() => onDelete(quest.id)}
+          hitSlop={8}
+          style={({ pressed }) => [styles.undoBtn, pressed && { opacity: 0.5 }]}
+        >
+          <Ionicons name="trash-outline" size={14} color={Colors.textDim} />
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+/* ─── Add Quest Sheet ────────────────────────────────────────────────────── */
 
 function AddQuestSheet({
   visible,
@@ -382,41 +457,75 @@ function AddQuestSheet({
   );
 }
 
+/* ─── Styles ─────────────────────────────────────────────────────────────── */
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
   },
+
+  /* Header */
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     paddingHorizontal: Spacing.xl,
-    paddingVertical: Spacing.md,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.lg,
+  },
+  headerLeft: {
+    gap: Spacing.sm,
   },
   title: {
-    fontSize: FontSize['2xl'],
-    fontWeight: '800',
+    fontSize: FontSize['3xl'],
+    fontFamily: FontFamily.extrabold,
     color: Colors.foreground,
   },
-  subtitle: {
-    fontSize: FontSize.sm,
-    color: Colors.textSecondary,
-    marginTop: 2,
+  badgeRow: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+  },
+  activeBadge: {
+    backgroundColor: `${Colors.primary}18`,
+    paddingHorizontal: Spacing.sm + 2,
+    paddingVertical: 3,
+    borderRadius: Radius.full,
+  },
+  activeBadgeText: {
+    fontSize: FontSize.xs,
+    fontFamily: FontFamily.semibold,
+    color: Colors.primary,
+  },
+  completedBadge: {
+    backgroundColor: `${Colors.success}18`,
+    paddingHorizontal: Spacing.sm + 2,
+    paddingVertical: 3,
+    borderRadius: Radius.full,
+  },
+  completedBadgeText: {
+    fontSize: FontSize.xs,
+    fontFamily: FontFamily.semibold,
+    color: Colors.success,
   },
   addBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: Colors.primaryBg,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    ...Shadows.neonGlow(Colors.primary),
   },
+
+  /* Loading */
   loadingContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
+
+  /* Scroll */
   scrollView: {
     flex: 1,
   },
@@ -424,68 +533,129 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     gap: Spacing.lg,
   },
+
+  /* Sections */
   section: {
     gap: Spacing.sm,
   },
-  sectionTitle: {
-    fontSize: FontSize.sm,
-    fontWeight: '700',
-    color: Colors.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    paddingHorizontal: Spacing.xs,
-  },
-  questList: {
-    gap: Spacing.sm,
-  },
-  questCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  activeQuestList: {
     gap: Spacing.md,
   },
-  questContent: {
-    flex: 1,
-    gap: 4,
+
+  /* ── Active Quest Card ── */
+  activeCard: {
+    gap: Spacing.sm,
   },
-  questTop: {
+  activeCardTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
   },
-  questTitle: {
-    fontSize: FontSize.base,
-    fontWeight: '600',
+  activeCardTitle: {
+    fontSize: FontSize.lg,
+    fontFamily: FontFamily.bold,
     color: Colors.foreground,
     flex: 1,
     marginRight: Spacing.sm,
   },
-  questTitleDone: {
-    textDecorationLine: 'line-through',
-    color: Colors.textMuted,
+  deleteBtn: {
+    padding: 4,
   },
-  questDesc: {
+  activeCardDesc: {
     fontSize: FontSize.sm,
+    fontFamily: FontFamily.regular,
     color: Colors.textSecondary,
-    lineHeight: 18,
+    lineHeight: 19,
   },
-  questMeta: {
+  activeCardBottomRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,
-    marginTop: 4,
+    marginTop: 2,
   },
-  questXp: {
+  xpBadge: {
+    backgroundColor: Colors.primaryBg,
+    paddingHorizontal: Spacing.sm + 2,
+    paddingVertical: 3,
+    borderRadius: Radius.full,
+  },
+  xpBadgeText: {
     fontSize: FontSize.xs,
+    fontFamily: FontFamily.bold,
     color: Colors.primary,
-    fontWeight: '600',
   },
-  completeBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: Colors.success,
+  completeButton: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: Colors.success,
+    paddingVertical: Spacing.sm + 4,
+    borderRadius: Radius.lg,
+    marginTop: Spacing.sm,
+  },
+  completeButtonText: {
+    fontSize: FontSize.base,
+    fontFamily: FontFamily.bold,
+    color: '#FFFFFF',
+  },
+
+  /* ── Completed Section ── */
+  completedSection: {
+    gap: Spacing.sm,
+  },
+  completedHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: Colors.surfaceLight,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: Radius.full,
+    gap: Spacing.xs,
+  },
+  completedHeaderText: {
+    fontSize: FontSize.xs,
+    fontFamily: FontFamily.bold,
+    color: Colors.textSecondary,
+    letterSpacing: 0.8,
+  },
+  completedList: {
+    gap: Spacing.xs,
+  },
+
+  /* ── Completed Quest Row ── */
+  completedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.surfaceRaised,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm + 2,
+    borderRadius: Radius.md,
+  },
+  completedRowTitle: {
+    fontSize: FontSize.sm,
+    fontFamily: FontFamily.medium,
+    color: Colors.textMuted,
+    textDecorationLine: 'line-through',
+    flex: 1,
+    marginRight: Spacing.sm,
+  },
+  completedRowRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  completedXpBadge: {
+    backgroundColor: `${Colors.success}18`,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: Radius.full,
+  },
+  completedXpText: {
+    fontSize: FontSize.xs,
+    fontFamily: FontFamily.semibold,
+    color: Colors.success,
   },
   undoBtn: {
     width: 28,
@@ -495,6 +665,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+
+  /* ── Add Quest Sheet ── */
   addForm: {
     paddingBottom: Spacing['2xl'],
   },
@@ -504,7 +676,7 @@ const styles = StyleSheet.create({
   },
   priorityLabel: {
     fontSize: FontSize.sm,
-    fontWeight: '600',
+    fontFamily: FontFamily.semibold,
     color: Colors.textSecondary,
   },
   priorityRow: {
@@ -523,7 +695,7 @@ const styles = StyleSheet.create({
   },
   priorityChipText: {
     fontSize: FontSize.xs,
-    fontWeight: '600',
+    fontFamily: FontFamily.semibold,
     color: Colors.textSecondary,
   },
   addFormFooter: {
