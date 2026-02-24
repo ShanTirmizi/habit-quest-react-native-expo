@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { makeRedirectUri } from 'expo-auth-session';
 import { openAuthSessionAsync } from 'expo-web-browser';
+import * as AppleAuthentication from 'expo-apple-authentication';
 import { Colors, FontSize, Spacing, Radius, FontFamily, Shadows } from '@/constants/theme';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
@@ -30,7 +31,8 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
-  const [oauthLoading, setOauthLoading] = useState(false);
+  const [appleLoading, setAppleLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   const handleEmailAuth = async () => {
     if (!email || !password) return;
@@ -59,8 +61,46 @@ export default function LoginScreen() {
     }
   };
 
+  const handleAppleSignIn = async () => {
+    setAppleLoading(true);
+    try {
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+      if (credential.identityToken) {
+        const { redirect } = await signIn('apple', { redirectTo });
+        if (redirect) {
+          const result = await openAuthSessionAsync(
+            redirect.toString(),
+            redirectTo
+          );
+          if (result.type === 'success') {
+            const { url } = result;
+            const code = new URL(url).searchParams.get('code');
+            if (code) {
+              await signIn('apple', { code });
+            }
+          }
+        }
+        router.replace('/(tabs)');
+      }
+    } catch (err: any) {
+      if (err.code !== 'ERR_REQUEST_CANCELED') {
+        Alert.alert(
+          'Apple Sign In Failed',
+          err?.message || 'Something went wrong. Please try again.'
+        );
+      }
+    } finally {
+      setAppleLoading(false);
+    }
+  };
+
   const handleGoogleSignIn = async () => {
-    setOauthLoading(true);
+    setGoogleLoading(true);
     try {
       const { redirect } = await signIn('google', { redirectTo });
       if (Platform.OS === 'web') {
@@ -86,7 +126,7 @@ export default function LoginScreen() {
         err?.message || 'Something went wrong. Please try again.'
       );
     } finally {
-      setOauthLoading(false);
+      setGoogleLoading(false);
     }
   };
 
@@ -161,14 +201,27 @@ export default function LoginScreen() {
           </View>
 
           {/* OAuth Buttons */}
+          {Platform.OS === 'ios' ? (
+            <Pressable
+              style={({ pressed }) => [styles.oauthBtn, styles.appleBtn, pressed && { opacity: 0.8 }]}
+              onPress={handleAppleSignIn}
+              disabled={appleLoading || googleLoading}
+            >
+              <Ionicons name="logo-apple" size={20} color="#FFFFFF" />
+              <Text style={[styles.oauthText, { color: '#FFFFFF' }]}>
+                {appleLoading ? 'Connecting...' : 'Continue with Apple'}
+              </Text>
+            </Pressable>
+          ) : null}
+
           <Pressable
             style={({ pressed }) => [styles.oauthBtn, pressed && { opacity: 0.8 }]}
             onPress={handleGoogleSignIn}
-            disabled={oauthLoading}
+            disabled={appleLoading || googleLoading}
           >
             <Ionicons name="logo-google" size={20} color={Colors.foreground} />
             <Text style={styles.oauthText}>
-              {oauthLoading ? 'Connecting...' : 'Continue with Google'}
+              {googleLoading ? 'Connecting...' : 'Continue with Google'}
             </Text>
           </Pressable>
 
@@ -276,6 +329,11 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     borderRadius: Radius.lg,
     paddingVertical: Spacing.md,
+  },
+  appleBtn: {
+    backgroundColor: '#000000',
+    borderColor: '#333333',
+    marginBottom: Spacing.sm,
   },
   oauthText: {
     fontSize: FontSize.base,

@@ -10,6 +10,7 @@ interface User {
   name?: string;
   image?: string;
   avatarUrl?: string;
+  hasCompletedOnboarding?: boolean;
 }
 
 interface AuthContextValue {

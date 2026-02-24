@@ -93,6 +93,10 @@ export function ConcentricRings({
   const cy = size / 2;
   const ringGap = strokeWidth + 6;
 
+  // Calculate the inner radius of the innermost ring to constrain center content
+  const innermostRadius = (size - strokeWidth) / 2 - (rings.length - 1) * ringGap;
+  const centerSize = Math.max(0, (innermostRadius - strokeWidth / 2) * 2 - 4);
+
   return (
     <View style={[styles.container, { width: size, height: size }]}>
       <Svg width={size} height={size} style={StyleSheet.absoluteFill}>
@@ -115,7 +119,7 @@ export function ConcentricRings({
         })}
       </Svg>
       {children ? (
-        <View style={styles.center}>
+        <View style={[styles.center, { width: centerSize, height: centerSize, borderRadius: centerSize / 2 }]}>
           {children}
         </View>
       ) : null}

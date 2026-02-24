@@ -22,7 +22,7 @@ import { XpToast } from '@/components/ui/XpToast';
 SplashScreen.preventAutoHideAsync();
 
 function AuthGate({ children }: { children: React.ReactNode }) {
-  const { isLoading, isAuthenticated } = useAuth();
+  const { isLoading, isAuthenticated, user } = useAuth();
   const segments = useSegments();
   const router = useRouter();
 
@@ -30,13 +30,21 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     if (isLoading) return;
 
     const inAuthGroup = segments[0] === '(auth)';
+    const inOnboarding = segments[0] === 'onboarding';
 
     if (!isAuthenticated && !inAuthGroup) {
       router.replace('/(auth)/login');
     } else if (isAuthenticated && inAuthGroup) {
-      router.replace('/(tabs)');
+      // Check if user needs onboarding
+      if (user && !user.hasCompletedOnboarding) {
+        router.replace('/onboarding');
+      } else {
+        router.replace('/(tabs)');
+      }
+    } else if (isAuthenticated && !inOnboarding && user && !user.hasCompletedOnboarding) {
+      router.replace('/onboarding');
     }
-  }, [isLoading, isAuthenticated, segments]);
+  }, [isLoading, isAuthenticated, user, segments]);
 
   if (isLoading) {
     return (
@@ -88,6 +96,22 @@ export default function RootLayout() {
                     <Stack.Screen
                       name="(auth)/login"
                       options={{ presentation: 'modal' }}
+                    />
+                    <Stack.Screen
+                      name="onboarding"
+                      options={{ animation: 'fade', gestureEnabled: false }}
+                    />
+                    <Stack.Screen
+                      name="settings"
+                      options={{ animation: 'slide_from_right' }}
+                    />
+                    <Stack.Screen
+                      name="privacy-policy"
+                      options={{ animation: 'slide_from_right' }}
+                    />
+                    <Stack.Screen
+                      name="terms-of-service"
+                      options={{ animation: 'slide_from_right' }}
                     />
                   </Stack>
                 </AuthGate>

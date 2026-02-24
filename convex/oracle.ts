@@ -176,18 +176,14 @@ export const acceptChallenge = mutation({
       throw new Error('Challenge not found');
     }
 
+    // Idempotent: if already accepted, just return success
     if (challenge.accepted) {
-      return { success: false, reason: 'already_accepted' };
-    }
-
-    const now = new Date().toISOString();
-    if (challenge.expiresAt < now) {
-      return { success: false, reason: 'expired' };
+      return { success: true, xpReward: challenge.xpReward };
     }
 
     await ctx.db.patch(args.challengeId, { accepted: true });
 
-    return { success: true };
+    return { success: true, xpReward: challenge.xpReward };
   },
 });
 

@@ -26,7 +26,6 @@ import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { ConcentricRings } from '@/components/ui/ConcentricRings';
-import { TimelineNode } from '@/components/ui/TimelineNode';
 import { format, parseISO } from 'date-fns';
 import type { TodayMedicineScheduleItem, MedicineCompletionStatus } from '@/types';
 import { formatMedicineTime } from '@/types';
@@ -218,7 +217,7 @@ export default function MedicinesScreen() {
       {/* Concentric Rings Stats */}
       <View style={styles.ringsSection}>
         <ConcentricRings
-          size={140}
+          size={160}
           strokeWidth={8}
           rings={[
             { progress: stats.percentage, color: Colors.primary, label: 'Adherence' },
@@ -289,28 +288,22 @@ export default function MedicinesScreen() {
               />
             ) : (
               <View style={styles.timelineContainer}>
-                {slotEntries.map(([slot, items], index) => {
+                {slotEntries.map(([slot, items]) => {
                   const config = TIME_SLOT_CONFIG[slot] || { icon: 'medkit-outline' as keyof typeof Ionicons.glyphMap, label: slot, color: Colors.textSecondary };
-                  const allTaken = items.every((item) => item.status === 'taken');
-                  const isLast = index === slotEntries.length - 1;
 
                   return (
-                    <TimelineNode
-                      key={slot}
-                      color={config.color}
-                      isComplete={allTaken}
-                      isLast={isLast}
-                    >
-                      <View style={styles.timelineSlotHeader}>
+                    <View key={slot} style={styles.slotSection}>
+                      <View style={styles.slotHeader}>
+                        <View style={[styles.slotDot, { backgroundColor: config.color }]} />
                         <Ionicons name={config.icon} size={16} color={config.color} />
-                        <Text style={[styles.timelineSlotLabel, { color: config.color }]}>
+                        <Text style={[styles.slotLabel, { color: config.color }]}>
                           {config.label}
                         </Text>
-                        <Text style={styles.timelineSlotTime}>
+                        <Text style={styles.slotTime}>
                           {items[0] ? formatMedicineTime(items[0].scheduledTime) : ''}
                         </Text>
                       </View>
-                      <View style={styles.timelineMedList}>
+                      <View style={styles.slotCards}>
                         {items.map((item) => (
                           <MedicineCard
                             key={`${item.medicineId}_${item.scheduledTime}`}
@@ -320,7 +313,7 @@ export default function MedicinesScreen() {
                           />
                         ))}
                       </View>
-                    </TimelineNode>
+                    </View>
                   );
                 })}
               </View>
@@ -655,7 +648,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.sm,
   },
   ringsCenterNumber: {
-    fontSize: FontSize['3xl'],
+    fontSize: FontSize['2xl'],
     fontFamily: FontFamily.extrabold,
     color: Colors.foreground,
     textAlign: 'center',
@@ -695,26 +688,33 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
   },
 
-  // Timeline
+  // Time Slot Sections
   timelineContainer: {
-    paddingTop: Spacing.xs,
+    gap: Spacing.lg,
   },
-  timelineSlotHeader: {
+  slotSection: {
+    gap: Spacing.sm,
+  },
+  slotHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,
-    marginBottom: Spacing.sm,
   },
-  timelineSlotLabel: {
+  slotDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  slotLabel: {
     fontSize: FontSize.sm,
     fontFamily: FontFamily.bold,
   },
-  timelineSlotTime: {
+  slotTime: {
     fontSize: FontSize.xs,
     color: Colors.textDim,
     fontFamily: FontFamily.regular,
   },
-  timelineMedList: {
+  slotCards: {
     gap: Spacing.sm,
   },
 

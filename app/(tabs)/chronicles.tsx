@@ -37,6 +37,7 @@ export default function ChroniclesScreen() {
   const { showToast } = useToast();
   const [isWriting, setIsWriting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [editingEntry, setEditingEntry] = useState<JournalEntry | null>(null);
 
   // New entry form state
   const [gratitude1, setGratitude1] = useState('');
@@ -126,12 +127,12 @@ export default function ChroniclesScreen() {
   }, [gratitude1, gratitude2, gratitude3, improvement, content, selectedMood, userId, addEntryMutation]);
 
   const handleUpdateEntry = useCallback(async () => {
-    if (!gratitude1 || !gratitude2 || !gratitude3 || !userId || !todayEntry) return;
+    if (!gratitude1 || !gratitude2 || !gratitude3 || !userId || !editingEntry) return;
 
     setSaving(true);
     try {
       await updateEntryMutation({
-        entryId: todayEntry.id as any,
+        entryId: editingEntry.id as any,
         userId,
         gratitudes: [gratitude1, gratitude2, gratitude3],
         improvement: improvement || undefined,
@@ -141,6 +142,7 @@ export default function ChroniclesScreen() {
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setIsEditing(false);
+      setEditingEntry(null);
       setGratitude1('');
       setGratitude2('');
       setGratitude3('');
@@ -152,18 +154,18 @@ export default function ChroniclesScreen() {
     } finally {
       setSaving(false);
     }
-  }, [gratitude1, gratitude2, gratitude3, improvement, content, selectedMood, userId, todayEntry, updateEntryMutation]);
+  }, [gratitude1, gratitude2, gratitude3, improvement, content, selectedMood, userId, editingEntry, updateEntryMutation]);
 
-  const handleStartEditing = useCallback(() => {
-    if (!todayEntry) return;
-    setGratitude1(todayEntry.gratitudes[0] || '');
-    setGratitude2(todayEntry.gratitudes[1] || '');
-    setGratitude3(todayEntry.gratitudes[2] || '');
-    setImprovement(todayEntry.improvement || '');
-    setContent(todayEntry.content || '');
-    setSelectedMood(todayEntry.mood || null);
+  const handleStartEditing = useCallback((entry: JournalEntry) => {
+    setGratitude1(entry.gratitudes[0] || '');
+    setGratitude2(entry.gratitudes[1] || '');
+    setGratitude3(entry.gratitudes[2] || '');
+    setImprovement(entry.improvement || '');
+    setContent(entry.content || '');
+    setSelectedMood(entry.mood || null);
+    setEditingEntry(entry);
     setIsEditing(true);
-  }, [todayEntry]);
+  }, []);
 
   const prompts = useMemo(() => {
     const shuffled = [...GRATITUDE_PROMPTS].sort(() => Math.random() - 0.5);
@@ -188,9 +190,9 @@ export default function ChroniclesScreen() {
         </View>
         {!isWriting && !isEditing ? (
           <View style={styles.headerActions}>
-            {hasEntryToday ? (
+            {hasEntryToday && todayEntry ? (
               <Pressable
-                onPress={handleStartEditing}
+                onPress={() => handleStartEditing(todayEntry)}
                 style={({ pressed }) => [styles.editBtn, pressed && { opacity: 0.7 }]}
               >
                 <Ionicons name="pencil-outline" size={16} color={Colors.primary} />
@@ -224,7 +226,7 @@ export default function ChroniclesScreen() {
             <GradientCard
               gradient={[todayMoodColor + '15', 'transparent']}
               elevated
-              onPress={handleStartEditing}
+              onPress={() => handleStartEditing(todayEntry)}
               style={styles.featuredCard}
             >
               <View style={styles.featuredTop}>
@@ -288,7 +290,7 @@ export default function ChroniclesScreen() {
                 contentContainerStyle={styles.pastGallery}
               >
                 {pastEntries.map((entry) => (
-                  <PastEntryCard key={entry.id} entry={entry} />
+                  <PastEntryCard key={entry.id} entry={entry} onEdit={handleStartEditing} />
                 ))}
               </ScrollView>
             </View>
@@ -312,8 +314,10 @@ export default function ChroniclesScreen() {
       {/* ── Writing / Editing BottomSheet ── */}
       <BottomSheet
         visible={isWriting || isEditing}
-        onClose={() => { setIsWriting(false); setIsEditing(false); }}
-        title={isEditing ? "Edit Today's Entry" : "Today's Reflection"}
+        onClose={() => { setIsWriting(false); setIsEditing(false); setEditingEntry(null); }}
+        title={isEditing && editingEntry
+          ? `Edit ${editingEntry.entryDate ? format(parseISO(editingEntry.entryDate), 'MMM d') : "Today's"} Entry`
+          : "Today's Reflection"}
       >
         <View style={styles.writeForm}>
           {/* Mood Selection */}
@@ -426,7 +430,7 @@ export default function ChroniclesScreen() {
           {/* Actions */}
           <View style={styles.formActions}>
             <Pressable
-              onPress={() => { setIsWriting(false); setIsEditing(false); }}
+              onPress={() => { setIsWriting(false); setIsEditing(false); setEditingEntry(null); }}
               style={({ pressed }) => [styles.cancelBtn, pressed && { opacity: 0.7 }]}
             >
               <Text style={styles.cancelBtnText}>Cancel</Text>
@@ -452,7 +456,7 @@ export default function ChroniclesScreen() {
 }
 
 /* ── Past Entry Gallery Card ── */
-function PastEntryCard({ entry }: { entry: JournalEntry }) {
+function PastEntryCard({ entry, onEdit }: { entry: JournalEntry; onEdit: (entry: JournalEntry) => void }) {
   const [expanded, setExpanded] = useState(false);
 
   const dateStr = entry.entryDate
@@ -477,7 +481,16 @@ function PastEntryCard({ entry }: { entry: JournalEntry }) {
               ? format(parseISO(entry.entryDate), 'EEEE, MMM d')
               : format(parseISO(entry.createdAt), 'EEEE, MMM d')}
           </Text>
-          <Ionicons name="chevron-up" size={14} color={Colors.textDim} />
+          <View style={styles.expandedHeaderRight}>
+            <Pressable
+              onPress={() => onEdit(entry)}
+              hitSlop={8}
+              style={({ pressed }) => [pressed && { opacity: 0.6 }]}
+            >
+              <Ionicons name="pencil-outline" size={14} color={Colors.primary} />
+            </Pressable>
+            <Ionicons name="chevron-up" size={14} color={Colors.textDim} />
+          </View>
         </View>
         <View style={styles.expandedGratitudes}>
           {entry.gratitudes.map((g, i) => (
@@ -896,6 +909,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: Spacing.sm,
+  },
+  expandedHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
   },
   expandedDate: {
     fontSize: FontSize.sm,

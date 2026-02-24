@@ -69,6 +69,16 @@ export const getCurrentUserWithProgress = query({
   },
 });
 
+// Mark onboarding as completed for current user
+export const completeOnboarding = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error('Not authenticated');
+    await ctx.db.patch(userId as Id<'users'>, { hasCompletedOnboarding: true });
+  },
+});
+
 // Legacy: Get or create user by external ID (for migration from localStorage)
 export const getOrCreateUser = mutation({
   args: {

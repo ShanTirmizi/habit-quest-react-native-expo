@@ -11,7 +11,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import Constants from 'expo-constants';
 import { format, differenceInDays, parseISO } from 'date-fns';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
@@ -23,7 +22,6 @@ import { HabitCard } from '@/components/habits/HabitCard';
 import { HabitDetailSheet } from '@/components/habits/HabitDetailSheet';
 import { AddHabitSheet } from '@/components/habits/AddHabitSheet';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { BottomSheet } from '@/components/ui/BottomSheet';
 import { SkeletonDashboard } from '@/components/ui/Skeleton';
 import { CompanionWidget } from '@/components/widgets/CompanionWidget';
 import { OracleChallengeCard } from '@/components/widgets/OracleChallengeCard';
@@ -58,10 +56,10 @@ const MOOD_EMOJI: Record<string, string> = {
 export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { signOut, userId, user } = useAuth();
+  const { userId, user } = useAuth();
   const { showToast } = useToast();
   const [showAddSheet, setShowAddSheet] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
+
   const [showCompanionSheet, setShowCompanionSheet] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedHabit, setSelectedHabit] = useState<Habit | null>(null);
@@ -318,7 +316,7 @@ export default function DashboardScreen() {
         </View>
         <View style={styles.topBarRight}>
           <Pressable
-            onPress={() => setShowSettings(true)}
+            onPress={() => router.push('/settings')}
             style={({ pressed }) => [styles.settingsButton, pressed && { opacity: 0.7 }]}
             accessibilityLabel="Settings"
             accessibilityRole="button"
@@ -584,27 +582,6 @@ export default function DashboardScreen() {
         onClose={() => setShowAddSheet(false)}
         onAdd={handleAddHabit}
       />
-
-      {/* Settings Sheet */}
-      <BottomSheet visible={showSettings} onClose={() => setShowSettings(false)} title="Settings">
-        <View style={styles.settingsContent}>
-          <Pressable
-            onPress={() => {
-              setShowSettings(false);
-              signOut();
-            }}
-            style={({ pressed }) => [styles.signOutButton, pressed && { opacity: 0.7 }]}
-            accessibilityRole="button"
-            accessibilityLabel="Sign out"
-          >
-            <Ionicons name="log-out-outline" size={20} color={Colors.danger} />
-            <Text style={styles.signOutText}>Sign Out</Text>
-          </Pressable>
-          <Text style={styles.versionText}>
-            HabitQuest v{Constants.expoConfig?.version ?? '1.0.0'}
-          </Text>
-        </View>
-      </BottomSheet>
 
       {/* Companion Sheet (Dr. Sage) — triggered from top bar avatar */}
       {userId ? (
@@ -888,27 +865,4 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  // ── Settings Sheet ──
-  settingsContent: {
-    paddingBottom: Spacing['2xl'],
-    gap: Spacing.lg,
-  },
-  signOutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-    padding: Spacing.md,
-    borderRadius: Radius.md,
-    backgroundColor: 'rgba(255, 107, 107, 0.1)',
-  },
-  signOutText: {
-    fontSize: FontSize.base,
-    fontFamily: FontFamily.semibold,
-    color: Colors.danger,
-  },
-  versionText: {
-    fontSize: FontSize.xs,
-    color: Colors.textDim,
-    textAlign: 'center',
-  },
 });

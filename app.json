@@ -16,6 +16,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.habitquest.app",
+      "usesAppleSignIn": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -36,7 +37,14 @@
       "expo-router",
       "expo-secure-store",
       "expo-web-browser",
-      "expo-font"
+      "expo-font",
+      "expo-apple-authentication",
+      [
+        "expo-notifications",
+        {
+          "color": "#FF6B2C"
+        }
+      ]
     ],
     "extra": {
       "router": {},

@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -22,6 +22,8 @@ export function OracleChallengeCard({ userId }: OracleChallengeCardProps) {
   const completeMutation = useMutation(api.oracle.completeChallenge);
   const dismissMutation = useMutation(api.oracle.dismissChallenge);
 
+  const [actionLoading, setActionLoading] = useState(false);
+
   const handleGenerate = useCallback(async () => {
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -33,38 +35,45 @@ export function OracleChallengeCard({ userId }: OracleChallengeCardProps) {
   }, [userId, generateMutation, showToast]);
 
   const handleAccept = useCallback(async () => {
-    if (!challenge) return;
+    if (!challenge || actionLoading) return;
+    setActionLoading(true);
     try {
       await acceptMutation({ userId, challengeId: challenge._id });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       showToast('Challenge accepted!', undefined, 'xp');
-    } catch {
+    } catch (err) {
       showToast('Failed to accept challenge', undefined, 'error');
+    } finally {
+      setActionLoading(false);
     }
-  }, [userId, challenge, acceptMutation, showToast]);
+  }, [userId, challenge, actionLoading, acceptMutation, showToast]);
 
   const handleComplete = useCallback(async () => {
-    if (!challenge) return;
+    if (!challenge || actionLoading) return;
+    setActionLoading(true);
     try {
       const result = await completeMutation({ userId, challengeId: challenge._id });
-      if (result.success) {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        showToast('Challenge completed!', result.xpReward, 'xp');
-      }
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      showToast('Challenge completed!', result.xpReward, 'xp');
     } catch {
       showToast('Failed to complete challenge', undefined, 'error');
+    } finally {
+      setActionLoading(false);
     }
-  }, [userId, challenge, completeMutation, showToast]);
+  }, [userId, challenge, actionLoading, completeMutation, showToast]);
 
   const handleDismiss = useCallback(async () => {
-    if (!challenge) return;
+    if (!challenge || actionLoading) return;
+    setActionLoading(true);
     try {
       await dismissMutation({ userId, challengeId: challenge._id });
       showToast('Challenge dismissed', undefined, 'hp');
     } catch {
       showToast('Failed to dismiss', undefined, 'error');
+    } finally {
+      setActionLoading(false);
     }
-  }, [userId, challenge, dismissMutation, showToast]);
+  }, [userId, challenge, actionLoading, dismissMutation, showToast]);
 
   // No active challenge
   if (challenge === null) {
@@ -111,13 +120,16 @@ export function OracleChallengeCard({ userId }: OracleChallengeCardProps) {
         <View style={styles.actions}>
           {isPending ? (
             <>
-              <Button title="Accept" onPress={handleAccept} size="sm" />
-              {!challenge.accepted && (
-                <Button title="Dismiss" onPress={handleDismiss} size="sm" variant="ghost" />
-              )}
+              <Button title="Accept" onPress={handleAccept} size="sm" loading={actionLoading} disabled={actionLoading} />
+              <Button title="Dismiss" onPress={handleDismiss} size="sm" variant="ghost" disabled={actionLoading} />
             </>
           ) : isAccepted ? (
-            <Button title="Complete" onPress={handleComplete} size="sm" />
+            <Button title="Complete" onPress={handleComplete} size="sm" loading={actionLoading} disabled={actionLoading} />
+          ) : challenge.completed ? (
+            <View style={styles.completedBadge}>
+              <Ionicons name="checkmark-circle" size={18} color={Colors.success} />
+              <Text style={styles.completedText}>Completed</Text>
+            </View>
           ) : null}
         </View>
       </View>
@@ -168,5 +180,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: Spacing.sm,
     marginTop: Spacing.xs,
+  },
+  completedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+  },
+  completedText: {
+    fontSize: FontSize.sm,
+    fontFamily: FontFamily.semibold,
+    color: Colors.success,
   },
 });

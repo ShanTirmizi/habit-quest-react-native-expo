@@ -17,6 +17,7 @@ export default defineSchema({
     avatarUrl: v.optional(v.string()),
     // For anonymous users during migration
     isAnonymous: v.optional(v.boolean()),
+    hasCompletedOnboarding: v.optional(v.boolean()),
   })
     .index('by_external_id', ['externalId'])
     .index('email', ['email']),
@@ -371,10 +372,12 @@ export default defineSchema({
   // Push Notification Subscriptions
   pushSubscriptions: defineTable({
     userId: v.id('users'),
-    // Push subscription keys
-    endpoint: v.string(),
-    p256dh: v.string(),
-    auth: v.string(),
+    // Expo push token (mobile)
+    expoPushToken: v.optional(v.string()),
+    // Web push subscription keys (optional, for future web support)
+    endpoint: v.optional(v.string()),
+    p256dh: v.optional(v.string()),
+    auth: v.optional(v.string()),
     // Notification preferences
     enabled: v.boolean(),
     morningReminder: v.boolean(), // 8-10am
@@ -438,6 +441,7 @@ export default defineSchema({
     // XP tracking for this dose
     xpAwarded: v.optional(v.number()), // XP given for this completion
   })
+    .index('by_user', ['userId'])
     .index('by_user_date', ['userId', 'date'])
     .index('by_medicine_date', ['medicineId', 'date']),
 

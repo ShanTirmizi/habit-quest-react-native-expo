@@ -70,6 +70,6 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingBottom: Spacing.lg,
-    paddingLeft: 4,
+    paddingLeft: Spacing.sm,
   },
 });
