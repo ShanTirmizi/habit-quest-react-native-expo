@@ -181,22 +181,7 @@ export default function SettingsScreen() {
           />
         </View>
 
-        {/* Section 4: Support */}
-        <Text style={styles.sectionTitle}>SUPPORT</Text>
-        <View style={styles.sectionCard}>
-          <ChevronRow
-            icon="mail-outline"
-            label="Contact Support"
-            onPress={() =>
-              Alert.alert(
-                'Contact Support',
-                'Email support@habitquest.app'
-              )
-            }
-          />
-        </View>
-
-        {/* Section 5: Account Actions */}
+        {/* Section 4: Account Actions */}
         <Text style={styles.sectionTitle}>ACCOUNT</Text>
         <View style={styles.sectionCard}>
           <Pressable style={styles.row} onPress={handleSignOut}>
