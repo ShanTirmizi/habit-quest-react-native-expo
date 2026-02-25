@@ -198,7 +198,7 @@ export default function ChroniclesScreen() {
               onPress={() => setIsWriting(true)}
               style={({ pressed }) => [styles.writeBtn, pressed && { opacity: 0.7 }]}
             >
-              <Ionicons name="create-outline" size={20} color="#FFFFFF" />
+              <Ionicons name="create-outline" size={24} color="#FFFFFF" />
             </Pressable>
           </View>
         ) : null}
@@ -556,9 +556,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.xl,
-    paddingVertical: Spacing.md,
+    alignItems: 'flex-start',
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
   },
   headerLeft: {},
   title: {

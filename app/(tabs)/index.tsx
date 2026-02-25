@@ -365,15 +365,17 @@ export default function DashboardScreen() {
             <View style={styles.statsStrip}>
               {/* Level ring */}
               <View style={styles.statsItem}>
-                <CircularProgress
-                  progress={xpProgress}
-                  size={36}
-                  strokeWidth={3}
-                  color={colors.primary}
-                  trackColor={colors.surfaceRaised}
-                >
-                  <Text style={styles.statsLevelNum}>{level}</Text>
-                </CircularProgress>
+                <View style={styles.statsValueArea}>
+                  <CircularProgress
+                    progress={xpProgress}
+                    size={36}
+                    strokeWidth={3}
+                    color={colors.primary}
+                    trackColor={colors.surfaceRaised}
+                  >
+                    <Text style={styles.statsLevelNum}>{level}</Text>
+                  </CircularProgress>
+                </View>
                 <Text style={styles.statsItemLabel}>LVL</Text>
               </View>
 
@@ -382,7 +384,9 @@ export default function DashboardScreen() {
 
               {/* XP */}
               <View style={styles.statsItem}>
-                <Text style={styles.statsValue}>{totalXp.toLocaleString()}</Text>
+                <View style={styles.statsValueArea}>
+                  <Text style={styles.statsValue}>{totalXp.toLocaleString()}</Text>
+                </View>
                 <Text style={styles.statsItemLabel}>XP</Text>
               </View>
 
@@ -390,16 +394,19 @@ export default function DashboardScreen() {
               <View style={styles.statsDivider} />
 
               {/* HP mini bar */}
-              <View style={styles.statsItemWide}>
-                <View style={styles.hpRow}>
-                  <Ionicons name="heart" size={14} color={hpColor} />
-                  <Text style={[styles.statsValue, { color: hpColor }]}>
-                    {currentHp}
-                  </Text>
+              <View style={styles.statsItem}>
+                <View style={styles.statsValueArea}>
+                  <View style={styles.hpRow}>
+                    <Ionicons name="heart" size={14} color={hpColor} />
+                    <Text style={[styles.statsValue, { color: hpColor }]}>
+                      {currentHp}
+                    </Text>
+                  </View>
+                  <View style={{ width: '80%' }}>
+                    <ProgressBar progress={hpPercent} color={hpColor} height={3} />
+                  </View>
                 </View>
-                <View style={{ width: '80%' }}>
-                  <ProgressBar progress={hpPercent} color={hpColor} height={3} />
-                </View>
+                <Text style={styles.statsItemLabel}>HP</Text>
               </View>
 
               {/* Divider */}
@@ -407,9 +414,11 @@ export default function DashboardScreen() {
 
               {/* Completion */}
               <View style={styles.statsItem}>
-                <Text style={[styles.statsValue, { color: completionRate === 100 ? colors.success : colors.secondary }]}>
-                  {completedIds.size}/{habits.length}
-                </Text>
+                <View style={styles.statsValueArea}>
+                  <Text style={[styles.statsValue, { color: completionRate === 100 ? colors.success : colors.secondary }]}>
+                    {completedIds.size}/{habits.length}
+                  </Text>
+                </View>
                 <Text style={styles.statsItemLabel}>DONE</Text>
               </View>
 
@@ -418,9 +427,11 @@ export default function DashboardScreen() {
 
               {/* Streak */}
               <View style={styles.statsItem}>
-                <Text style={[styles.statsValue, { color: colors.accent }]}>
-                  {longestStreak}
-                </Text>
+                <View style={styles.statsValueArea}>
+                  <Text style={[styles.statsValue, { color: colors.accent }]}>
+                    {longestStreak}
+                  </Text>
+                </View>
                 <Text style={styles.statsItemLabel}>STREAK</Text>
               </View>
             </View>
@@ -623,7 +634,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   topBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.sm,
   },
@@ -633,6 +644,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   topBarCenter: {
     flex: 1,
+    alignSelf: 'center',
     alignItems: 'center',
     paddingHorizontal: Spacing.sm,
   },
@@ -716,10 +728,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   statsItem: {
     flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 2,
   },
-  statsItemWide: {
+  statsValueArea: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
@@ -740,6 +750,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontFamily: FontFamily.semibold,
     color: colors.textMuted,
     letterSpacing: 1,
+    marginTop: 2,
   },
   statsDivider: {
     width: 1,
