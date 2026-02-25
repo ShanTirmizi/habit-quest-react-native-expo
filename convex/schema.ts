@@ -310,6 +310,10 @@ export default defineSchema({
       })
     ),
     sortOrder: v.optional(v.number()),
+    // Temptation bundling (pair habit with a reward)
+    rewardBundle: v.optional(v.string()),
+    // Hibernation (pause without deleting)
+    hibernatedAt: v.optional(v.string()),
   })
     .index('by_user', ['userId'])
     .index('by_goal', ['goalId']),

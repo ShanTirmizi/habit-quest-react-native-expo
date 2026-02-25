@@ -1,9 +1,20 @@
 import React, { useEffect, useMemo } from 'react';
+import { LogBox } from 'react-native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { View, StyleSheet, ActivityIndicator } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+
+// Suppress known warning from react-native-draggable-flatlist
+LogBox.ignoreLogs(['ref.measureLayout must be called']);
+
+// Also suppress in console (Metro terminal) — upstream library issue
+const origConsoleError = console.error;
+console.error = (...args: any[]) => {
+  if (typeof args[0] === 'string' && args[0].includes('ref.measureLayout must be called')) return;
+  origConsoleError(...args);
+};
 import { useFonts } from 'expo-font';
 import {
   Sora_400Regular,

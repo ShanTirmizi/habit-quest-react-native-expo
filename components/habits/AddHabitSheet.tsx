@@ -1,16 +1,18 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ScrollView, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { FontSize, Spacing, Radius, FontFamily, getCategoryColors, type ThemeColors } from '@/constants/theme';
 import { useTheme } from '@/contexts/theme-context';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
-import type { HabitCategory, HabitFrequencyType, TimeOfDay } from '@/types';
+import type { Habit, HabitCategory, HabitFrequencyType, TimeOfDay } from '@/types';
 
 interface AddHabitSheetProps {
   visible: boolean;
   onClose: () => void;
+  existingHabits?: Habit[];
   onAdd: (habit: {
     name: string;
     category: HabitCategory;
@@ -19,6 +21,8 @@ interface AddHabitSheetProps {
     timeOfDay?: TimeOfDay;
     location?: string;
     trigger?: string;
+    chainedToHabitId?: string;
+    rewardBundle?: string;
   }) => void;
 }
 
@@ -48,7 +52,7 @@ const DAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
 const XP_OPTIONS = [10, 15, 20, 25];
 
-export function AddHabitSheet({ visible, onClose, onAdd }: AddHabitSheetProps) {
+export function AddHabitSheet({ visible, onClose, onAdd, existingHabits }: AddHabitSheetProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const categoryColors = useMemo(() => getCategoryColors(colors), [colors]);
@@ -62,6 +66,9 @@ export function AddHabitSheet({ visible, onClose, onAdd }: AddHabitSheetProps) {
   const [location, setLocation] = useState('');
   const [trigger, setTrigger] = useState('');
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [chainedToHabitId, setChainedToHabitId] = useState<string | undefined>(undefined);
+  const [showChainPicker, setShowChainPicker] = useState(false);
+  const [rewardBundle, setRewardBundle] = useState('');
 
   const resetForm = useCallback(() => {
     setName('');
@@ -74,6 +81,9 @@ export function AddHabitSheet({ visible, onClose, onAdd }: AddHabitSheetProps) {
     setLocation('');
     setTrigger('');
     setShowAdvanced(false);
+    setChainedToHabitId(undefined);
+    setShowChainPicker(false);
+    setRewardBundle('');
   }, []);
 
   const handleAdd = useCallback(() => {
@@ -96,6 +106,8 @@ export function AddHabitSheet({ visible, onClose, onAdd }: AddHabitSheetProps) {
       timeOfDay,
       location: location.trim() || undefined,
       trigger: trigger.trim() || undefined,
+      chainedToHabitId,
+      rewardBundle: rewardBundle.trim() || undefined,
     });
 
     resetForm();
@@ -257,12 +269,101 @@ export function AddHabitSheet({ visible, onClose, onAdd }: AddHabitSheetProps) {
           </View>
         </View>
 
-        {/* Advanced Settings */}
+        {/* Chain After (Habit Stacking) */}
+        {existingHabits && existingHabits.length > 0 ? (
+          <View style={styles.section}>
+            <View style={styles.chainHeader}>
+              <Ionicons name="link-outline" size={14} color={colors.textSecondary} />
+              <Text style={styles.sectionLabel}>Chain After</Text>
+            </View>
+            <Pressable
+              onPress={() => {
+                Haptics.selectionAsync();
+                setShowChainPicker(!showChainPicker);
+              }}
+              style={[styles.chainSelector, chainedToHabitId && styles.chainSelectorActive]}
+            >
+              <Text
+                style={[
+                  styles.chainSelectorText,
+                  chainedToHabitId && { color: colors.foreground },
+                ]}
+                numberOfLines={1}
+              >
+                {chainedToHabitId
+                  ? `After: ${existingHabits.find((h) => h.id === chainedToHabitId)?.name || 'Unknown'}`
+                  : 'None — standalone habit'}
+              </Text>
+              <Ionicons
+                name={showChainPicker ? 'chevron-up' : 'chevron-down'}
+                size={14}
+                color={colors.textMuted}
+              />
+            </Pressable>
+
+            {showChainPicker ? (
+              <View style={styles.chainList}>
+                {/* None option */}
+                <Pressable
+                  onPress={() => {
+                    Haptics.selectionAsync();
+                    setChainedToHabitId(undefined);
+                    setShowChainPicker(false);
+                  }}
+                  style={[styles.chainOption, !chainedToHabitId && styles.chainOptionActive]}
+                >
+                  <View style={[styles.chainRadio, !chainedToHabitId && styles.chainRadioActive]}>
+                    {!chainedToHabitId ? <View style={styles.chainRadioDot} /> : null}
+                  </View>
+                  <Text style={[styles.chainOptionText, !chainedToHabitId && { color: colors.foreground }]}>
+                    None — standalone habit
+                  </Text>
+                </Pressable>
+
+                {existingHabits.map((h) => {
+                  const isSelected = chainedToHabitId === h.id;
+                  return (
+                    <Pressable
+                      key={h.id}
+                      onPress={() => {
+                        Haptics.selectionAsync();
+                        setChainedToHabitId(h.id);
+                        setShowChainPicker(false);
+                      }}
+                      style={[styles.chainOption, isSelected && styles.chainOptionActive]}
+                    >
+                      <View style={[styles.chainRadio, isSelected && styles.chainRadioActive]}>
+                        {isSelected ? <View style={styles.chainRadioDot} /> : null}
+                      </View>
+                      <View style={styles.chainOptionContent}>
+                        <Text style={[styles.chainOptionText, isSelected && { color: colors.foreground }]} numberOfLines={1}>
+                          {h.name}
+                        </Text>
+                        {h.timeOfDay && h.timeOfDay !== 'anytime' ? (
+                          <Text style={styles.chainOptionMeta}>{h.timeOfDay}</Text>
+                        ) : null}
+                      </View>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            ) : null}
+
+            <Text style={styles.chainHint}>
+              Habit stacking: do this right after another habit
+            </Text>
+          </View>
+        ) : null}
+
+        {/* If-Then Blueprint + Reward Bundle */}
         <Pressable
           onPress={() => setShowAdvanced(!showAdvanced)}
           style={styles.advancedToggle}
         >
-          <Text style={styles.advancedText}>Implementation Intentions</Text>
+          <View style={styles.advancedToggleLeft}>
+            <Ionicons name="flash-outline" size={16} color={colors.textSecondary} />
+            <Text style={styles.advancedText}>Supercharge</Text>
+          </View>
           <Ionicons
             name={showAdvanced ? 'chevron-up' : 'chevron-down'}
             size={16}
@@ -272,22 +373,57 @@ export function AddHabitSheet({ visible, onClose, onAdd }: AddHabitSheetProps) {
 
         {showAdvanced ? (
           <View style={styles.advancedSection}>
-            <Input
-              label="Location (Where?)"
-              value={location}
-              onChangeText={setLocation}
-              placeholder="e.g., At my desk, In the gym..."
-            />
-            <Input
-              label="Trigger (After what?)"
-              value={trigger}
-              onChangeText={setTrigger}
-              placeholder="e.g., After morning coffee..."
-              containerStyle={{ marginTop: Spacing.md }}
-            />
-            <Text style={styles.intentionHint}>
-              Research shows stating when & where increases success by 2x
-            </Text>
+            {/* If-Then Blueprint */}
+            <View style={styles.blueprintBuilder}>
+              <Text style={styles.blueprintSectionLabel}>If-Then Blueprint</Text>
+              <View style={styles.blueprintField}>
+                <Text style={styles.blueprintKeyword}>IF</Text>
+                <TextInput
+                  style={styles.blueprintInput}
+                  value={trigger}
+                  onChangeText={setTrigger}
+                  placeholder="After morning coffee..."
+                  placeholderTextColor={colors.textMuted}
+                />
+              </View>
+              <View style={styles.blueprintField}>
+                <Text style={[styles.blueprintKeyword, { color: colors.success }]}>THEN</Text>
+                <Text style={styles.blueprintHabitName} numberOfLines={1}>
+                  {name || 'Your habit'}
+                </Text>
+              </View>
+              <View style={styles.blueprintField}>
+                <Text style={[styles.blueprintKeyword, { color: colors.info }]}>AT</Text>
+                <TextInput
+                  style={styles.blueprintInput}
+                  value={location}
+                  onChangeText={setLocation}
+                  placeholder="In the gym, at my desk..."
+                  placeholderTextColor={colors.textMuted}
+                />
+              </View>
+              <Text style={styles.intentionHint}>
+                If-then plans increase follow-through by 2-3x (Gollwitzer, 1999)
+              </Text>
+            </View>
+
+            {/* Temptation Bundle */}
+            <View style={styles.bundleSection}>
+              <View style={styles.bundleLabelRow}>
+                <Ionicons name="gift-outline" size={14} color={colors.accent} />
+                <Text style={styles.blueprintSectionLabel}>Reward Bundle</Text>
+              </View>
+              <TextInput
+                style={styles.bundleInput}
+                value={rewardBundle}
+                onChangeText={setRewardBundle}
+                placeholder="e.g., Listen to podcast, watch a show..."
+                placeholderTextColor={colors.textMuted}
+              />
+              <Text style={styles.intentionHint}>
+                Pair this habit with a reward you enjoy (Milkman, 2014)
+              </Text>
+            </View>
           </View>
         ) : null}
 
@@ -442,11 +578,102 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   todLabelActive: {
     color: colors.primary,
   },
+  chainHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+  },
+  chainSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm + 2,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceLight,
+  },
+  chainSelectorActive: {
+    borderColor: colors.primary,
+    backgroundColor: `${colors.primary}10`,
+  },
+  chainSelectorText: {
+    flex: 1,
+    fontSize: FontSize.sm,
+    fontFamily: FontFamily.medium,
+    color: colors.textMuted,
+  },
+  chainList: {
+    gap: Spacing.xs,
+    marginTop: Spacing.xs,
+  },
+  chainOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm + 2,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  chainOptionActive: {
+    borderColor: colors.primary,
+    backgroundColor: `${colors.primary}10`,
+  },
+  chainRadio: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 2,
+    borderColor: colors.borderStrong,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chainRadioActive: {
+    borderColor: colors.primary,
+  },
+  chainRadioDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.primary,
+  },
+  chainOptionContent: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  chainOptionText: {
+    flex: 1,
+    fontSize: FontSize.sm,
+    fontFamily: FontFamily.regular,
+    color: colors.textSecondary,
+  },
+  chainOptionMeta: {
+    fontSize: FontSize.xs,
+    fontFamily: FontFamily.medium,
+    color: colors.textMuted,
+    textTransform: 'capitalize',
+  },
+  chainHint: {
+    fontSize: FontSize.xs,
+    color: colors.textMuted,
+    fontStyle: 'italic',
+  },
   advancedToggle: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: Spacing.sm,
+  },
+  advancedToggleLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
   },
   advancedText: {
     fontSize: FontSize.sm,
@@ -455,12 +682,71 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   advancedSection: {
     paddingBottom: Spacing.sm,
+    gap: Spacing.lg,
+  },
+  blueprintBuilder: {
+    gap: Spacing.sm,
+  },
+  blueprintSectionLabel: {
+    fontSize: FontSize.sm,
+    fontFamily: FontFamily.semibold,
+    color: colors.textSecondary,
+  },
+  blueprintField: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  blueprintKeyword: {
+    fontSize: FontSize.xs,
+    fontFamily: FontFamily.extrabold,
+    color: colors.primary,
+    width: 38,
+    letterSpacing: 0.5,
+  },
+  blueprintInput: {
+    flex: 1,
+    backgroundColor: colors.surfaceLight,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    fontSize: FontSize.sm,
+    fontFamily: FontFamily.regular,
+    color: colors.foreground,
+  },
+  blueprintHabitName: {
+    flex: 1,
+    fontSize: FontSize.sm,
+    fontFamily: FontFamily.semibold,
+    color: colors.foreground,
+    paddingVertical: Spacing.sm,
   },
   intentionHint: {
     fontSize: FontSize.xs,
     color: colors.textMuted,
     fontStyle: 'italic',
-    marginTop: Spacing.sm,
+    marginTop: 2,
+  },
+  bundleSection: {
+    gap: Spacing.sm,
+  },
+  bundleLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+  },
+  bundleInput: {
+    backgroundColor: colors.surfaceLight,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    fontSize: FontSize.sm,
+    fontFamily: FontFamily.regular,
+    color: colors.foreground,
   },
   footer: {
     flexDirection: 'row',

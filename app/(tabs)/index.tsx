@@ -32,8 +32,49 @@ import { UnderworldOverlay } from '@/components/overlays/UnderworldOverlay';
 import { LevelUpCelebration } from '@/components/overlays/LevelUpCelebration';
 import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/contexts/toast-context';
-import type { Habit, HabitCategory, Goal } from '@/types';
+import type { Habit, HabitCategory, Goal, TimeOfDay } from '@/types';
 import { GOAL_CATEGORY_CONFIG } from '@/types';
+import { buildScheduleMap, type HabitScheduleInfo } from '@/lib/habit-scheduling';
+import { buildAutomaticityMap, type AutomaticityInfo } from '@/lib/automaticity';
+
+const TIME_SECTION_META: Record<TimeOfDay, { label: string; icon: keyof typeof Ionicons.glyphMap; order: number }> = {
+  morning:   { label: 'Morning',   icon: 'sunny-outline',         order: 0 },
+  afternoon: { label: 'Afternoon', icon: 'partly-sunny-outline',  order: 1 },
+  evening:   { label: 'Evening',   icon: 'moon-outline',          order: 2 },
+  anytime:   { label: 'Anytime',   icon: 'time-outline',          order: 3 },
+};
+
+// Chronological time slots (anytime excluded — always last)
+const CHRONO_SLOTS: TimeOfDay[] = ['morning', 'afternoon', 'evening'];
+
+function getCurrentTimeSection(): TimeOfDay {
+  const h = new Date().getHours();
+  if (h >= 5 && h < 12) return 'morning';
+  if (h >= 12 && h < 17) return 'afternoon';
+  return 'evening';
+}
+
+/**
+ * Smart section ordering:
+ * 1. Current time section (what you should do NOW)
+ * 2. Upcoming sections in chronological order (what's next today)
+ * 3. Past sections (already missed the window, but still doable)
+ * 4. Anytime (always last — no time pressure)
+ */
+function getSmartSectionOrder(current: TimeOfDay): TimeOfDay[] {
+  const currentIdx = CHRONO_SLOTS.indexOf(current);
+  const upcoming = CHRONO_SLOTS.slice(currentIdx + 1);
+  const past = CHRONO_SLOTS.slice(0, currentIdx);
+  return [current, ...upcoming, ...past, 'anytime'];
+}
+
+function getSectionStatus(key: TimeOfDay, current: TimeOfDay): 'current' | 'upcoming' | 'past' | 'anytime' {
+  if (key === 'anytime') return 'anytime';
+  if (key === current) return 'current';
+  const keyIdx = CHRONO_SLOTS.indexOf(key);
+  const curIdx = CHRONO_SLOTS.indexOf(current);
+  return keyIdx > curIdx ? 'upcoming' : 'past';
+}
 
 const SPECIES_ICON: Record<string, keyof typeof Ionicons.glyphMap> = {
   treant: 'leaf',
@@ -73,6 +114,7 @@ export default function DashboardScreen() {
   const [selectedHabit, setSelectedHabit] = useState<Habit | null>(null);
   const [levelUpVisible, setLevelUpVisible] = useState(false);
   const [levelUpLevel, setLevelUpLevel] = useState(0);
+  const [showHibernated, setShowHibernated] = useState(false);
   const missedChecked = useRef(false);
 
   const todayDate = format(new Date(), 'yyyy-MM-dd');
@@ -105,6 +147,9 @@ export default function DashboardScreen() {
   const addNoteMutation = useMutation(api.habits.addNote);
   const addXpMutation = useMutation(api.progress.addXp);
   const reorderHabitsMutation = useMutation(api.habits.reorderHabits);
+  const hibernateHabitMutation = useMutation(api.habits.hibernateHabit);
+  const wakeHabitMutation = useMutation(api.habits.wakeHabit);
+  const useStreakFreezeMutation = useMutation(api.habits.useStreakFreeze);
   const checkMissedMutation = useMutation(api.progress.checkMissedHabitsOnLogin);
 
   useEffect(() => {
@@ -142,28 +187,130 @@ export default function DashboardScreen() {
       trigger: h.trigger,
       rationale: h.rationale,
       sortOrder: h.sortOrder,
+      chainedToHabitId: h.chainedToHabitId,
+      rewardBundle: h.rewardBundle,
+      hibernatedAt: h.hibernatedAt,
     }));
   }, [rawHabits]);
 
+  // Filter out hibernated habits for the active dashboard
+  const activeHabits = useMemo(
+    () => habits.filter((h) => !h.hibernatedAt),
+    [habits]
+  );
+  const hibernatedHabits = useMemo(
+    () => habits.filter((h) => !!h.hibernatedAt),
+    [habits]
+  );
+
+  // Map habit IDs to names for chain badge resolution
+  const chainNameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const h of habits) map.set(h.id, h.name);
+    return map;
+  }, [habits]);
+
+  // Smart scheduling: determine which habits should appear today
+  const scheduleMap = useMemo(() => {
+    if (activeHabits.length === 0) return new Map<string, HabitScheduleInfo>();
+    return buildScheduleMap(activeHabits, new Date(), todayDate);
+  }, [activeHabits, todayDate]);
+
+  // Only show habits the scheduler marks as visible
+  const visibleHabits = useMemo(() => {
+    if (scheduleMap.size === 0) return activeHabits;
+    return activeHabits.filter((h) => {
+      const info = scheduleMap.get(h.id);
+      return !info || info.visible;
+    });
+  }, [activeHabits, scheduleMap]);
+
+  // Automaticity scores for all habits
+  const automaticityMap = useMemo(() => {
+    if (habits.length === 0) return new Map<string, AutomaticityInfo>();
+    return buildAutomaticityMap(habits, todayDate);
+  }, [habits, todayDate]);
+
   const completedIds = useMemo(() => {
     const ids = new Set<string>();
-    for (const habit of habits) {
+    for (const habit of visibleHabits) {
       if (habit.completedDates.includes(todayDate)) {
         ids.add(habit.id);
       }
     }
     return ids;
-  }, [habits, todayDate]);
+  }, [visibleHabits, todayDate]);
 
   const pendingHabits = useMemo(
-    () => habits.filter((h) => !completedIds.has(h.id)),
-    [habits, completedIds]
+    () => visibleHabits.filter((h) => !completedIds.has(h.id)),
+    [visibleHabits, completedIds]
   );
 
   const completedHabits = useMemo(
-    () => habits.filter((h) => completedIds.has(h.id)),
-    [habits, completedIds]
+    () => visibleHabits.filter((h) => completedIds.has(h.id)),
+    [visibleHabits, completedIds]
   );
+
+  // Group habits by time of day
+  const currentTimeSection = useMemo(() => getCurrentTimeSection(), []);
+  const [collapsedSections, setCollapsedSections] = useState<Set<TimeOfDay>>(new Set());
+
+  const toggleSection = useCallback((section: TimeOfDay) => {
+    Haptics.selectionAsync();
+    setUserToggledSections((prev) => new Set([...prev, section]));
+    setCollapsedSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(section)) next.delete(section);
+      else next.add(section);
+      return next;
+    });
+  }, []);
+
+  const groupedHabits = useMemo(() => {
+    const groups: Record<TimeOfDay, { pending: Habit[]; completed: Habit[] }> = {
+      morning: { pending: [], completed: [] },
+      afternoon: { pending: [], completed: [] },
+      evening: { pending: [], completed: [] },
+      anytime: { pending: [], completed: [] },
+    };
+    for (const h of visibleHabits) {
+      const tod: TimeOfDay = h.timeOfDay || 'anytime';
+      const isComplete = completedIds.has(h.id);
+      if (isComplete) groups[tod].completed.push(h);
+      else groups[tod].pending.push(h);
+    }
+    return groups;
+  }, [visibleHabits, completedIds]);
+
+  // Smart-ordered sections: current first, upcoming next, past last, anytime always end
+  const smartOrder = useMemo(() => getSmartSectionOrder(currentTimeSection), [currentTimeSection]);
+
+  const activeSections = useMemo(() => {
+    return smartOrder
+      .filter((key) => {
+        const g = groupedHabits[key];
+        return g.pending.length > 0 || g.completed.length > 0;
+      })
+      .map((key) => ({
+        key,
+        ...TIME_SECTION_META[key],
+        status: getSectionStatus(key, currentTimeSection),
+      }));
+  }, [smartOrder, groupedHabits, currentTimeSection]);
+
+  // Auto-collapse sections where all habits are completed (user can still expand them)
+  const [userToggledSections, setUserToggledSections] = useState<Set<TimeOfDay>>(new Set());
+
+  const isSectionCollapsed = useCallback((key: TimeOfDay) => {
+    // If user explicitly toggled it, respect that
+    if (userToggledSections.has(key)) return collapsedSections.has(key);
+    // Auto-collapse fully completed sections (except the current one)
+    const g = groupedHabits[key];
+    const allDone = g.pending.length === 0 && g.completed.length > 0;
+    return allDone && key !== currentTimeSection;
+  }, [userToggledSections, collapsedSections, groupedHabits, currentTimeSection]);
+
+  const streakFreezes = progress?.streakFreezes ?? 0;
 
   const longestStreak = useMemo(
     () => Math.max(0, ...habits.map((h) => h.streak)),
@@ -181,8 +328,8 @@ export default function DashboardScreen() {
     ? Math.round(((totalXp - xpForCurrentLevel) / (xpForNextLevel - xpForCurrentLevel)) * 100)
     : 0;
 
-  const completionRate = habits.length > 0
-    ? Math.round((completedIds.size / habits.length) * 100)
+  const completionRate = visibleHabits.length > 0
+    ? Math.round((completedIds.size / visibleHabits.length) * 100)
     : 0;
 
   const hpPercent = maxHp > 0 ? Math.round((currentHp / maxHp) * 100) : 100;
@@ -200,7 +347,10 @@ export default function DashboardScreen() {
       if (result.completed) {
         const habit = habits.find((h) => h.id === id);
         if (habit) {
-          showToast(`${habit.name} completed!`, habit.xpReward, 'xp');
+          const toastMsg = habit.rewardBundle
+            ? `${habit.name} done! Time for: ${habit.rewardBundle}`
+            : `${habit.name} completed!`;
+          showToast(toastMsg, habit.xpReward, 'xp');
 
           try {
             const xpResult = await addXpMutation({ userId, amount: habit.xpReward });
@@ -225,6 +375,8 @@ export default function DashboardScreen() {
       timeOfDay?: string;
       location?: string;
       trigger?: string;
+      chainedToHabitId?: string;
+      rewardBundle?: string;
     }) => {
       if (!userId) return;
       try {
@@ -237,6 +389,8 @@ export default function DashboardScreen() {
           timeOfDay: habitData.timeOfDay as any,
           location: habitData.location,
           trigger: habitData.trigger,
+          chainedToHabitId: habitData.chainedToHabitId as any,
+          rewardBundle: habitData.rewardBundle,
         });
         showToast('Habit created!', undefined, 'xp');
       } catch (err) {
@@ -266,6 +420,36 @@ export default function DashboardScreen() {
     }
   }, [userId, addNoteMutation, showToast]);
 
+  const handleHibernate = useCallback(async (id: string) => {
+    if (!userId) return;
+    try {
+      await hibernateHabitMutation({ habitId: id as any, userId });
+      showToast('Habit hibernated', undefined, 'hp');
+    } catch {
+      showToast('Failed to hibernate', undefined, 'error');
+    }
+  }, [userId, hibernateHabitMutation, showToast]);
+
+  const handleWake = useCallback(async (id: string) => {
+    if (!userId) return;
+    try {
+      await wakeHabitMutation({ habitId: id as any, userId });
+      showToast('Habit reactivated!', undefined, 'xp');
+    } catch {
+      showToast('Failed to wake habit', undefined, 'error');
+    }
+  }, [userId, wakeHabitMutation, showToast]);
+
+  const handleUseStreakFreeze = useCallback(async () => {
+    if (!userId) return;
+    try {
+      await useStreakFreezeMutation({ userId });
+      showToast('Streak freeze used!', undefined, 'xp');
+    } catch {
+      showToast('No streak freezes available', undefined, 'error');
+    }
+  }, [userId, useStreakFreezeMutation, showToast]);
+
   const handleRefresh = useCallback(async () => {
     if (!userId) return;
     setRefreshing(true);
@@ -285,20 +469,32 @@ export default function DashboardScreen() {
   const handleReorder = useCallback(async (reorderedPending: Habit[]) => {
     if (!userId) return;
     try {
-      // Combine reordered pending with completed habits to persist full order
-      const allIds = [
-        ...reorderedPending.map((h) => h.id),
-        ...completedHabits.map((h) => h.id),
-      ];
+      // Build full ordered list: iterate time sections, use reorderedPending for the matching section
+      const allIds: string[] = [];
+      const allSectionKeys: TimeOfDay[] = ['morning', 'afternoon', 'evening', 'anytime'];
+      for (const key of allSectionKeys) {
+        const group = groupedHabits[key];
+        // Check if reorderedPending belongs to this section
+        const reorderedIds = new Set(reorderedPending.map((h) => h.id));
+        const sectionPendingIds = group.pending.map((h) => h.id);
+        const isThisSection = sectionPendingIds.length > 0 && sectionPendingIds.some((id) => reorderedIds.has(id));
+
+        if (isThisSection) {
+          allIds.push(...reorderedPending.map((h) => h.id));
+        } else {
+          allIds.push(...group.pending.map((h) => h.id));
+        }
+        allIds.push(...group.completed.map((h) => h.id));
+      }
       await reorderHabitsMutation({
         userId,
         habitIds: allIds as any,
       });
     } catch {}
-  }, [userId, reorderHabitsMutation, completedHabits]);
+  }, [userId, reorderHabitsMutation, groupedHabits]);
 
   const isLoading = rawHabits === undefined || progress === undefined;
-  const allDone = pendingHabits.length === 0 && habits.length > 0;
+  const allDone = pendingHabits.length === 0 && visibleHabits.length > 0;
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -435,7 +631,7 @@ export default function DashboardScreen() {
               <View style={styles.statsItem}>
                 <View style={styles.statsValueArea}>
                   <Text style={[styles.statsValue, { color: completionRate === 100 ? colors.success : colors.secondary }]}>
-                    {completedIds.size}/{habits.length}
+                    {completedIds.size}/{visibleHabits.length}
                   </Text>
                 </View>
                 <Text style={styles.statsItemLabel}>DONE</Text>
@@ -451,7 +647,15 @@ export default function DashboardScreen() {
                     {longestStreak}
                   </Text>
                 </View>
-                <Text style={styles.statsItemLabel}>STREAK</Text>
+                <View style={styles.streakLabelRow}>
+                  <Text style={styles.statsItemLabel}>STREAK</Text>
+                  {streakFreezes > 0 ? (
+                    <View style={styles.freezeIndicator}>
+                      <Ionicons name="snow-outline" size={9} color={colors.info} />
+                      <Text style={styles.freezeCount}>{streakFreezes}</Text>
+                    </View>
+                  ) : null}
+                </View>
               </View>
             </View>
           ) : null}
@@ -486,45 +690,154 @@ export default function DashboardScreen() {
                 </GradientCard>
               ) : null}
 
-              {/* Pending Habits */}
-              {pendingHabits.length > 0 ? (
-                <View style={styles.habitGroup}>
-                  <View style={styles.sectionDivider}>
-                    <Text style={styles.sectionDividerText}>
-                      PENDING ({pendingHabits.length})
-                    </Text>
-                  </View>
-                  <View style={styles.habitList}>
-                    <DraggableHabitList
-                      habits={pendingHabits}
-                      isCompleted={false}
-                      onToggle={handleToggle}
-                      onPress={setSelectedHabit}
-                      onReorder={handleReorder}
-                    />
-                  </View>
-                </View>
-              ) : null}
+              {/* Time-of-day grouped habits (active, non-hibernated) */}
+              {activeSections.map((section, sectionIdx) => {
+                const group = groupedHabits[section.key];
+                const total = group.pending.length + group.completed.length;
+                const done = group.completed.length;
+                const isCollapsed = isSectionCollapsed(section.key);
+                const isCurrent = section.status === 'current';
+                const isPast = section.status === 'past';
+                const allSectionDone = done === total;
 
-              {/* Completed Habits */}
-              {completedHabits.length > 0 ? (
-                <View style={styles.habitGroup}>
-                  <View style={styles.sectionDivider}>
-                    <Text style={styles.sectionDividerText}>
-                      COMPLETED ({completedHabits.length})
-                    </Text>
+                // "Up Next" = first upcoming section with pending habits
+                const isUpNext = !isCurrent && section.status === 'upcoming' && group.pending.length > 0
+                  && !activeSections.slice(0, sectionIdx).some(
+                    (s) => s.status === 'upcoming' && groupedHabits[s.key].pending.length > 0
+                  );
+
+                return (
+                  <View key={section.key} style={[styles.habitGroup, isPast && styles.habitGroupPast]}>
+                    {/* Section header */}
+                    <Pressable
+                      onPress={() => toggleSection(section.key)}
+                      style={[
+                        styles.timeHeader,
+                        isCurrent && !allSectionDone && styles.timeHeaderCurrent,
+                        isPast && styles.timeHeaderPast,
+                      ]}
+                    >
+                      <View style={styles.timeHeaderLeft}>
+                        <Ionicons
+                          name={section.icon}
+                          size={16}
+                          color={isCurrent && !allSectionDone ? colors.primary : isPast ? colors.textMuted : colors.textSecondary}
+                        />
+                        <Text
+                          style={[
+                            styles.timeHeaderLabel,
+                            isCurrent && !allSectionDone && { color: colors.primary },
+                            isPast && { color: colors.textMuted },
+                          ]}
+                        >
+                          {section.label}
+                        </Text>
+                        {isCurrent && !allSectionDone ? (
+                          <View style={styles.nowBadge}>
+                            <Text style={styles.nowBadgeText}>NOW</Text>
+                          </View>
+                        ) : null}
+                        {isUpNext ? (
+                          <View style={styles.upNextBadge}>
+                            <Text style={styles.upNextBadgeText}>UP NEXT</Text>
+                          </View>
+                        ) : null}
+                      </View>
+                      <View style={styles.timeHeaderRight}>
+                        <Text
+                          style={[
+                            styles.timeHeaderCount,
+                            allSectionDone && { color: colors.success },
+                          ]}
+                        >
+                          {done}/{total}
+                        </Text>
+                        <Ionicons
+                          name={isCollapsed ? 'chevron-forward' : 'chevron-down'}
+                          size={14}
+                          color={colors.textMuted}
+                        />
+                      </View>
+                    </Pressable>
+
+                    {/* Section content */}
+                    {!isCollapsed ? (
+                      <View style={styles.habitList}>
+                        {group.pending.length > 0 ? (
+                          <DraggableHabitList
+                            habits={group.pending}
+                            isCompleted={false}
+                            onToggle={handleToggle}
+                            onPress={setSelectedHabit}
+                            onReorder={handleReorder}
+                            chainNameMap={chainNameMap}
+                            scheduleMap={scheduleMap}
+                            automaticityMap={automaticityMap}
+                          />
+                        ) : null}
+                        {group.completed.map((habit) => {
+                          const info = scheduleMap.get(habit.id);
+                          const weeklyProgress = info && info.weeklyTarget > 0
+                            ? { completed: info.weeklyCompleted, target: info.weeklyTarget }
+                            : undefined;
+                          const autoInfo = automaticityMap.get(habit.id);
+                          return (
+                            <HabitCard
+                              key={habit.id}
+                              habit={habit}
+                              isCompleted={true}
+                              onToggle={handleToggle}
+                              onPress={setSelectedHabit}
+                              chainedToName={habit.chainedToHabitId ? chainNameMap.get(habit.chainedToHabitId) : undefined}
+                              weeklyProgress={weeklyProgress}
+                              automaticityScore={autoInfo?.score}
+                            />
+                          );
+                        })}
+                      </View>
+                    ) : null}
                   </View>
-                  <View style={styles.habitList}>
-                    {completedHabits.map((habit, i) => (
+                );
+              })}
+
+              {/* Hibernating habits — collapsed section at end */}
+              {hibernatedHabits.length > 0 ? (
+                <View style={styles.habitGroup}>
+                  <Pressable
+                    onPress={() => {
+                      Haptics.selectionAsync();
+                      setShowHibernated((p) => !p);
+                    }}
+                    style={styles.hibernateHeader}
+                  >
+                    <View style={styles.timeHeaderLeft}>
+                      <Ionicons name="snow-outline" size={14} color={colors.textMuted} />
+                      <Text style={[styles.timeHeaderLabel, { color: colors.textMuted }]}>
+                        Hibernating
+                      </Text>
+                    </View>
+                    <View style={styles.timeHeaderRight}>
+                      <Text style={styles.timeHeaderCount}>{hibernatedHabits.length}</Text>
+                      <Ionicons
+                        name={showHibernated ? 'chevron-down' : 'chevron-forward'}
+                        size={14}
+                        color={colors.textMuted}
+                      />
+                    </View>
+                  </Pressable>
+                  {showHibernated ? (
+                    <View style={styles.habitList}>
+                      {hibernatedHabits.map((habit) => (
                         <HabitCard
                           key={habit.id}
                           habit={habit}
-                          isCompleted={true}
+                          isCompleted={false}
                           onToggle={handleToggle}
                           onPress={setSelectedHabit}
                         />
-                    ))}
-                  </View>
+                      ))}
+                    </View>
+                  ) : null}
                 </View>
               ) : null}
             </View>
@@ -616,6 +929,11 @@ export default function DashboardScreen() {
         onToggle={handleToggle}
         onDelete={handleDeleteHabit}
         onAddNote={handleAddNote}
+        automaticityInfo={selectedHabit ? automaticityMap.get(selectedHabit.id) ?? null : null}
+        streakFreezes={streakFreezes}
+        onHibernate={handleHibernate}
+        onWake={handleWake}
+        onUseStreakFreeze={handleUseStreakFreeze}
       />
 
       {/* Add Habit Sheet */}
@@ -623,6 +941,7 @@ export default function DashboardScreen() {
         visible={showAddSheet}
         onClose={() => setShowAddSheet(false)}
         onAdd={handleAddHabit}
+        existingHabits={habits}
       />
 
       {/* Companion Sheet (Dr. Sage) — triggered from top bar avatar */}
@@ -786,6 +1105,25 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: 'center',
     gap: 3,
   },
+  streakLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  freezeIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 1,
+    backgroundColor: `${colors.info}20`,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderRadius: Radius.full,
+  },
+  freezeCount: {
+    fontSize: 8,
+    fontFamily: FontFamily.bold,
+    color: colors.info,
+  },
 
   // ── Goals Strip ──
   goalsSection: {
@@ -871,26 +1209,92 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
 
   // ── Habits ──
   habitSection: {
-    gap: Spacing.lg,
+    gap: Spacing.md,
   },
   habitGroup: {
+    gap: Spacing.xs,
+  },
+  timeHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm + 2,
+    borderRadius: Radius.lg,
+    backgroundColor: colors.surfaceLight,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  timeHeaderCurrent: {
+    borderColor: `${colors.primary}40`,
+    backgroundColor: `${colors.primary}08`,
+  },
+  timeHeaderPast: {
+    opacity: 0.6,
+  },
+  habitGroupPast: {
+    opacity: 0.85,
+  },
+  timeHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: Spacing.sm,
   },
-  sectionDivider: {
-    alignSelf: 'flex-start',
-    backgroundColor: colors.surfaceLight,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.xs + 2,
+  timeHeaderLabel: {
+    fontSize: FontSize.sm,
+    fontFamily: FontFamily.semibold,
+    color: colors.textSecondary,
+  },
+  nowBadge: {
+    backgroundColor: `${colors.primary}25`,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
     borderRadius: Radius.full,
   },
-  sectionDividerText: {
+  nowBadgeText: {
+    fontSize: 9,
+    fontFamily: FontFamily.bold,
+    color: colors.primary,
+    letterSpacing: 0.5,
+  },
+  upNextBadge: {
+    backgroundColor: `${colors.accent}20`,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: Radius.full,
+  },
+  upNextBadgeText: {
+    fontSize: 9,
+    fontFamily: FontFamily.bold,
+    color: colors.accent,
+    letterSpacing: 0.5,
+  },
+  timeHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+  },
+  timeHeaderCount: {
     fontSize: FontSize.xs,
     fontFamily: FontFamily.bold,
-    color: colors.textSecondary,
-    letterSpacing: 1,
+    color: colors.textMuted,
   },
   habitList: {
     gap: Spacing.sm,
+    paddingTop: Spacing.xs,
+  },
+  hibernateHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: Radius.lg,
+    backgroundColor: colors.surfaceLight,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderStyle: 'dashed',
+    opacity: 0.6,
   },
 
   // ── All Done Banner ──

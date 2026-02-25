@@ -47,6 +47,8 @@ export interface Habit {
   };
   goalId?: string;
   sortOrder?: number;
+  rewardBundle?: string;
+  hibernatedAt?: string;
 }
 
 export type QuestPriority = 'low' | 'medium' | 'high';

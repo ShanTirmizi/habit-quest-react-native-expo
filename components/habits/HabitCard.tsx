@@ -35,6 +35,9 @@ interface HabitCardProps {
   onPress?: (habit: Habit) => void;
   drag?: () => void;
   isDragging?: boolean;
+  chainedToName?: string;
+  weeklyProgress?: { completed: number; target: number };
+  automaticityScore?: number;
 }
 
 const TIME_ICON_NAMES: Record<TimeOfDay, keyof typeof Ionicons.glyphMap | null> = {
@@ -46,7 +49,7 @@ const TIME_ICON_NAMES: Record<TimeOfDay, keyof typeof Ionicons.glyphMap | null> 
 
 const SWIPE_THRESHOLD = 70;
 
-export function HabitCard({ habit, isCompleted, onToggle, onPress, drag, isDragging }: HabitCardProps) {
+export function HabitCard({ habit, isCompleted, onToggle, onPress, drag, isDragging, chainedToName, weeklyProgress, automaticityScore }: HabitCardProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const categoryColors = useMemo(() => getCategoryColors(colors), [colors]);
@@ -75,9 +78,11 @@ export function HabitCard({ habit, isCompleted, onToggle, onPress, drag, isDragg
     onToggle(habit.id);
   }, [habit.id, onToggle, isCompleted, cardScale]);
 
+  const enableSwipe = !isCompleted && !habit.hibernatedAt;
+
   const panGesture = Gesture.Pan()
-    .activeOffsetX([10, 0])
-    .enabled(!isCompleted)
+    .activeOffsetX(10)
+    .enabled(enableSwipe)
     .onUpdate((event) => {
       const x = Math.max(0, Math.min(event.translationX, 100));
       translateX.value = x;
@@ -126,113 +131,172 @@ export function HabitCard({ habit, isCompleted, onToggle, onPress, drag, isDragg
     }
   }, [habit, onPress]);
 
+  const cardContent = (
+    <Pressable
+      onPress={handlePress}
+      onLongPress={drag}
+      delayLongPress={200}
+      style={({ pressed }) => [
+        styles.card,
+        isCompleted && styles.cardCompleted,
+        pressed && styles.cardPressed,
+        isDragging && styles.cardDragging,
+      ]}
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked: isCompleted }}
+      accessibilityLabel={`${habit.name}, ${habit.category}, ${habit.xpReward} XP${isCompleted ? ', completed' : ''}`}
+    >
+      {/* Category gradient left strip */}
+      {isCompleted ? (
+        <View style={[styles.gradientStrip, { backgroundColor: colors.textMuted }]} />
+      ) : (
+        <LinearGradient
+          colors={categoryGradient}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
+          style={styles.gradientStrip}
+        />
+      )}
+
+      {/* Main content row — padded left to clear the strip */}
+      <View style={styles.contentRow}>
+        {/* Circular animated checkbox */}
+        <Animated.View style={{ transform: [{ scale: checkboxScale }] }}>
+          <Pressable
+            onPress={handleToggle}
+            hitSlop={8}
+            style={({ pressed }) => [
+              styles.checkbox,
+              isCompleted && { backgroundColor: categoryColor, borderColor: categoryColor },
+              !isCompleted && { borderColor: colors.borderStrong },
+              pressed && { transform: [{ scale: 0.9 }] },
+            ]}
+          >
+            {isCompleted ? (
+              <Ionicons name="checkmark" size={15} color="#fff" />
+            ) : null}
+          </Pressable>
+        </Animated.View>
+
+        {/* Text content */}
+        <View style={styles.content}>
+          <Text
+            style={[styles.name, isCompleted && styles.nameCompleted]}
+            numberOfLines={1}
+          >
+            {habit.name}
+          </Text>
+
+          <View style={styles.metaRow}>
+            <BadgePill
+              label={habit.category.charAt(0).toUpperCase() + habit.category.slice(1)}
+              color={categoryColor}
+              bgColor={categoryBg}
+              size="sm"
+            />
+            {habit.timeOfDay && TIME_ICON_NAMES[habit.timeOfDay] ? (
+              <Ionicons
+                name={TIME_ICON_NAMES[habit.timeOfDay]!}
+                size={13}
+                color={colors.textSecondary}
+              />
+            ) : null}
+            {habit.notes && habit.notes.length > 0 ? (
+              <Ionicons name="chatbubble-outline" size={12} color={colors.textSecondary} />
+            ) : null}
+            {(habit.trigger || habit.location) ? (
+              <Ionicons name="navigate-outline" size={11} color={colors.info} />
+            ) : null}
+            {habit.rewardBundle ? (
+              <Ionicons name="gift-outline" size={11} color={colors.accent} />
+            ) : null}
+            {chainedToName ? (
+              <View style={styles.chainBadge}>
+                <Ionicons name="link" size={10} color={colors.primary} />
+                <Text style={styles.chainBadgeText} numberOfLines={1}>
+                  After {chainedToName}
+                </Text>
+              </View>
+            ) : null}
+            {weeklyProgress && weeklyProgress.target > 0 ? (
+              <View style={[
+                styles.weeklyBadge,
+                weeklyProgress.completed >= weeklyProgress.target && styles.weeklyBadgeDone,
+              ]}>
+                <Ionicons
+                  name="calendar-outline"
+                  size={10}
+                  color={weeklyProgress.completed >= weeklyProgress.target ? colors.success : colors.secondary}
+                />
+                <Text style={[
+                  styles.weeklyBadgeText,
+                  weeklyProgress.completed >= weeklyProgress.target && { color: colors.success },
+                ]}>
+                  {weeklyProgress.completed}/{weeklyProgress.target}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+        </View>
+      </View>
+
+      {/* XP pill — top-right corner */}
+      <View style={styles.xpPill}>
+        <Text style={styles.xpPillText}>+{habit.xpReward} XP</Text>
+      </View>
+    </Pressable>
+  );
+
+  const streakBadge = habit.streak > 0 ? (
+    <View style={[
+      styles.streakFloat,
+      automaticityScore != null && automaticityScore >= 95 && styles.streakFloatLocked,
+      automaticityScore != null && automaticityScore >= 60 && automaticityScore < 95 && styles.streakFloatStrong,
+      automaticityScore != null && automaticityScore >= 25 && automaticityScore < 60 && styles.streakFloatBuilding,
+    ]}>
+      <Ionicons
+        name="flame"
+        size={11}
+        color={automaticityScore != null && automaticityScore >= 95 ? '#FFD700' : colors.accent}
+      />
+      <Text style={[
+        styles.streakFloatText,
+        automaticityScore != null && automaticityScore >= 95 && { color: '#FFD700' },
+      ]}>
+        {habit.streak}
+      </Text>
+    </View>
+  ) : null;
+
   return (
     <ReAnimated.View style={[styles.swipeContainer, cardScaleStyle]}>
       {/* Gradient reveal behind card on swipe */}
-      <ReAnimated.View style={[styles.revealBgWrapper, revealStyle]}>
-        <LinearGradient
-          colors={['#00E676', '#00A152']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={styles.revealBg}
-        >
-          <Ionicons name="checkmark-circle" size={28} color="#fff" />
-        </LinearGradient>
-      </ReAnimated.View>
-
-      <GestureDetector gesture={panGesture}>
-        <ReAnimated.View style={swipeStyle}>
-          <Pressable
-            onPress={handlePress}
-            onLongPress={drag}
-            delayLongPress={200}
-            style={({ pressed }) => [
-              styles.card,
-              isCompleted && styles.cardCompleted,
-              pressed && styles.cardPressed,
-              isDragging && styles.cardDragging,
-            ]}
-            accessibilityRole="checkbox"
-            accessibilityState={{ checked: isCompleted }}
-            accessibilityLabel={`${habit.name}, ${habit.category}, ${habit.xpReward} XP${isCompleted ? ', completed' : ''}`}
+      {enableSwipe ? (
+        <ReAnimated.View style={[styles.revealBgWrapper, revealStyle]}>
+          <LinearGradient
+            colors={['#00E676', '#00A152']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.revealBg}
           >
-            {/* Category gradient left strip */}
-            {isCompleted ? (
-              <View style={[styles.gradientStrip, { backgroundColor: colors.textMuted }]} />
-            ) : (
-              <LinearGradient
-                colors={categoryGradient}
-                start={{ x: 0.5, y: 0 }}
-                end={{ x: 0.5, y: 1 }}
-                style={styles.gradientStrip}
-              />
-            )}
-
-            {/* Main content row — padded left to clear the strip */}
-            <View style={styles.contentRow}>
-              {/* Circular animated checkbox */}
-              <Animated.View style={{ transform: [{ scale: checkboxScale }] }}>
-                <Pressable
-                  onPress={handleToggle}
-                  hitSlop={8}
-                  style={({ pressed }) => [
-                    styles.checkbox,
-                    isCompleted && { backgroundColor: categoryColor, borderColor: categoryColor },
-                    !isCompleted && { borderColor: colors.borderStrong },
-                    pressed && { transform: [{ scale: 0.9 }] },
-                  ]}
-                >
-                  {isCompleted ? (
-                    <Ionicons name="checkmark" size={15} color="#fff" />
-                  ) : null}
-                </Pressable>
-              </Animated.View>
-
-              {/* Text content */}
-              <View style={styles.content}>
-                <Text
-                  style={[styles.name, isCompleted && styles.nameCompleted]}
-                  numberOfLines={1}
-                >
-                  {habit.name}
-                </Text>
-
-                <View style={styles.metaRow}>
-                  <BadgePill
-                    label={habit.category.charAt(0).toUpperCase() + habit.category.slice(1)}
-                    color={categoryColor}
-                    bgColor={categoryBg}
-                    size="sm"
-                  />
-                  {habit.timeOfDay && TIME_ICON_NAMES[habit.timeOfDay] ? (
-                    <Ionicons
-                      name={TIME_ICON_NAMES[habit.timeOfDay]!}
-                      size={13}
-                      color={colors.textSecondary}
-                    />
-                  ) : null}
-                  {habit.notes && habit.notes.length > 0 ? (
-                    <Ionicons name="chatbubble-outline" size={12} color={colors.textSecondary} />
-                  ) : null}
-                </View>
-              </View>
-            </View>
-
-            {/* XP pill — top-right corner */}
-            <View style={styles.xpPill}>
-              <Text style={styles.xpPillText}>+{habit.xpReward} XP</Text>
-            </View>
-          </Pressable>
-
-          {/* Floating streak badge — overlaps bottom-right of card */}
-          {habit.streak > 0 ? (
-            <View style={styles.streakFloat}>
-              <Ionicons name="flame" size={11} color={colors.accent} />
-              <Text style={styles.streakFloatText}>{habit.streak}</Text>
-            </View>
-          ) : null}
+            <Ionicons name="checkmark-circle" size={28} color="#fff" />
+          </LinearGradient>
         </ReAnimated.View>
-      </GestureDetector>
+      ) : null}
+
+      {enableSwipe ? (
+        <GestureDetector gesture={panGesture}>
+          <ReAnimated.View style={swipeStyle}>
+            {cardContent}
+            {streakBadge}
+          </ReAnimated.View>
+        </GestureDetector>
+      ) : (
+        <View>
+          {cardContent}
+          {streakBadge}
+        </View>
+      )}
     </ReAnimated.View>
   );
 }
@@ -330,6 +394,38 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontFamily: FontFamily.bold,
     color: colors.primary,
   },
+  chainBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: `${colors.primary}15`,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: Radius.full,
+  },
+  chainBadgeText: {
+    fontSize: 10,
+    fontFamily: FontFamily.medium,
+    color: colors.primary,
+    maxWidth: 100,
+  },
+  weeklyBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: `${colors.secondary}15`,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: Radius.full,
+  },
+  weeklyBadgeDone: {
+    backgroundColor: `${colors.success}15`,
+  },
+  weeklyBadgeText: {
+    fontSize: 10,
+    fontFamily: FontFamily.semibold,
+    color: colors.secondary,
+  },
   streakFloat: {
     position: 'absolute',
     bottom: 6,
@@ -343,6 +439,16 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingVertical: 3,
     borderWidth: 1,
     borderColor: colors.border,
+  },
+  streakFloatLocked: {
+    borderColor: '#FFD700',
+    backgroundColor: 'rgba(255, 215, 0, 0.1)',
+  },
+  streakFloatStrong: {
+    borderColor: colors.success,
+  },
+  streakFloatBuilding: {
+    borderColor: `${colors.primary}60`,
   },
   streakFloatText: {
     fontSize: FontSize.xs,

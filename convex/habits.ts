@@ -109,6 +109,7 @@ export const addHabit = mutation({
         finding: v.string(),
       })
     ),
+    rewardBundle: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await verifyAuth(ctx, args.userId);
@@ -127,6 +128,7 @@ export const addHabit = mutation({
       trigger: args.trigger,
       rationale: args.rationale,
       citation: args.citation,
+      rewardBundle: args.rewardBundle,
     });
 
     return habitId;
@@ -206,7 +208,9 @@ export const updateHabit = mutation({
         finding: v.string(),
       })
     ),
+    rewardBundle: v.optional(v.string()),
     // Allow explicitly clearing optional fields
+    clearRewardBundle: v.optional(v.boolean()),
     clearFrequency: v.optional(v.boolean()),
     clearTimeOfDay: v.optional(v.boolean()),
     clearLocation: v.optional(v.boolean()),
@@ -237,8 +241,10 @@ export const updateHabit = mutation({
     if (args.chainedToHabitId !== undefined) updates.chainedToHabitId = args.chainedToHabitId;
     if (args.rationale !== undefined) updates.rationale = args.rationale;
     if (args.citation !== undefined) updates.citation = args.citation;
+    if (args.rewardBundle !== undefined) updates.rewardBundle = args.rewardBundle;
 
     // Handle explicit clearing of optional fields
+    if (args.clearRewardBundle) updates.rewardBundle = undefined;
     if (args.clearFrequency) updates.frequency = undefined;
     if (args.clearTimeOfDay) updates.timeOfDay = undefined;
     if (args.clearLocation) updates.location = undefined;
@@ -433,6 +439,64 @@ export const restoreHabit = mutation({
     }
 
     return { success: true };
+  },
+});
+
+// Hibernate a habit (pause without deleting)
+export const hibernateHabit = mutation({
+  args: {
+    habitId: v.id('habits'),
+    userId: v.id('users'),
+  },
+  handler: async (ctx, args) => {
+    await verifyAuth(ctx, args.userId);
+    const habit = await ctx.db.get(args.habitId);
+    if (!habit || habit.userId !== args.userId) {
+      throw new Error('Habit not found or unauthorized');
+    }
+    await ctx.db.patch(args.habitId, {
+      hibernatedAt: new Date().toISOString().split('T')[0],
+    });
+    return { success: true };
+  },
+});
+
+// Wake a hibernated habit
+export const wakeHabit = mutation({
+  args: {
+    habitId: v.id('habits'),
+    userId: v.id('users'),
+  },
+  handler: async (ctx, args) => {
+    await verifyAuth(ctx, args.userId);
+    const habit = await ctx.db.get(args.habitId);
+    if (!habit || habit.userId !== args.userId) {
+      throw new Error('Habit not found or unauthorized');
+    }
+    await ctx.db.patch(args.habitId, {
+      hibernatedAt: undefined,
+    });
+    return { success: true };
+  },
+});
+
+// Use a streak freeze to protect a habit's streak
+export const useStreakFreeze = mutation({
+  args: {
+    userId: v.id('users'),
+  },
+  handler: async (ctx, args) => {
+    await verifyAuth(ctx, args.userId);
+    const progress = await ctx.db
+      .query('userProgress')
+      .withIndex('by_user', (q) => q.eq('userId', args.userId))
+      .first();
+    if (!progress) throw new Error('No progress found');
+    if (progress.streakFreezes <= 0) throw new Error('No streak freezes available');
+    await ctx.db.patch(progress._id, {
+      streakFreezes: progress.streakFreezes - 1,
+    });
+    return { success: true, remaining: progress.streakFreezes - 1 };
   },
 });
 

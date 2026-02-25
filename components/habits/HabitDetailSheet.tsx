@@ -8,7 +8,9 @@ import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
 import { BadgePill } from '@/components/ui/BadgePill';
 import { ProgressBar } from '@/components/ui/ProgressBar';
+import { AutomaticityArc } from './AutomaticityArc';
 import type { Habit } from '@/types';
+import type { AutomaticityInfo } from '@/lib/automaticity';
 import { FREQUENCY_LABELS } from '@/types';
 
 interface HabitDetailSheetProps {
@@ -18,6 +20,11 @@ interface HabitDetailSheetProps {
   onToggle: (id: string) => void;
   onDelete: (id: string) => void;
   onAddNote: (habitId: string, text: string) => void;
+  automaticityInfo?: AutomaticityInfo | null;
+  streakFreezes?: number;
+  onHibernate?: (id: string) => void;
+  onWake?: (id: string) => void;
+  onUseStreakFreeze?: () => void;
 }
 
 export function HabitDetailSheet({
@@ -27,6 +34,11 @@ export function HabitDetailSheet({
   onToggle,
   onDelete,
   onAddNote,
+  automaticityInfo,
+  streakFreezes,
+  onHibernate,
+  onWake,
+  onUseStreakFreeze,
 }: HabitDetailSheetProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -106,22 +118,83 @@ export function HabitDetailSheet({
           </View>
         </View>
 
-        {/* Implementation Intentions */}
+        {/* Automaticity Meter */}
+        {automaticityInfo && automaticityInfo.score > 0 ? (
+          <View style={styles.automaticitySection}>
+            <View style={styles.automaticitySectionHeader}>
+              <Text style={styles.sectionTitle}>Automaticity</Text>
+              <BadgePill
+                label={automaticityInfo.phaseLabel}
+                color={
+                  automaticityInfo.phase === 'automatic' ? '#FFD700' :
+                  automaticityInfo.phase === 'strengthening' ? colors.success :
+                  automaticityInfo.phase === 'building' ? colors.primary :
+                  colors.textMuted
+                }
+                size="sm"
+              />
+            </View>
+            <View style={styles.automaticityCard}>
+              <View style={styles.automaticityTop}>
+                <AutomaticityArc score={automaticityInfo.score} size={52} />
+                <View style={styles.automaticityStats}>
+                  <Text style={styles.automaticityScore}>{automaticityInfo.score}%</Text>
+                  <Text style={styles.automaticityHint}>
+                    {automaticityInfo.phase === 'automatic'
+                      ? 'This habit is locked in!'
+                      : `~${automaticityInfo.daysToLockIn} days to lock-in`}
+                  </Text>
+                </View>
+              </View>
+              <ProgressBar
+                progress={automaticityInfo.score}
+                color={
+                  automaticityInfo.score >= 95 ? '#FFD700' :
+                  automaticityInfo.score >= 60 ? colors.success :
+                  colors.primary
+                }
+                height={4}
+              />
+              <Text style={styles.automaticityDetail}>
+                {automaticityInfo.totalCompletions} completions over {automaticityInfo.daysSinceStart} days ({Math.round(automaticityInfo.completionRate * 100)}% consistency)
+              </Text>
+            </View>
+          </View>
+        ) : null}
+
+        {/* Temptation Bundle */}
+        {habit.rewardBundle ? (
+          <View style={styles.bundleCard}>
+            <View style={styles.bundleHeader}>
+              <Ionicons name="gift-outline" size={16} color={colors.accent} />
+              <Text style={styles.bundleTitleText}>Reward Bundle</Text>
+            </View>
+            <Text style={styles.bundleReward}>{habit.rewardBundle}</Text>
+          </View>
+        ) : null}
+
+        {/* If-Then Blueprint */}
         {(habit.location || habit.trigger) ? (
           <View style={styles.intentionSection}>
-            <Text style={styles.sectionTitle}>Implementation Intention</Text>
-            {habit.trigger ? (
-              <Text style={styles.intentionText}>
-                <Text style={styles.intentionLabel}>After: </Text>
-                {habit.trigger}
-              </Text>
-            ) : null}
-            {habit.location ? (
-              <Text style={styles.intentionText}>
-                <Text style={styles.intentionLabel}>At: </Text>
-                {habit.location}
-              </Text>
-            ) : null}
+            <Text style={styles.sectionTitle}>If-Then Blueprint</Text>
+            <View style={styles.blueprintCard}>
+              {habit.trigger ? (
+                <View style={styles.blueprintRow}>
+                  <Text style={styles.blueprintKeyword}>IF</Text>
+                  <Text style={styles.blueprintText}>{habit.trigger}</Text>
+                </View>
+              ) : null}
+              <View style={styles.blueprintRow}>
+                <Text style={[styles.blueprintKeyword, { color: colors.success }]}>THEN</Text>
+                <Text style={styles.blueprintText}>{habit.name}</Text>
+              </View>
+              {habit.location ? (
+                <View style={styles.blueprintRow}>
+                  <Text style={[styles.blueprintKeyword, { color: colors.info }]}>AT</Text>
+                  <Text style={styles.blueprintText}>{habit.location}</Text>
+                </View>
+              ) : null}
+            </View>
           </View>
         ) : null}
 
@@ -201,12 +274,46 @@ export function HabitDetailSheet({
             variant={isCompleted ? 'secondary' : 'primary'}
             fullWidth
           />
-          <Button
-            title="Delete Habit"
-            onPress={handleDelete}
-            variant="danger"
-            fullWidth
-          />
+
+          {/* Streak freeze — show when streak is at risk */}
+          {streakFreezes != null && streakFreezes > 0 && habit.streak > 0 && !isCompleted && onUseStreakFreeze ? (
+            <Pressable
+              onPress={onUseStreakFreeze}
+              style={styles.freezeButton}
+            >
+              <Ionicons name="snow-outline" size={16} color={colors.info} />
+              <Text style={styles.freezeButtonText}>
+                Use Streak Freeze ({streakFreezes} left)
+              </Text>
+            </Pressable>
+          ) : null}
+
+          <View style={styles.actionRow}>
+            {/* Hibernate / Wake */}
+            {habit.hibernatedAt && onWake ? (
+              <Pressable
+                onPress={() => { onWake(habit.id); onClose(); }}
+                style={styles.secondaryAction}
+              >
+                <Ionicons name="sunny-outline" size={16} color={colors.success} />
+                <Text style={[styles.secondaryActionText, { color: colors.success }]}>Wake Up</Text>
+              </Pressable>
+            ) : !habit.hibernatedAt && onHibernate ? (
+              <Pressable
+                onPress={() => { onHibernate(habit.id); onClose(); }}
+                style={styles.secondaryAction}
+              >
+                <Ionicons name="snow-outline" size={16} color={colors.textSecondary} />
+                <Text style={styles.secondaryActionText}>Hibernate</Text>
+              </Pressable>
+            ) : null}
+
+            {/* Delete */}
+            <Pressable onPress={handleDelete} style={styles.secondaryAction}>
+              <Ionicons name="trash-outline" size={16} color={colors.danger} />
+              <Text style={[styles.secondaryActionText, { color: colors.danger }]}>Delete</Text>
+            </Pressable>
+          </View>
         </View>
       </View>
     </BottomSheet>
@@ -252,16 +359,102 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     letterSpacing: 0.5,
     marginBottom: Spacing.xs,
   },
-  intentionSection: {
-    gap: 4,
+  // Automaticity
+  automaticitySection: {
+    gap: Spacing.xs,
   },
-  intentionText: {
-    fontSize: FontSize.sm,
+  automaticitySectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  automaticityCard: {
+    backgroundColor: colors.surfaceLight,
+    borderRadius: Radius.lg,
+    padding: Spacing.md,
+    gap: Spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  automaticityTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+  },
+  automaticityStats: {
+    flex: 1,
+    gap: 2,
+  },
+  automaticityScore: {
+    fontSize: FontSize['2xl'],
+    fontFamily: FontFamily.extrabold,
     color: colors.foreground,
   },
-  intentionLabel: {
+  automaticityHint: {
+    fontSize: FontSize.xs,
+    fontFamily: FontFamily.medium,
+    color: colors.textSecondary,
+  },
+  automaticityDetail: {
+    fontSize: FontSize.xs,
+    color: colors.textMuted,
+  },
+
+  // Temptation Bundle
+  bundleCard: {
+    backgroundColor: `${colors.accent}10`,
+    borderRadius: Radius.lg,
+    padding: Spacing.md,
+    gap: Spacing.xs,
+    borderWidth: 1,
+    borderColor: `${colors.accent}30`,
+  },
+  bundleHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+  },
+  bundleTitleText: {
+    fontSize: FontSize.sm,
     fontFamily: FontFamily.bold,
+    color: colors.accent,
+  },
+  bundleReward: {
+    fontSize: FontSize.sm,
+    fontFamily: FontFamily.medium,
+    color: colors.foreground,
+    marginLeft: 24,
+  },
+
+  // If-Then Blueprint
+  intentionSection: {
+    gap: Spacing.xs,
+  },
+  blueprintCard: {
+    backgroundColor: colors.surfaceLight,
+    borderRadius: Radius.lg,
+    padding: Spacing.md,
+    gap: Spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  blueprintRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  blueprintKeyword: {
+    fontSize: FontSize.xs,
+    fontFamily: FontFamily.extrabold,
     color: colors.primary,
+    width: 38,
+    letterSpacing: 0.5,
+  },
+  blueprintText: {
+    flex: 1,
+    fontSize: FontSize.sm,
+    fontFamily: FontFamily.medium,
+    color: colors.foreground,
   },
   aiBadge: {
     flexDirection: 'row',
@@ -379,5 +572,38 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   actions: {
     gap: Spacing.sm,
     marginTop: Spacing.sm,
+  },
+  freezeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.xs,
+    paddingVertical: Spacing.sm + 2,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: `${colors.info}40`,
+    backgroundColor: `${colors.info}10`,
+  },
+  freezeButtonText: {
+    fontSize: FontSize.sm,
+    fontFamily: FontFamily.semibold,
+    color: colors.info,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: Spacing.xl,
+    marginTop: Spacing.xs,
+  },
+  secondaryAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: Spacing.xs,
+  },
+  secondaryActionText: {
+    fontSize: FontSize.sm,
+    fontFamily: FontFamily.medium,
+    color: colors.textSecondary,
   },
 });
