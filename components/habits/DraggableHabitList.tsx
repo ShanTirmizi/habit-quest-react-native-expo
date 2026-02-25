@@ -10,6 +10,7 @@ import { HabitCard } from './HabitCard';
 import type { Habit } from '@/types';
 import type { HabitScheduleInfo } from '@/lib/habit-scheduling';
 import type { AutomaticityInfo } from '@/lib/automaticity';
+import type { KeystoneInfo } from '@/lib/keystone-detection';
 
 interface DraggableHabitListProps {
   habits: Habit[];
@@ -20,6 +21,7 @@ interface DraggableHabitListProps {
   chainNameMap?: Map<string, string>;
   scheduleMap?: Map<string, HabitScheduleInfo>;
   automaticityMap?: Map<string, AutomaticityInfo>;
+  keystoneMap?: Map<string, KeystoneInfo>;
 }
 
 export function DraggableHabitList({
@@ -31,6 +33,7 @@ export function DraggableHabitList({
   chainNameMap,
   scheduleMap,
   automaticityMap,
+  keystoneMap,
 }: DraggableHabitListProps) {
   const renderItem = useCallback(
     ({ item, drag, isActive }: RenderItemParams<Habit>) => {
@@ -54,11 +57,12 @@ export function DraggableHabitList({
             chainedToName={item.chainedToHabitId && chainNameMap ? chainNameMap.get(item.chainedToHabitId) : undefined}
             weeklyProgress={weeklyProgress}
             automaticityScore={autoInfo?.score}
+            isKeystone={keystoneMap?.get(item.id)?.isKeystone}
           />
         </ScaleDecorator>
       );
     },
-    [isCompleted, onToggle, onPress, chainNameMap, scheduleMap, automaticityMap],
+    [isCompleted, onToggle, onPress, chainNameMap, scheduleMap, automaticityMap, keystoneMap],
   );
 
   const handleDragEnd = useCallback(

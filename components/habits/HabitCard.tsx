@@ -38,6 +38,7 @@ interface HabitCardProps {
   chainedToName?: string;
   weeklyProgress?: { completed: number; target: number };
   automaticityScore?: number;
+  isKeystone?: boolean;
 }
 
 const TIME_ICON_NAMES: Record<TimeOfDay, keyof typeof Ionicons.glyphMap | null> = {
@@ -49,7 +50,7 @@ const TIME_ICON_NAMES: Record<TimeOfDay, keyof typeof Ionicons.glyphMap | null> 
 
 const SWIPE_THRESHOLD = 70;
 
-export function HabitCard({ habit, isCompleted, onToggle, onPress, drag, isDragging, chainedToName, weeklyProgress, automaticityScore }: HabitCardProps) {
+export function HabitCard({ habit, isCompleted, onToggle, onPress, drag, isDragging, chainedToName, weeklyProgress, automaticityScore, isKeystone }: HabitCardProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const categoryColors = useMemo(() => getCategoryColors(colors), [colors]);
@@ -82,6 +83,7 @@ export function HabitCard({ habit, isCompleted, onToggle, onPress, drag, isDragg
 
   const panGesture = Gesture.Pan()
     .activeOffsetX(10)
+    .failOffsetY([-5, 5])
     .enabled(enableSwipe)
     .onUpdate((event) => {
       const x = Math.max(0, Math.min(event.translationX, 100));
@@ -209,6 +211,9 @@ export function HabitCard({ habit, isCompleted, onToggle, onPress, drag, isDragg
             ) : null}
             {habit.rewardBundle ? (
               <Ionicons name="gift-outline" size={11} color={colors.accent} />
+            ) : null}
+            {isKeystone ? (
+              <Ionicons name="diamond" size={11} color={colors.accent} />
             ) : null}
             {chainedToName ? (
               <View style={styles.chainBadge}>

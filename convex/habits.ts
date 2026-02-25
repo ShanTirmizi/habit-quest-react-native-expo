@@ -518,6 +518,58 @@ export const reorderHabits = mutation({
   },
 });
 
+// ── Micro-Reflections ──
+
+export const addMicroReflection = mutation({
+  args: {
+    userId: v.id('users'),
+    habitId: v.id('habits'),
+    mood: v.union(
+      v.literal('energized'),
+      v.literal('good'),
+      v.literal('meh'),
+      v.literal('tough')
+    ),
+    date: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await verifyAuth(ctx, args.userId);
+
+    // Upsert: replace if same habit+date already has a reflection
+    const existing = await ctx.db
+      .query('microReflections')
+      .withIndex('by_habit_date', (q) =>
+        q.eq('habitId', args.habitId).eq('date', args.date)
+      )
+      .first();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, { mood: args.mood });
+      return existing._id;
+    }
+
+    return await ctx.db.insert('microReflections', {
+      userId: args.userId,
+      habitId: args.habitId,
+      mood: args.mood,
+      date: args.date,
+    });
+  },
+});
+
+export const getReflections = query({
+  args: {
+    habitId: v.id('habits'),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query('microReflections')
+      .withIndex('by_habit', (q) => q.eq('habitId', args.habitId))
+      .order('desc')
+      .take(30);
+  },
+});
+
 // Helper function to calculate streak
 async function calculateStreak(
   ctx: MutationCtx | QueryCtx,

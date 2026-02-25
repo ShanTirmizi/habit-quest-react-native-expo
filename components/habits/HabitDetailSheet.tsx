@@ -9,9 +9,11 @@ import { Button } from '@/components/ui/Button';
 import { BadgePill } from '@/components/ui/BadgePill';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { AutomaticityArc } from './AutomaticityArc';
-import type { Habit } from '@/types';
+import type { Habit, ReflectionMood, MicroReflection } from '@/types';
+import { FREQUENCY_LABELS, REFLECTION_MOOD_CONFIG } from '@/types';
 import type { AutomaticityInfo } from '@/lib/automaticity';
-import { FREQUENCY_LABELS } from '@/types';
+import type { KeystoneInfo } from '@/lib/keystone-detection';
+import type { DifficultySuggestion } from '@/lib/adaptive-difficulty';
 
 interface HabitDetailSheetProps {
   habit: Habit | null;
@@ -25,6 +27,9 @@ interface HabitDetailSheetProps {
   onHibernate?: (id: string) => void;
   onWake?: (id: string) => void;
   onUseStreakFreeze?: () => void;
+  keystoneInfo?: KeystoneInfo | null;
+  difficultySuggestion?: DifficultySuggestion | null;
+  recentReflections?: MicroReflection[];
 }
 
 export function HabitDetailSheet({
@@ -39,6 +44,9 @@ export function HabitDetailSheet({
   onHibernate,
   onWake,
   onUseStreakFreeze,
+  keystoneInfo,
+  difficultySuggestion,
+  recentReflections,
 }: HabitDetailSheetProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -194,6 +202,87 @@ export function HabitDetailSheet({
                   <Text style={styles.blueprintText}>{habit.location}</Text>
                 </View>
               ) : null}
+            </View>
+          </View>
+        ) : null}
+
+        {/* Keystone Badge */}
+        {keystoneInfo && keystoneInfo.isKeystone ? (
+          <View style={styles.keystoneCard}>
+            <View style={styles.keystoneHeader}>
+              <Ionicons name="diamond-outline" size={16} color={colors.accent} />
+              <Text style={styles.keystoneTitleText}>Keystone Habit</Text>
+              <BadgePill label={`${keystoneInfo.score}%`} color={colors.accent} size="sm" />
+            </View>
+            <Text style={styles.keystoneBody}>
+              Completing this habit makes your other habits more likely to get done.
+            </Text>
+            {keystoneInfo.influencedHabits.length > 0 ? (
+              <View style={styles.keystoneInfluences}>
+                {keystoneInfo.influencedHabits.map((inf) => (
+                  <View key={inf.habitId} style={styles.influenceRow}>
+                    <Ionicons name="trending-up" size={12} color={colors.success} />
+                    <Text style={styles.influenceText}>
+                      +{inf.liftPercent}% more likely to do {inf.name}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+          </View>
+        ) : null}
+
+        {/* Adaptive Difficulty Suggestion */}
+        {difficultySuggestion ? (
+          <View style={[
+            styles.difficultyCard,
+            {
+              borderColor: difficultySuggestion.direction === 'scale_up'
+                ? `${colors.success}30` : `${colors.warning}30`,
+            },
+          ]}>
+            <View style={styles.difficultyHeader}>
+              <Ionicons
+                name={difficultySuggestion.direction === 'scale_up' ? 'trending-up' : 'trending-down'}
+                size={16}
+                color={difficultySuggestion.direction === 'scale_up' ? colors.success : colors.warning}
+              />
+              <Text style={styles.difficultyTitleText}>
+                {difficultySuggestion.direction === 'scale_up' ? 'Ready to Level Up' : 'Consider Scaling Down'}
+              </Text>
+            </View>
+            <Text style={styles.difficultyReason}>{difficultySuggestion.reason}</Text>
+            <Text style={styles.difficultySuggestion}>{difficultySuggestion.suggestion}</Text>
+          </View>
+        ) : null}
+
+        {/* Micro-Reflection History */}
+        {recentReflections && recentReflections.length > 0 ? (
+          <View style={styles.reflectionSection}>
+            <Text style={styles.sectionTitle}>Recent Reflections</Text>
+            <View style={styles.reflectionDots}>
+              {recentReflections.slice(0, 14).map((r, i) => {
+                const config = REFLECTION_MOOD_CONFIG[r.mood];
+                return (
+                  <View
+                    key={`${r.date}-${i}`}
+                    style={[styles.reflectionDot, { backgroundColor: config.color }]}
+                  />
+                );
+              })}
+            </View>
+            <View style={styles.reflectionLegend}>
+              {(['energized', 'good', 'meh', 'tough'] as ReflectionMood[]).map((mood) => {
+                const config = REFLECTION_MOOD_CONFIG[mood];
+                const count = recentReflections.filter((r) => r.mood === mood).length;
+                if (count === 0) return null;
+                return (
+                  <View key={mood} style={styles.legendItem}>
+                    <View style={[styles.legendDot, { backgroundColor: config.color }]} />
+                    <Text style={styles.legendText}>{config.label} ({count})</Text>
+                  </View>
+                );
+              })}
             </View>
           </View>
         ) : null}
@@ -605,5 +694,112 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: FontSize.sm,
     fontFamily: FontFamily.medium,
     color: colors.textSecondary,
+  },
+
+  // Keystone
+  keystoneCard: {
+    backgroundColor: `${colors.accent}08`,
+    borderRadius: Radius.lg,
+    padding: Spacing.md,
+    gap: Spacing.sm,
+    borderWidth: 1,
+    borderColor: `${colors.accent}25`,
+  },
+  keystoneHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+  },
+  keystoneTitleText: {
+    flex: 1,
+    fontSize: FontSize.sm,
+    fontFamily: FontFamily.bold,
+    color: colors.accent,
+  },
+  keystoneBody: {
+    fontSize: FontSize.xs,
+    fontFamily: FontFamily.regular,
+    color: colors.textSecondary,
+    lineHeight: 18,
+  },
+  keystoneInfluences: {
+    gap: 4,
+  },
+  influenceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  influenceText: {
+    fontSize: FontSize.xs,
+    fontFamily: FontFamily.medium,
+    color: colors.success,
+  },
+
+  // Difficulty
+  difficultyCard: {
+    backgroundColor: colors.surfaceLight,
+    borderRadius: Radius.lg,
+    padding: Spacing.md,
+    gap: Spacing.xs,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  difficultyHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+  },
+  difficultyTitleText: {
+    fontSize: FontSize.sm,
+    fontFamily: FontFamily.bold,
+    color: colors.foreground,
+  },
+  difficultyReason: {
+    fontSize: FontSize.xs,
+    fontFamily: FontFamily.medium,
+    color: colors.textMuted,
+  },
+  difficultySuggestion: {
+    fontSize: FontSize.sm,
+    fontFamily: FontFamily.regular,
+    color: colors.textSecondary,
+    lineHeight: 20,
+  },
+
+  // Reflections
+  reflectionSection: {
+    gap: Spacing.xs,
+  },
+  reflectionDots: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  reflectionDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  reflectionLegend: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.md,
+    marginTop: 4,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  legendDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  legendText: {
+    fontSize: FontSize.xs,
+    fontFamily: FontFamily.medium,
+    color: colors.textMuted,
   },
 });

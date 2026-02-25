@@ -51,6 +51,22 @@ export interface Habit {
   hibernatedAt?: string;
 }
 
+// ── Micro-Reflections ──
+export type ReflectionMood = 'energized' | 'good' | 'meh' | 'tough';
+
+export interface MicroReflection {
+  habitId: string;
+  mood: ReflectionMood;
+  date: string;
+}
+
+export const REFLECTION_MOOD_CONFIG: Record<ReflectionMood, { icon: string; label: string; color: string }> = {
+  energized: { icon: 'flash', label: 'Energized', color: '#FBBF24' },
+  good: { icon: 'thumbs-up', label: 'Good', color: '#4ADE80' },
+  meh: { icon: 'remove-circle-outline', label: 'Meh', color: '#94A3B8' },
+  tough: { icon: 'barbell-outline', label: 'Tough', color: '#F87171' },
+};
+
 export type QuestPriority = 'low' | 'medium' | 'high';
 export type QuestType = 'daily' | 'weekly' | 'ongoing';
 

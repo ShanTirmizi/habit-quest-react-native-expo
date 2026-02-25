@@ -450,6 +450,22 @@ export default defineSchema({
     .index('by_user_date', ['userId', 'date'])
     .index('by_medicine_date', ['medicineId', 'date']),
 
+  // Micro-Reflections (quick mood check after habit completion)
+  microReflections: defineTable({
+    userId: v.id('users'),
+    habitId: v.id('habits'),
+    mood: v.union(
+      v.literal('energized'),
+      v.literal('good'),
+      v.literal('meh'),
+      v.literal('tough')
+    ),
+    date: v.string(), // YYYY-MM-DD
+  })
+    .index('by_user', ['userId'])
+    .index('by_habit', ['habitId'])
+    .index('by_habit_date', ['habitId', 'date']),
+
   // AI Memories (learnings extracted from conversations)
   aiMemories: defineTable({
     userId: v.id('users'),

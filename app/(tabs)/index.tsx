@@ -32,10 +32,17 @@ import { UnderworldOverlay } from '@/components/overlays/UnderworldOverlay';
 import { LevelUpCelebration } from '@/components/overlays/LevelUpCelebration';
 import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/contexts/toast-context';
-import type { Habit, HabitCategory, Goal, TimeOfDay } from '@/types';
+import type { Habit, HabitCategory, Goal, TimeOfDay, ReflectionMood, MicroReflection } from '@/types';
 import { GOAL_CATEGORY_CONFIG } from '@/types';
 import { buildScheduleMap, type HabitScheduleInfo } from '@/lib/habit-scheduling';
 import { buildAutomaticityMap, type AutomaticityInfo } from '@/lib/automaticity';
+import { detectKeystones, type KeystoneInfo } from '@/lib/keystone-detection';
+import { analyzeDifficulty, type DifficultySuggestion } from '@/lib/adaptive-difficulty';
+import { detectFreshStarts, type FreshStart } from '@/lib/fresh-starts';
+import { generateCompassionMessage, type CompassionMessage } from '@/lib/compassion-engine';
+import { CompassionCard } from '@/components/widgets/CompassionCard';
+import { FreshStartBanner } from '@/components/widgets/FreshStartBanner';
+import { MicroReflectionPrompt } from '@/components/habits/MicroReflectionPrompt';
 
 const TIME_SECTION_META: Record<TimeOfDay, { label: string; icon: keyof typeof Ionicons.glyphMap; order: number }> = {
   morning:   { label: 'Morning',   icon: 'sunny-outline',         order: 0 },
@@ -231,6 +238,34 @@ export default function DashboardScreen() {
     return buildAutomaticityMap(habits, todayDate);
   }, [habits, todayDate]);
 
+  // Phase 2: Keystone detection
+  const keystoneMap = useMemo(() => {
+    if (activeHabits.length < 2) return new Map<string, KeystoneInfo>();
+    return detectKeystones(activeHabits);
+  }, [activeHabits]);
+
+  // Phase 2: Adaptive difficulty suggestions
+  const difficultyMap = useMemo(() => {
+    if (activeHabits.length === 0) return new Map<string, DifficultySuggestion>();
+    return analyzeDifficulty(activeHabits);
+  }, [activeHabits]);
+
+  // Phase 2: Fresh start detection
+  const freshStarts = useMemo(() => {
+    const earliestDate = habits.length > 0
+      ? habits.reduce((min, h) => h.createdAt < min ? h.createdAt : min, habits[0].createdAt)
+      : undefined;
+    return detectFreshStarts(new Date(), earliestDate);
+  }, [habits]);
+
+  // Phase 2: Compassion engine state
+  const [compassionDismissed, setCompassionDismissed] = useState(false);
+  const [freshStartDismissed, setFreshStartDismissed] = useState(false);
+
+  // Phase 2: Micro-reflection state
+  const [reflectionHabit, setReflectionHabit] = useState<Habit | null>(null);
+  const addReflectionMutation = useMutation(api.habits.addMicroReflection);
+
   const completedIds = useMemo(() => {
     const ids = new Set<string>();
     for (const habit of visibleHabits) {
@@ -352,6 +387,9 @@ export default function DashboardScreen() {
             : `${habit.name} completed!`;
           showToast(toastMsg, habit.xpReward, 'xp');
 
+          // Phase 2: Trigger micro-reflection prompt
+          setReflectionHabit(habit);
+
           try {
             const xpResult = await addXpMutation({ userId, amount: habit.xpReward });
             if (xpResult.leveledUp) {
@@ -449,6 +487,53 @@ export default function DashboardScreen() {
       showToast('No streak freezes available', undefined, 'error');
     }
   }, [userId, useStreakFreezeMutation, showToast]);
+
+  // Phase 2: Micro-reflection handler
+  const handleReflection = useCallback(async (mood: ReflectionMood) => {
+    if (!userId || !reflectionHabit) return;
+    try {
+      await addReflectionMutation({
+        userId,
+        habitId: reflectionHabit.id as any,
+        mood,
+        date: todayDate,
+      });
+    } catch {}
+    setReflectionHabit(null);
+  }, [userId, reflectionHabit, todayDate, addReflectionMutation]);
+
+  // Phase 2: Compassion message (computed when there were missed habits)
+  const compassionMessage = useMemo<CompassionMessage | null>(() => {
+    if (compassionDismissed || !progress || habits.length === 0) return null;
+    // Check if user missed habits yesterday
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = format(yesterday, 'yyyy-MM-dd');
+    const missedYesterday = activeHabits.filter(
+      (h) => !h.completedDates.includes(yesterdayStr) && !h.hibernatedAt
+    ).length;
+    if (missedYesterday === 0) return null;
+    // Find how many days since any habit was completed
+    let lastCompletionDate = '';
+    for (const h of habits) {
+      for (const d of h.completedDates) {
+        if (d > lastCompletionDate) lastCompletionDate = d;
+      }
+    }
+    const daysSinceLastCompletion = lastCompletionDate
+      ? differenceInDays(new Date(), parseISO(lastCompletionDate))
+      : 999;
+    return generateCompassionMessage({
+      missedCount: missedYesterday,
+      totalHabits: activeHabits.length,
+      currentHp: progress.currentHp,
+      maxHp: progress.maxHp,
+      longestActiveStreak: Math.max(0, ...habits.map((h) => h.streak)),
+      totalCompletionsAllTime: habits.reduce((s, h) => s + h.completedDates.length, 0),
+      daysSinceLastCompletion,
+      habits,
+    });
+  }, [compassionDismissed, progress, habits, activeHabits]);
 
   const handleRefresh = useCallback(async () => {
     if (!userId) return;
@@ -663,6 +748,38 @@ export default function DashboardScreen() {
           {/* Underworld Overlay */}
           {userId ? <UnderworldOverlay userId={userId} /> : null}
 
+          {/* ── Phase 2: Fresh Start Banner ── */}
+          {freshStarts.length > 0 && !freshStartDismissed ? (
+            <FreshStartBanner
+              freshStart={freshStarts[0]}
+              onDismiss={() => setFreshStartDismissed(true)}
+            />
+          ) : null}
+
+          {/* ── Phase 2: Compassion Card ── */}
+          {compassionMessage && !compassionDismissed ? (
+            <CompassionCard
+              message={compassionMessage}
+              onAction={() => {
+                setCompassionDismissed(true);
+                if (compassionMessage.suggestedHabitId) {
+                  const h = habits.find((hab) => hab.id === compassionMessage.suggestedHabitId);
+                  if (h) handleToggle(h.id);
+                }
+              }}
+              onDismiss={() => setCompassionDismissed(true)}
+            />
+          ) : null}
+
+          {/* ── Phase 2: Micro-Reflection Prompt ── */}
+          {reflectionHabit ? (
+            <MicroReflectionPrompt
+              habitName={reflectionHabit.name}
+              onSelect={handleReflection}
+              onDismiss={() => setReflectionHabit(null)}
+            />
+          ) : null}
+
           {/* ── Habits (the main content, immediately visible) ── */}
           {habits.length === 0 ? (
             <EmptyState
@@ -773,6 +890,7 @@ export default function DashboardScreen() {
                             chainNameMap={chainNameMap}
                             scheduleMap={scheduleMap}
                             automaticityMap={automaticityMap}
+                            keystoneMap={keystoneMap}
                           />
                         ) : null}
                         {group.completed.map((habit) => {
@@ -791,6 +909,7 @@ export default function DashboardScreen() {
                               chainedToName={habit.chainedToHabitId ? chainNameMap.get(habit.chainedToHabitId) : undefined}
                               weeklyProgress={weeklyProgress}
                               automaticityScore={autoInfo?.score}
+                              isKeystone={keystoneMap.get(habit.id)?.isKeystone}
                             />
                           );
                         })}
@@ -934,6 +1053,8 @@ export default function DashboardScreen() {
         onHibernate={handleHibernate}
         onWake={handleWake}
         onUseStreakFreeze={handleUseStreakFreeze}
+        keystoneInfo={selectedHabit ? keystoneMap.get(selectedHabit.id) ?? null : null}
+        difficultySuggestion={selectedHabit ? difficultyMap.get(selectedHabit.id) ?? null : null}
       />
 
       {/* Add Habit Sheet */}
