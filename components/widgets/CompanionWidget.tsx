@@ -19,8 +19,9 @@ import Animated, {
   withTiming,
   Easing,
   runOnJS,
+  interpolate,
 } from 'react-native-reanimated';
-import { useQuery, useMutation } from 'convex/react';
+import { useQuery, useMutation, useAction } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import type { Id } from '@/convex/_generated/dataModel';
 import { FontSize, Spacing, Radius, FontFamily, Shadows, type ThemeColors } from '@/constants/theme';
@@ -66,6 +67,19 @@ const SAGE_RESPONSES = [
   "Challenges are just opportunities in disguise. What's on your mind?",
   "The fact that you're here, checking in, already says a lot about your character.",
 ];
+
+/** Animated wrapper that fades-in + slides-up each chat bubble on mount */
+function ChatBubble({ children }: { children: React.ReactNode }) {
+  const progress = useSharedValue(0);
+  useEffect(() => {
+    progress.value = withTiming(1, { duration: 250, easing: Easing.out(Easing.cubic) });
+  }, []);
+  const animStyle = useAnimatedStyle(() => ({
+    opacity: progress.value,
+    transform: [{ translateY: interpolate(progress.value, [0, 1], [8, 0]) }],
+  }));
+  return <Animated.View style={animStyle}>{children}</Animated.View>;
+}
 
 type TabType = 'info' | 'chat';
 
@@ -121,9 +135,11 @@ export function CompanionWidget({
   const updateNameMutation = useMutation(api.companions.updateName);
   const claimGiftMutation = useMutation(api.companions.claimGift);
   const saveMessageMutation = useMutation(api.chat.saveMessage);
+  const sendMessageAction = useAction(api.chatAction.sendMessage);
 
-  // Breathing pulse for gift indicator
+  // Breathing pulse for gift indicator (scale + subtle opacity)
   const giftScale = useSharedValue(1);
+  const giftOpacity = useSharedValue(1);
   useEffect(() => {
     if (unclaimedGifts && unclaimedGifts > 0) {
       giftScale.value = withRepeat(
@@ -134,10 +150,19 @@ export function CompanionWidget({
         -1,
         true,
       );
+      giftOpacity.value = withRepeat(
+        withSequence(
+          withTiming(0.8, { duration: 800 }),
+          withTiming(1, { duration: 800 }),
+        ),
+        -1,
+        true,
+      );
     }
   }, [unclaimedGifts]);
 
   const giftAnimStyle = useAnimatedStyle(() => ({
+    opacity: giftOpacity.value,
     transform: [{ scale: giftScale.value }],
   }));
 
@@ -163,6 +188,7 @@ export function CompanionWidget({
 
   const switchTab = useCallback((tab: TabType) => {
     if (tab === activeTab) return;
+    Haptics.selectionAsync();
     // Animate indicator
     tabProgress.value = withTiming(tab === 'chat' ? 1 : 0, {
       duration: 300,
@@ -214,10 +240,12 @@ export function CompanionWidget({
   useEffect(() => {
     if (isVisible) {
       sessionIdRef.current = Date.now().toString();
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
   }, [isVisible]);
 
   const handleClose = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setEditingName(false);
     setActiveTab('info');
     tabProgress.value = 0;
@@ -299,34 +327,42 @@ export function CompanionWidget({
     setLocalMessages((prev) => [...prev, userMsg]);
 
     try {
-      // Save user message to backend
-      await saveMessageMutation({
+      // Call Claude via Convex action (saves both user + assistant messages)
+      const reply = await sendMessageAction({
         userId,
-        role: 'user',
-        content: text,
+        userMessage: text,
         sessionId: sessionIdRef.current,
       });
 
-      // Generate a local Dr. Sage response
+      const sageMsg: ChatMessage = { role: 'assistant', content: reply };
+      setLocalMessages((prev) => [...prev, sageMsg]);
+
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch {
+      // Fallback to local response if action fails
       const sageReply = generateSageResponse(text);
       const sageMsg: ChatMessage = { role: 'assistant', content: sageReply };
       setLocalMessages((prev) => [...prev, sageMsg]);
 
-      // Save the assistant response to backend
-      await saveMessageMutation({
-        userId,
-        role: 'assistant',
-        content: sageReply,
-        sessionId: sessionIdRef.current,
-      });
-
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    } catch {
-      showToast('Failed to send message', undefined, 'error');
+      // Save locally generated messages
+      try {
+        await saveMessageMutation({
+          userId,
+          role: 'user',
+          content: text,
+          sessionId: sessionIdRef.current,
+        });
+        await saveMessageMutation({
+          userId,
+          role: 'assistant',
+          content: sageReply,
+          sessionId: sessionIdRef.current,
+        });
+      } catch {}
     } finally {
       setIsSending(false);
     }
-  }, [chatInput, isSending, userId, saveMessageMutation, generateSageResponse, showToast]);
+  }, [chatInput, isSending, userId, sendMessageAction, saveMessageMutation, generateSageResponse, showToast]);
 
   // Merge backend messages with any local (optimistic) ones not yet in backend
   const allMessages: ChatMessage[] = (() => {
@@ -451,7 +487,7 @@ export function CompanionWidget({
             value={newName}
             onChangeText={setNewName}
             placeholder="New name..."
-            placeholderTextColor={colors.textDim}
+            placeholderTextColor={colors.textMuted}
             autoFocus
           />
           <Button title="Save" size="sm" onPress={handleSaveName} disabled={!newName.trim()} />
@@ -470,7 +506,7 @@ export function CompanionWidget({
             <Pressable
               key={gift.id}
               onPress={() => handleClaimGift(gift.id)}
-              style={({ pressed }) => [styles.giftItem, pressed && { opacity: 0.7 }]}
+              style={({ pressed }) => [styles.giftItem, pressed && { opacity: 0.9, transform: [{ scale: 0.97 }] }]}
             >
               <Ionicons name="gift" size={16} color={colors.accent} />
               <Text style={styles.giftLabel}>{gift.type.replace('_', ' ')}</Text>
@@ -527,9 +563,9 @@ export function CompanionWidget({
           </View>
         ) : (
           allMessages.map((msg, index) => (
-            <View key={msg._id ?? `local-${index}`}>
+            <ChatBubble key={msg._id ?? `local-${index}`}>
               {renderMessage({ item: msg })}
-            </View>
+            </ChatBubble>
           ))
         )}
       </ScrollView>
@@ -554,7 +590,7 @@ export function CompanionWidget({
           value={chatInput}
           onChangeText={setChatInput}
           placeholder={`Message ${companion.name}...`}
-          placeholderTextColor={colors.textDim}
+          placeholderTextColor={colors.textMuted}
           multiline
           maxLength={500}
           returnKeyType="default"
@@ -566,13 +602,13 @@ export function CompanionWidget({
           style={({ pressed }) => [
             styles.sendButton,
             (!chatInput.trim() || isSending) && styles.sendButtonDisabled,
-            pressed && { opacity: 0.8 },
+            pressed && { opacity: 0.9, transform: [{ scale: 0.97 }] },
           ]}
         >
           <Ionicons
             name="send"
             size={18}
-            color={!chatInput.trim() || isSending ? colors.textDim : '#fff'}
+            color={!chatInput.trim() || isSending ? colors.textMuted : '#fff'}
           />
         </Pressable>
       </View>

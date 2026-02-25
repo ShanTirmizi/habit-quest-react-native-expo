@@ -60,6 +60,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   nextLevel: {
     fontSize: FontSize.xs,
-    color: colors.textDim,
+    color: colors.textMuted,
   },
 });

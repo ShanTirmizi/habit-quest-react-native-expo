@@ -7,6 +7,8 @@ import ReAnimated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
+  withSequence,
+  withTiming,
   interpolate,
   runOnJS,
 } from 'react-native-reanimated';
@@ -31,6 +33,8 @@ interface HabitCardProps {
   isCompleted: boolean;
   onToggle: (id: string) => void;
   onPress?: (habit: Habit) => void;
+  drag?: () => void;
+  isDragging?: boolean;
 }
 
 const TIME_ICON_NAMES: Record<TimeOfDay, keyof typeof Ionicons.glyphMap | null> = {
@@ -42,7 +46,7 @@ const TIME_ICON_NAMES: Record<TimeOfDay, keyof typeof Ionicons.glyphMap | null> 
 
 const SWIPE_THRESHOLD = 70;
 
-export function HabitCard({ habit, isCompleted, onToggle, onPress }: HabitCardProps) {
+export function HabitCard({ habit, isCompleted, onToggle, onPress, drag, isDragging }: HabitCardProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const categoryColors = useMemo(() => getCategoryColors(colors), [colors]);
@@ -51,16 +55,25 @@ export function HabitCard({ habit, isCompleted, onToggle, onPress }: HabitCardPr
 
   const categoryColor = categoryColors[habit.category] || colors.textSecondary;
   const categoryBg = categoryBgColors[habit.category] || colors.surfaceLight;
-  const categoryGradient = categoryGradients[habit.category] || [colors.textDim, colors.textDim];
+  const categoryGradient = categoryGradients[habit.category] || [colors.textMuted, colors.textMuted];
   const checkboxScale = useRef(new Animated.Value(1)).current;
+
+  // Card-level celebration pulse (reanimated)
+  const cardScale = useSharedValue(1);
 
   // Swipe-to-complete
   const translateX = useSharedValue(0);
 
   const triggerComplete = useCallback(() => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    if (!isCompleted) {
+      cardScale.value = withSequence(
+        withTiming(1.02, { duration: 150 }),
+        withTiming(1, { duration: 150 }),
+      );
+    }
     onToggle(habit.id);
-  }, [habit.id, onToggle]);
+  }, [habit.id, onToggle, isCompleted, cardScale]);
 
   const panGesture = Gesture.Pan()
     .activeOffsetX([10, 0])
@@ -86,6 +99,10 @@ export function HabitCard({ habit, isCompleted, onToggle, onPress }: HabitCardPr
     opacity: interpolate(translateX.value, [0, SWIPE_THRESHOLD], [0, 1]),
   }));
 
+  const cardScaleStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: cardScale.value }],
+  }));
+
   const handleToggle = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     Animated.sequence([
@@ -93,8 +110,14 @@ export function HabitCard({ habit, isCompleted, onToggle, onPress }: HabitCardPr
       Animated.spring(checkboxScale, { toValue: 1.15, useNativeDriver: true, speed: 50, bounciness: 0 }),
       Animated.spring(checkboxScale, { toValue: 1, useNativeDriver: true, speed: 50, bounciness: 0 }),
     ]).start();
+    if (!isCompleted) {
+      cardScale.value = withSequence(
+        withTiming(1.02, { duration: 150 }),
+        withTiming(1, { duration: 150 }),
+      );
+    }
     onToggle(habit.id);
-  }, [habit.id, onToggle, checkboxScale]);
+  }, [habit.id, onToggle, checkboxScale, isCompleted, cardScale]);
 
   const handlePress = useCallback(() => {
     if (onPress) {
@@ -104,7 +127,7 @@ export function HabitCard({ habit, isCompleted, onToggle, onPress }: HabitCardPr
   }, [habit, onPress]);
 
   return (
-    <View style={styles.swipeContainer}>
+    <ReAnimated.View style={[styles.swipeContainer, cardScaleStyle]}>
       {/* Gradient reveal behind card on swipe */}
       <ReAnimated.View style={[styles.revealBgWrapper, revealStyle]}>
         <LinearGradient
@@ -121,10 +144,13 @@ export function HabitCard({ habit, isCompleted, onToggle, onPress }: HabitCardPr
         <ReAnimated.View style={swipeStyle}>
           <Pressable
             onPress={handlePress}
+            onLongPress={drag}
+            delayLongPress={200}
             style={({ pressed }) => [
               styles.card,
               isCompleted && styles.cardCompleted,
               pressed && styles.cardPressed,
+              isDragging && styles.cardDragging,
             ]}
             accessibilityRole="checkbox"
             accessibilityState={{ checked: isCompleted }}
@@ -132,7 +158,7 @@ export function HabitCard({ habit, isCompleted, onToggle, onPress }: HabitCardPr
           >
             {/* Category gradient left strip */}
             {isCompleted ? (
-              <View style={[styles.gradientStrip, { backgroundColor: colors.textDim }]} />
+              <View style={[styles.gradientStrip, { backgroundColor: colors.textMuted }]} />
             ) : (
               <LinearGradient
                 colors={categoryGradient}
@@ -207,7 +233,7 @@ export function HabitCard({ habit, isCompleted, onToggle, onPress }: HabitCardPr
           ) : null}
         </ReAnimated.View>
       </GestureDetector>
-    </View>
+    </ReAnimated.View>
   );
 }
 
@@ -245,6 +271,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   cardPressed: {
     backgroundColor: colors.surfaceHover,
   },
+  cardDragging: {
+    backgroundColor: colors.surfaceLight,
+  },
   gradientStrip: {
     position: 'absolute',
     left: 0,
@@ -279,7 +308,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.foreground,
   },
   nameCompleted: {
-    color: colors.textDim,
+    color: colors.textMuted,
     textDecorationLine: 'line-through',
   },
   metaRow: {
@@ -303,7 +332,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   streakFloat: {
     position: 'absolute',
-    bottom: -6,
+    bottom: 6,
     right: 12,
     flexDirection: 'row',
     alignItems: 'center',

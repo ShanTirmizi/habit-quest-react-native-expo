@@ -309,6 +309,7 @@ export default defineSchema({
         expiresAt: v.string(), // 7 days later
       })
     ),
+    sortOrder: v.optional(v.number()),
   })
     .index('by_user', ['userId'])
     .index('by_goal', ['goalId']),

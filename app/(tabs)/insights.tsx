@@ -11,8 +11,11 @@ import Animated, {
   useAnimatedStyle,
   withTiming,
   withDelay,
+  withSequence,
+  withRepeat,
   Easing,
 } from 'react-native-reanimated';
+import * as Haptics from 'expo-haptics';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { format } from 'date-fns';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -187,6 +190,7 @@ export default function InsightsScreen() {
 
   const isLoading = progress === undefined || habits === undefined;
 
+
   if (!userId) {
     return (
       <View style={[styles.container, styles.centered, { paddingTop: insets.top }]}>
@@ -226,7 +230,10 @@ export default function InsightsScreen() {
             return (
               <Pressable
                 key={chip.value}
-                onPress={() => setTab(chip.value)}
+                onPress={() => {
+                  Haptics.selectionAsync();
+                  setTab(chip.value);
+                }}
                 style={[
                   styles.chip,
                   isActive ? styles.chipActive : styles.chipInactive,
@@ -252,10 +259,10 @@ export default function InsightsScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {tab === 'overview' ? <OverviewTab userId={userId} progress={progress} habits={habits ?? []} colors={colors} styles={styles} /> : null}
-        {tab === 'history' ? <HistoryTab userId={userId} habits={habits ?? []} colors={colors} styles={styles} /> : null}
-        {tab === 'achievements' ? <AchievementsTab userId={userId} progress={progress} colors={colors} styles={styles} /> : null}
-        {tab === 'gamification' ? <GamificationTab userId={userId} progress={progress} colors={colors} styles={styles} /> : null}
+          {tab === 'overview' ? <OverviewTab userId={userId} progress={progress} habits={habits ?? []} colors={colors} styles={styles} /> : null}
+          {tab === 'history' ? <HistoryTab userId={userId} habits={habits ?? []} colors={colors} styles={styles} /> : null}
+          {tab === 'achievements' ? <AchievementsTab userId={userId} progress={progress} colors={colors} styles={styles} /> : null}
+          {tab === 'gamification' ? <GamificationTab userId={userId} progress={progress} colors={colors} styles={styles} /> : null}
         <View style={{ height: 100 }} />
       </ScrollView>
     </View>
@@ -289,6 +296,13 @@ function OverviewTab({ userId, progress, habits, colors, styles }: OverviewTabPr
   const stats = useMemo(() => computeWeeklyStats(habits), [habits]);
   const CATEGORY_COLORS = useMemo(() => getCategoryColors(colors), [colors]);
 
+  // Boss icon pulse animation (only when not defeated)
+  const bossIconScale = useSharedValue(1);
+
+  const bossIconPulseStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: bossIconScale.value }],
+  }));
+
   // Get current weekly boss info
   const weeklyBoss = getWeeklyBoss();
   const weekStart = getWeekStart();
@@ -306,6 +320,21 @@ function OverviewTab({ userId, progress, habits, colors, styles }: OverviewTabPr
     defeated: isSameWeekBoss ? bossProgress.defeated : false,
   };
 
+  // Start or stop pulse based on defeated state
+  useEffect(() => {
+    if (!bossData.defeated) {
+      bossIconScale.value = withRepeat(
+        withSequence(
+          withTiming(1.05, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
+          withTiming(1.0, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
+        ),
+        -1, // repeat forever
+      );
+    } else {
+      bossIconScale.value = withTiming(1, { duration: 200 });
+    }
+  }, [bossData.defeated]);
+
   return (
     <View style={styles.tabContent}>
       {/* ── Dr. Sage AI Coach ── */}
@@ -317,7 +346,9 @@ function OverviewTab({ userId, progress, habits, colors, styles }: OverviewTabPr
         glowColor={bossData.defeated ? colors.success : undefined}
       >
         <View style={styles.bossRow}>
-          <Ionicons name={bossData.icon} size={36} color={bossData.defeated ? colors.success : colors.danger} />
+          <Animated.View style={bossIconPulseStyle}>
+            <Ionicons name={bossData.icon} size={36} color={bossData.defeated ? colors.success : colors.danger} />
+          </Animated.View>
           <View style={{ flex: 1, marginLeft: Spacing.md }}>
             <View style={styles.bossNameRow}>
               <Text style={[styles.bossName, bossData.defeated && { color: colors.success }]}>
@@ -657,36 +688,40 @@ function AchievementsTab({ userId, progress, colors, styles }: AchievementsTabPr
 
       {/* Medal Grid */}
       <View style={styles.medalGrid}>
-        {achievements.map((achievement) => (
-          <View key={achievement.id} style={styles.medalWrapper}>
-            <View
-              style={[
-                styles.medal,
-                achievement.unlocked ? styles.medalUnlocked : styles.medalLocked,
-              ]}
+        {achievements.map((achievement, i) => (
+            <Pressable
+              key={achievement.id}
+              style={styles.medalWrapper}
+              onPress={() => Haptics.selectionAsync()}
             >
-              <Ionicons
-                name={achievement.icon}
-                size={28}
-                color={achievement.unlocked ? colors.accent : colors.textDim}
-                style={!achievement.unlocked ? { opacity: 0.4 } : undefined}
-              />
-              {!achievement.unlocked ? (
-                <View style={styles.medalLockOverlay}>
-                  <Ionicons name="lock-closed" size={10} color={colors.textDim} />
-                </View>
-              ) : null}
-            </View>
-            <Text
-              style={[
-                styles.medalName,
-                !achievement.unlocked && { color: colors.textDim },
-              ]}
-              numberOfLines={1}
-            >
-              {achievement.name}
-            </Text>
-          </View>
+              <View
+                style={[
+                  styles.medal,
+                  achievement.unlocked ? styles.medalUnlocked : styles.medalLocked,
+                ]}
+              >
+                <Ionicons
+                  name={achievement.icon}
+                  size={28}
+                  color={achievement.unlocked ? colors.accent : colors.textMuted}
+                  style={!achievement.unlocked ? { opacity: 0.4 } : undefined}
+                />
+                {!achievement.unlocked ? (
+                  <View style={styles.medalLockOverlay}>
+                    <Ionicons name="lock-closed" size={10} color={colors.textMuted} />
+                  </View>
+                ) : null}
+              </View>
+              <Text
+                style={[
+                  styles.medalName,
+                  !achievement.unlocked && { color: colors.textMuted },
+                ]}
+                numberOfLines={1}
+              >
+                {achievement.name}
+              </Text>
+            </Pressable>
         ))}
       </View>
     </View>
@@ -740,40 +775,41 @@ function GamificationTab({ userId, progress, colors, styles }: GamificationTabPr
               </Text>
             </View>
             <View style={styles.skillList}>
-              {catSkills.map((skill) => (
-                <View
-                  key={skill.id}
-                  style={[
-                    styles.skillCard,
-                    skill.unlocked ? styles.skillCardUnlocked : styles.skillCardLocked,
-                  ]}
-                >
-                  <View style={[styles.skillIconWrap, { backgroundColor: skill.unlocked ? `${catColor}20` : colors.surfaceLight }]}>
-                    <Ionicons
-                      name={skill.icon}
-                      size={20}
-                      color={skill.unlocked ? catColor : colors.textMuted}
-                    />
-                  </View>
-                  <View style={styles.skillInfo}>
-                    <Text
-                      style={[
-                        styles.skillName,
-                        !skill.unlocked && { color: colors.textSecondary },
-                      ]}
-                    >
-                      {skill.name}
-                    </Text>
-                    <Text style={styles.skillDesc}>{skill.description}</Text>
-                  </View>
-                  {skill.unlocked ? (
-                    <Ionicons name="checkmark-circle" size={22} color={colors.success} />
-                  ) : (
-                    <View style={styles.skillCostBadge}>
-                      <Text style={styles.skillCostText}>{skill.xpCost} XP</Text>
+              {catSkills.map((skill, i) => (
+                  <Pressable
+                    key={skill.id}
+                    onPress={() => Haptics.selectionAsync()}
+                    style={[
+                      styles.skillCard,
+                      skill.unlocked ? styles.skillCardUnlocked : styles.skillCardLocked,
+                    ]}
+                  >
+                    <View style={[styles.skillIconWrap, { backgroundColor: skill.unlocked ? `${catColor}20` : colors.surfaceLight }]}>
+                      <Ionicons
+                        name={skill.icon}
+                        size={20}
+                        color={skill.unlocked ? catColor : colors.textMuted}
+                      />
                     </View>
-                  )}
-                </View>
+                    <View style={styles.skillInfo}>
+                      <Text
+                        style={[
+                          styles.skillName,
+                          !skill.unlocked && { color: colors.textSecondary },
+                        ]}
+                      >
+                        {skill.name}
+                      </Text>
+                      <Text style={styles.skillDesc}>{skill.description}</Text>
+                    </View>
+                    {skill.unlocked ? (
+                      <Ionicons name="checkmark-circle" size={22} color={colors.success} />
+                    ) : (
+                      <View style={styles.skillCostBadge}>
+                        <Text style={styles.skillCostText}>{skill.xpCost} XP</Text>
+                      </View>
+                    )}
+                  </Pressable>
               ))}
             </View>
           </GradientCard>
@@ -968,7 +1004,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   heatLegendText: {
     fontSize: 10,
-    color: colors.textDim,
+    color: colors.textMuted,
     fontFamily: FontFamily.medium,
   },
   heatLegendDot: {
@@ -983,7 +1019,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   heatMonthLabel: {
     position: 'absolute',
     fontSize: 10,
-    color: colors.textDim,
+    color: colors.textMuted,
     fontFamily: FontFamily.medium,
   },
   heatDayLabels: {
@@ -994,7 +1030,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   heatDayLabel: {
     height: 18,
     fontSize: 10,
-    color: colors.textDim,
+    color: colors.textMuted,
     lineHeight: 18,
     textAlign: 'right',
     width: 18,
@@ -1029,7 +1065,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   medalLocked: {
     backgroundColor: colors.surfaceLight,
     borderWidth: 2,
-    borderColor: colors.textDim,
+    borderColor: colors.textMuted,
     borderStyle: 'dashed',
   },
   medalLockOverlay: {

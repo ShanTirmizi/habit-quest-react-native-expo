@@ -458,7 +458,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   intentionHint: {
     fontSize: FontSize.xs,
-    color: colors.textDim,
+    color: colors.textMuted,
     fontStyle: 'italic',
     marginTop: Spacing.sm,
   },

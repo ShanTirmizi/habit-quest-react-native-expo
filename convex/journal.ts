@@ -231,11 +231,15 @@ async function triggerMemoryExtractionCheck(
       .order('desc')
       .take(EXTRACTION_THRESHOLD);
 
-    // TODO: Schedule the extraction action once memoryExtraction module is added
-    // await ctx.scheduler.runAfter(0, internal.memoryExtraction.extractMemoriesFromJournal, {
-    //   userId,
-    //   entries: recentEntries,
-    // });
+    // Schedule the extraction action asynchronously
+    await ctx.scheduler.runAfter(
+      0,
+      internal.memoryExtraction.extractMemoriesFromJournal,
+      {
+        userId,
+        entries: recentEntries,
+      }
+    );
 
     // Reset the counter
     await ctx.db.patch(progress._id, {

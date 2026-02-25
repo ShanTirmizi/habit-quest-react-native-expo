@@ -20,7 +20,7 @@ export const Input = forwardRef<TextInput, InputProps>(
         <TextInput
           ref={ref}
           style={[styles.input, error && styles.inputError, style]}
-          placeholderTextColor={colors.textDim}
+          placeholderTextColor={colors.textMuted}
           selectionColor={colors.primary}
           {...props}
         />

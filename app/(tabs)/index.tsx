@@ -7,6 +7,7 @@ import {
   Pressable,
   RefreshControl,
 } from 'react-native';
+import { NestableScrollContainer } from 'react-native-draggable-flatlist';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,6 +21,7 @@ import { CircularProgress } from '@/components/ui/CircularProgress';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { GradientCard } from '@/components/ui/GradientCard';
 import { HabitCard } from '@/components/habits/HabitCard';
+import { DraggableHabitList } from '@/components/habits/DraggableHabitList';
 import { HabitDetailSheet } from '@/components/habits/HabitDetailSheet';
 import { AddHabitSheet } from '@/components/habits/AddHabitSheet';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -102,6 +104,7 @@ export default function DashboardScreen() {
   const deleteHabitMutation = useMutation(api.habits.deleteHabit);
   const addNoteMutation = useMutation(api.habits.addNote);
   const addXpMutation = useMutation(api.progress.addXp);
+  const reorderHabitsMutation = useMutation(api.habits.reorderHabits);
   const checkMissedMutation = useMutation(api.progress.checkMissedHabitsOnLogin);
 
   useEffect(() => {
@@ -138,6 +141,7 @@ export default function DashboardScreen() {
       location: h.location,
       trigger: h.trigger,
       rationale: h.rationale,
+      sortOrder: h.sortOrder,
     }));
   }, [rawHabits]);
 
@@ -278,6 +282,21 @@ export default function DashboardScreen() {
     setRefreshing(false);
   }, [userId, checkMissedMutation, showToast]);
 
+  const handleReorder = useCallback(async (reorderedPending: Habit[]) => {
+    if (!userId) return;
+    try {
+      // Combine reordered pending with completed habits to persist full order
+      const allIds = [
+        ...reorderedPending.map((h) => h.id),
+        ...completedHabits.map((h) => h.id),
+      ];
+      await reorderHabitsMutation({
+        userId,
+        habitIds: allIds as any,
+      });
+    } catch {}
+  }, [userId, reorderHabitsMutation, completedHabits]);
+
   const isLoading = rawHabits === undefined || progress === undefined;
   const allDone = pendingHabits.length === 0 && habits.length > 0;
 
@@ -289,7 +308,7 @@ export default function DashboardScreen() {
           {companion ? (
             <Pressable
               onPress={() => setShowCompanionSheet(true)}
-              style={({ pressed }) => [styles.sageButton, pressed && { opacity: 0.7 }]}
+              style={({ pressed }) => [styles.sageButton, pressed && { opacity: 0.9, transform: [{ scale: 0.97 }] }]}
               accessibilityLabel="Open Dr. Sage companion"
               accessibilityRole="button"
             >
@@ -307,7 +326,7 @@ export default function DashboardScreen() {
           ) : companion === null ? (
             <Pressable
               onPress={() => setShowCompanionSheet(true)}
-              style={({ pressed }) => [styles.sageButton, pressed && { opacity: 0.7 }]}
+              style={({ pressed }) => [styles.sageButton, pressed && { opacity: 0.9, transform: [{ scale: 0.97 }] }]}
               accessibilityLabel="Choose companion"
               accessibilityRole="button"
             >
@@ -323,7 +342,7 @@ export default function DashboardScreen() {
         <View style={styles.topBarRight}>
           <Pressable
             onPress={() => router.push('/settings')}
-            style={({ pressed }) => [styles.settingsButton, pressed && { opacity: 0.7 }]}
+            style={({ pressed }) => [styles.settingsButton, pressed && { opacity: 0.9, transform: [{ scale: 0.97 }] }]}
             accessibilityLabel="Settings"
             accessibilityRole="button"
           >
@@ -348,7 +367,7 @@ export default function DashboardScreen() {
           <SkeletonDashboard />
         </View>
       ) : (
-        <ScrollView
+        <NestableScrollContainer
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
@@ -476,15 +495,13 @@ export default function DashboardScreen() {
                     </Text>
                   </View>
                   <View style={styles.habitList}>
-                    {pendingHabits.map((habit) => (
-                      <HabitCard
-                        key={habit.id}
-                        habit={habit}
-                        isCompleted={false}
-                        onToggle={handleToggle}
-                        onPress={setSelectedHabit}
-                      />
-                    ))}
+                    <DraggableHabitList
+                      habits={pendingHabits}
+                      isCompleted={false}
+                      onToggle={handleToggle}
+                      onPress={setSelectedHabit}
+                      onReorder={handleReorder}
+                    />
                   </View>
                 </View>
               ) : null}
@@ -498,14 +515,14 @@ export default function DashboardScreen() {
                     </Text>
                   </View>
                   <View style={styles.habitList}>
-                    {completedHabits.map((habit) => (
-                      <HabitCard
-                        key={habit.id}
-                        habit={habit}
-                        isCompleted={true}
-                        onToggle={handleToggle}
-                        onPress={setSelectedHabit}
-                      />
+                    {completedHabits.map((habit, i) => (
+                        <HabitCard
+                          key={habit.id}
+                          habit={habit}
+                          isCompleted={true}
+                          onToggle={handleToggle}
+                          onPress={setSelectedHabit}
+                        />
                     ))}
                   </View>
                 </View>
@@ -520,7 +537,7 @@ export default function DashboardScreen() {
                 <Text style={styles.goalsSectionTitle}>Active Goals</Text>
                 <Pressable
                   onPress={() => router.push('/goals')}
-                  style={({ pressed }) => [pressed && { opacity: 0.7 }]}
+                  style={({ pressed }) => [pressed && { opacity: 0.9, transform: [{ scale: 0.97 }] }]}
                 >
                   <Text style={styles.goalsSeeAll}>See all</Text>
                 </Pressable>
@@ -538,8 +555,11 @@ export default function DashboardScreen() {
                   return (
                     <Pressable
                       key={goal.id}
-                      onPress={() => router.push('/goals')}
-                      style={({ pressed }) => [styles.goalPill, pressed && { opacity: 0.8, transform: [{ scale: 0.97 }] }]}
+                      onPress={() => {
+                        Haptics.selectionAsync();
+                        router.push('/goals');
+                      }}
+                      style={({ pressed }) => [styles.goalPill, pressed && { opacity: 0.9, transform: [{ scale: 0.97 }] }]}
                     >
                       <View style={[styles.goalPillIcon, { backgroundColor: catConfig?.color ? `${catConfig.color}20` : colors.primaryBg }]}>
                         <Ionicons
@@ -568,8 +588,11 @@ export default function DashboardScreen() {
                 })}
                 {/* Add goal pill */}
                 <Pressable
-                  onPress={() => router.push('/goals')}
-                  style={({ pressed }) => [styles.goalPillAdd, pressed && { opacity: 0.7 }]}
+                  onPress={() => {
+                    Haptics.selectionAsync();
+                    router.push('/goals');
+                  }}
+                  style={({ pressed }) => [styles.goalPillAdd, pressed && { opacity: 0.9, transform: [{ scale: 0.97 }] }]}
                 >
                   <Ionicons name="add" size={18} color={colors.primary} />
                 </Pressable>
@@ -582,7 +605,7 @@ export default function DashboardScreen() {
 
           {/* Bottom Spacer for floating tab bar */}
           <View style={{ height: 100 }} />
-        </ScrollView>
+        </NestableScrollContainer>
       )}
 
       {/* Habit Detail Sheet */}
@@ -746,9 +769,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.foreground,
   },
   statsItemLabel: {
-    fontSize: 9,
+    fontSize: FontSize.xs,
     fontFamily: FontFamily.semibold,
-    color: colors.textMuted,
+    color: colors.textSecondary,
     letterSpacing: 1,
     marginTop: 2,
   },

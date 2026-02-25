@@ -109,7 +109,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     width: 36,
     height: 4,
     borderRadius: 2,
-    backgroundColor: colors.textDim,
+    backgroundColor: colors.textMuted,
     alignSelf: 'center',
     marginBottom: Spacing.lg,
   },

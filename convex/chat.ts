@@ -1,7 +1,8 @@
 import { v } from 'convex/values';
-import { mutation, query, MutationCtx, QueryCtx } from './_generated/server';
+import { mutation, query, internalMutation, MutationCtx, QueryCtx } from './_generated/server';
 import { Id } from './_generated/dataModel';
 import { getAuthUserId } from '@convex-dev/auth/server';
+import { internal } from './_generated/api';
 
 // Helper to verify authenticated user matches requested user
 async function verifyAuth(ctx: MutationCtx | QueryCtx, requestedUserId: string) {
@@ -348,5 +349,46 @@ export const getChatSummary = query({
         insights: memories.filter((m) => m.category === 'insight'),
       },
     };
+  },
+});
+
+// ============================================
+// CHAT MEMORY EXTRACTION TRIGGER
+// ============================================
+
+// Internal mutation to check session message count and schedule memory extraction
+// Called from chatAction after saving assistant response (actions cannot use ctx.scheduler)
+export const triggerChatMemoryExtraction = internalMutation({
+  args: {
+    userId: v.id('users'),
+    sessionId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const CHAT_EXTRACTION_THRESHOLD = 5; // Every 5th message pair in a session
+
+    // Count messages in this session
+    const sessionMessages = await ctx.db
+      .query('chatMessages')
+      .withIndex('by_session', (q) => q.eq('sessionId', args.sessionId))
+      .collect();
+
+    // Only trigger on every 5th user message (count user messages only)
+    const userMessageCount = sessionMessages.filter((m) => m.role === 'user').length;
+
+    if (userMessageCount > 0 && userMessageCount % CHAT_EXTRACTION_THRESHOLD === 0) {
+      // Get the last few messages for extraction (both user and assistant)
+      const recentMessages = sessionMessages
+        .slice(-10)
+        .map((m) => ({ role: m.role, content: m.content }));
+
+      await ctx.scheduler.runAfter(
+        0,
+        internal.memoryExtraction.extractMemoriesFromChat,
+        {
+          userId: args.userId,
+          messages: recentMessages,
+        }
+      );
+    }
   },
 });

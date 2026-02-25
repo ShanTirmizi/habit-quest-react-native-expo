@@ -161,7 +161,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   progressText: {
     fontSize: FontSize.xs,
-    color: colors.textDim,
+    color: colors.textMuted,
   },
   completionRow: {
     flexDirection: 'row',

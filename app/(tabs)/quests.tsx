@@ -156,7 +156,7 @@ export default function QuestsScreen() {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             setShowAddSheet(true);
           }}
-          style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.7, transform: [{ scale: 0.92 }] }]}
+          style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.9, transform: [{ scale: 0.97 }] }]}
         >
           <Ionicons name="add" size={24} color="#FFFFFF" />
         </Pressable>
@@ -201,15 +201,15 @@ export default function QuestsScreen() {
               {pendingQuests.length > 0 ? (
                 <View style={styles.section}>
                   <View style={styles.activeQuestList}>
-                    {pendingQuests.map((quest) => (
-                      <ActiveQuestCard
-                        key={quest.id}
-                        quest={quest}
-                        onComplete={handleComplete}
-                        onDelete={handleDelete}
-                        colors={colors}
-                        styles={styles}
-                      />
+                    {pendingQuests.map((quest, i) => (
+                        <ActiveQuestCard
+                          key={quest.id}
+                          quest={quest}
+                          onComplete={handleComplete}
+                          onDelete={handleDelete}
+                          colors={colors}
+                          styles={styles}
+                        />
                     ))}
                   </View>
                 </View>
@@ -225,7 +225,7 @@ export default function QuestsScreen() {
                     }}
                     style={({ pressed }) => [
                       styles.completedHeader,
-                      pressed && { opacity: 0.7 },
+                      pressed && { opacity: 0.9, transform: [{ scale: 0.97 }] },
                     ]}
                   >
                     <Text style={styles.completedHeaderText}>
@@ -239,15 +239,15 @@ export default function QuestsScreen() {
                   </Pressable>
                   {completedExpanded ? (
                     <View style={styles.completedList}>
-                      {completedQuests.map((quest) => (
-                        <CompletedQuestRow
-                          key={quest.id}
-                          quest={quest}
-                          onUncomplete={handleUncomplete}
-                          onDelete={handleDelete}
-                          colors={colors}
-                          styles={styles}
-                        />
+                      {completedQuests.map((quest, i) => (
+                          <CompletedQuestRow
+                            key={quest.id}
+                            quest={quest}
+                            onUncomplete={handleUncomplete}
+                            onDelete={handleDelete}
+                            colors={colors}
+                            styles={styles}
+                          />
                       ))}
                     </View>
                   ) : null}
@@ -309,7 +309,7 @@ function ActiveQuestCard({
           hitSlop={10}
           style={({ pressed }) => [styles.deleteBtn, pressed && { opacity: 0.5 }]}
         >
-          <Ionicons name="trash-outline" size={17} color={colors.textDim} />
+          <Ionicons name="trash-outline" size={17} color={colors.textMuted} />
         </Pressable>
       </View>
 
@@ -385,7 +385,7 @@ function CompletedQuestRow({
           hitSlop={8}
           style={({ pressed }) => [styles.undoBtn, pressed && { opacity: 0.5 }]}
         >
-          <Ionicons name="trash-outline" size={14} color={colors.textDim} />
+          <Ionicons name="trash-outline" size={14} color={colors.textMuted} />
         </Pressable>
       </View>
     </View>

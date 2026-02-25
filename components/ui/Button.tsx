@@ -143,7 +143,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   pressed: {
     opacity: 0.85,
-    transform: [{ scale: 0.97 }],
+    transform: [{ scale: 0.92 }],
   },
   disabled: {
     opacity: 0.5,

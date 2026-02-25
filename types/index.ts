@@ -46,6 +46,7 @@ export interface Habit {
     expiresAt: string;
   };
   goalId?: string;
+  sortOrder?: number;
 }
 
 export type QuestPriority = 'low' | 'medium' | 'high';
@@ -452,4 +453,50 @@ export function getCategoryLabel(category: HabitCategory): string {
     life: 'Life',
   };
   return labels[category] ?? category;
+}
+
+// ============================================
+// Goal-to-Habit AI Pipeline Types
+// ============================================
+
+export interface ContextQuestion {
+  id: string;
+  question: string;
+  type: 'text' | 'select' | 'multiselect';
+  options?: string[];
+  placeholder?: string;
+}
+
+export interface ContextAnswer {
+  question: string;
+  answer: string;
+}
+
+export interface SuggestedHabit {
+  name: string;
+  category: HabitCategory;
+  xpReward: number;
+  frequency?: HabitFrequency;
+  timeOfDay?: TimeOfDay;
+  location?: string;
+  trigger?: string;
+  rationale: string;
+  citation?: { author: string; year: number; finding: string };
+}
+
+export interface SuggestedMilestone {
+  title: string;
+  targetWeek: number;
+  description: string;
+}
+
+export interface SuggestedPhase {
+  weekStart: number;
+  weekEnd: number;
+  description: string;
+  habitProgressions: {
+    habitName: string;
+    newName: string;
+    newXpReward?: number;
+  }[];
 }

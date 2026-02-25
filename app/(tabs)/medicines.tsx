@@ -211,7 +211,7 @@ export default function MedicinesScreen() {
         </View>
         <Pressable
           onPress={() => setShowAddSheet(true)}
-          style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.7 }]}
+          style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.9, transform: [{ scale: 0.97 }] }]}
         >
           <Ionicons name="add" size={24} color="#FFFFFF" />
         </Pressable>
@@ -254,7 +254,10 @@ export default function MedicinesScreen() {
             { label: 'History', value: 'history' },
           ]}
           selectedValue={tab}
-          onValueChange={setTab}
+          onValueChange={(value) => {
+            Haptics.selectionAsync();
+            setTab(value);
+          }}
         />
       </View>
 
@@ -291,36 +294,40 @@ export default function MedicinesScreen() {
               />
             ) : (
               <View style={styles.timelineContainer}>
-                {slotEntries.map(([slot, items]) => {
-                  const config = TIME_SLOT_CONFIG[slot] || { icon: 'medkit-outline' as keyof typeof Ionicons.glyphMap, label: slot, color: colors.textSecondary };
+                {(() => {
+                  return slotEntries.map(([slot, items]) => {
+                    const config = TIME_SLOT_CONFIG[slot] || { icon: 'medkit-outline' as keyof typeof Ionicons.glyphMap, label: slot, color: colors.textSecondary };
 
-                  return (
-                    <View key={slot} style={styles.slotSection}>
-                      <View style={styles.slotHeader}>
-                        <View style={[styles.slotDot, { backgroundColor: config.color }]} />
-                        <Ionicons name={config.icon} size={16} color={config.color} />
-                        <Text style={[styles.slotLabel, { color: config.color }]}>
-                          {config.label}
-                        </Text>
-                        <Text style={styles.slotTime}>
-                          {items[0] ? formatMedicineTime(items[0].scheduledTime) : ''}
-                        </Text>
+                    return (
+                      <View key={slot} style={styles.slotSection}>
+                        <View style={styles.slotHeader}>
+                          <View style={[styles.slotDot, { backgroundColor: config.color }]} />
+                          <Ionicons name={config.icon} size={16} color={config.color} />
+                          <Text style={[styles.slotLabel, { color: config.color }]}>
+                            {config.label}
+                          </Text>
+                          <Text style={styles.slotTime}>
+                            {items[0] ? formatMedicineTime(items[0].scheduledTime) : ''}
+                          </Text>
+                        </View>
+                        <View style={styles.slotCards}>
+                          {items.map((item) => {
+                            return (
+                                <MedicineCard
+                                  key={`${item.medicineId}_${item.scheduledTime}`}
+                                  item={item}
+                                  onMarkTaken={handleMarkTaken}
+                                  onMarkSkipped={handleMarkSkipped}
+                                  colors={colors}
+                                  styles={styles}
+                                />
+                            );
+                          })}
+                        </View>
                       </View>
-                      <View style={styles.slotCards}>
-                        {items.map((item) => (
-                          <MedicineCard
-                            key={`${item.medicineId}_${item.scheduledTime}`}
-                            item={item}
-                            onMarkTaken={handleMarkTaken}
-                            onMarkSkipped={handleMarkSkipped}
-                            colors={colors}
-                            styles={styles}
-                          />
-                        ))}
-                      </View>
-                    </View>
-                  );
-                })}
+                    );
+                  });
+                })()}
               </View>
             )
           ) : (
@@ -401,14 +408,14 @@ function MedicineCard({
             <Animated.View style={{ transform: [{ scale: btnScale }] }}>
               <Pressable
                 onPress={handleTaken}
-                style={({ pressed }) => [styles.takeBtn, pressed && { opacity: 0.7 }]}
+                style={({ pressed }) => [styles.takeBtn, pressed && { opacity: 0.9, transform: [{ scale: 0.97 }] }]}
               >
                 <Ionicons name="checkmark" size={20} color={colors.background} />
               </Pressable>
             </Animated.View>
             <Pressable
               onPress={() => onMarkSkipped(item.medicineId)}
-              style={({ pressed }) => [styles.skipBtn, pressed && { opacity: 0.7 }]}
+              style={({ pressed }) => [styles.skipBtn, pressed && { opacity: 0.9, transform: [{ scale: 0.97 }] }]}
             >
               <Ionicons name="close" size={16} color={colors.textMuted} />
             </Pressable>
@@ -886,6 +893,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   timeSlotChipTime: {
     fontSize: FontSize.xs,
-    color: colors.textDim,
+    color: colors.textMuted,
   },
 });

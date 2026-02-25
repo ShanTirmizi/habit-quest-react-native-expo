@@ -48,6 +48,14 @@ export const getHabits = query({
       completionsByHabit[habitId].push(completion.completedDate);
     }
 
+    // Sort by sortOrder (habits without sortOrder go to the end, ordered by creation time)
+    habits.sort((a, b) => {
+      const aOrder = a.sortOrder ?? Number.MAX_SAFE_INTEGER;
+      const bOrder = b.sortOrder ?? Number.MAX_SAFE_INTEGER;
+      if (aOrder !== bOrder) return aOrder - bOrder;
+      return a._creationTime - b._creationTime;
+    });
+
     // Attach completions to habits
     return habits.map((habit) => ({
       ...habit,
@@ -425,6 +433,24 @@ export const restoreHabit = mutation({
     }
 
     return { success: true };
+  },
+});
+
+// Reorder habits (update sortOrder for a list of habit IDs)
+export const reorderHabits = mutation({
+  args: {
+    userId: v.id('users'),
+    habitIds: v.array(v.id('habits')),
+  },
+  handler: async (ctx, args) => {
+    await verifyAuth(ctx, args.userId);
+
+    for (let i = 0; i < args.habitIds.length; i++) {
+      const habit = await ctx.db.get(args.habitIds[i]);
+      if (habit && habit.userId === args.userId) {
+        await ctx.db.patch(args.habitIds[i], { sortOrder: i });
+      }
+    }
   },
 });
 

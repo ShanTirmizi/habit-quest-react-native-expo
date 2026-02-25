@@ -34,8 +34,7 @@ export const DarkColors = {
   // Text — cool off-whites
   foreground: '#E6EDF3',
   textSecondary: '#8B949E',
-  textMuted: '#484F58',
-  textDim: '#30363D',
+  textMuted: '#6B7280',
 
   // Categories — vivid
   categoryHealth: '#00E676',
@@ -123,8 +122,7 @@ export const LightColors = {
   // Text — warm darks
   foreground: '#1A1614',
   textSecondary: '#5C5650',
-  textMuted: '#A8A19A',
-  textDim: '#D1CCC5',
+  textMuted: '#8A8480',
 
   // Categories — deeper for light-bg readability
   categoryHealth: '#00B862',

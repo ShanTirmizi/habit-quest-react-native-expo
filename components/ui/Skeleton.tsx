@@ -1,15 +1,17 @@
 import React, { useEffect, useMemo } from 'react';
-import { View, StyleSheet, ViewStyle } from 'react-native';
+import { View, StyleSheet, ViewStyle, Dimensions } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withRepeat,
-  withSequence,
   withTiming,
+  Easing,
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Radius, Spacing, type ThemeColors } from '@/constants/theme';
 import { useTheme } from '@/contexts/theme-context';
+
+const SCREEN_WIDTH = Dimensions.get('window').width;
 
 interface SkeletonProps {
   width?: number | string;
@@ -20,38 +22,41 @@ interface SkeletonProps {
 
 export function Skeleton({ width = '100%', height = 16, borderRadius = Radius.md, style }: SkeletonProps) {
   const { colors } = useTheme();
-  const opacity = useSharedValue(0.3);
+  const translateX = useSharedValue(-SCREEN_WIDTH);
 
   useEffect(() => {
-    opacity.value = withRepeat(
-      withSequence(
-        withTiming(0.6, { duration: 600 }),
-        withTiming(0.3, { duration: 600 }),
-      ),
+    translateX.value = withRepeat(
+      withTiming(SCREEN_WIDTH, { duration: 1200, easing: Easing.inOut(Easing.ease) }),
       -1,
-      true,
     );
   }, []);
 
-  const animStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
+  const shimmerStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: translateX.value }],
   }));
 
   return (
-    <Animated.View
+    <View
       style={[
-        { width: width as any, height, borderRadius, overflow: 'hidden' },
-        animStyle,
+        {
+          width: width as any,
+          height,
+          borderRadius,
+          overflow: 'hidden',
+          backgroundColor: colors.surfaceLight,
+        },
         style,
       ]}
     >
-      <LinearGradient
-        colors={[colors.surfaceLight, colors.surfaceRaised, colors.surfaceLight]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={StyleSheet.absoluteFill}
-      />
-    </Animated.View>
+      <Animated.View style={[StyleSheet.absoluteFill, shimmerStyle]}>
+        <LinearGradient
+          colors={['transparent', `${colors.surfaceRaised}88`, 'transparent']}
+          start={{ x: 0, y: 0.5 }}
+          end={{ x: 1, y: 0.5 }}
+          style={{ width: SCREEN_WIDTH, height: '100%' }}
+        />
+      </Animated.View>
+    </View>
   );
 }
 

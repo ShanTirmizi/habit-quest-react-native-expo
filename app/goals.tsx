@@ -23,10 +23,9 @@ import { ProgressBar } from '@/components/ui/ProgressBar';
 import { BadgePill } from '@/components/ui/BadgePill';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { BottomSheet } from '@/components/ui/BottomSheet';
-import { Input } from '@/components/ui/Input';
-import { Button } from '@/components/ui/Button';
 import { useToast } from '@/contexts/toast-context';
-import type { Goal, GoalCategory, GoalStatus } from '@/types';
+import { AddGoalWizard } from '@/components/goals/AddGoalWizard';
+import type { Goal, GoalStatus } from '@/types';
 import { GOAL_CATEGORY_CONFIG, GOAL_STATUS_CONFIG } from '@/types';
 
 type FilterValue = 'all' | GoalStatus;
@@ -71,7 +70,6 @@ export default function GoalsScreen() {
 
   // Convex queries & mutations
   const rawGoals = useQuery(api.goals.getGoals, userId ? { userId } : 'skip');
-  const createGoalMutation = useMutation(api.goals.createGoal);
   const completeMilestoneMutation = useMutation(api.goals.completeMilestone);
 
   // Map Convex documents to local Goal type
@@ -206,26 +204,13 @@ export default function GoalsScreen() {
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      <AddGoalSheet
-        visible={showAddSheet}
-        onClose={() => setShowAddSheet(false)}
-        onAdd={async (goalData) => {
-          if (!userId) return;
-          try {
-            await createGoalMutation({
-              userId,
-              title: goalData.title,
-              description: goalData.description,
-              category: goalData.category,
-              targetDate: goalData.targetDate,
-            });
-          } catch (error) {
-            showToast('Failed to create goal', undefined, 'error');
-          }
-        }}
-        colors={colors}
-        styles={styles}
-      />
+      {userId && (
+        <AddGoalWizard
+          visible={showAddSheet}
+          onClose={() => setShowAddSheet(false)}
+          userId={userId}
+        />
+      )}
 
       {/* Goal Detail */}
       <BottomSheet
@@ -425,95 +410,6 @@ function GoalDetail({
 
       <View style={{ height: Spacing['2xl'] }} />
     </View>
-  );
-}
-
-function AddGoalSheet({
-  visible,
-  onClose,
-  onAdd,
-  colors,
-  styles,
-}: {
-  visible: boolean;
-  onClose: () => void;
-  onAdd: (goal: { title: string; description?: string; category: GoalCategory; targetDate: string }) => void;
-  colors: ThemeColors;
-  styles: ReturnType<typeof createStyles>;
-}) {
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [category, setCategory] = useState<GoalCategory>('fitness');
-
-  const handleSubmit = () => {
-    if (!title.trim()) return;
-    onAdd({
-      title: title.trim(),
-      description: description.trim() || undefined,
-      category,
-      targetDate: format(new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'),
-    });
-    setTitle('');
-    setDescription('');
-    onClose();
-  };
-
-  return (
-    <BottomSheet visible={visible} onClose={onClose} title="New Goal">
-      <View style={styles.addForm}>
-        <Input
-          label="Goal Title"
-          value={title}
-          onChangeText={setTitle}
-          placeholder="What do you want to achieve?"
-          autoFocus
-        />
-        <Input
-          label="Description (optional)"
-          value={description}
-          onChangeText={setDescription}
-          placeholder="Why is this important to you?"
-          multiline
-          containerStyle={{ marginTop: Spacing.md }}
-        />
-
-        <View style={styles.categorySection}>
-          <Text style={styles.formLabel}>Category</Text>
-          <View style={styles.categoryGrid}>
-            {(Object.entries(GOAL_CATEGORY_CONFIG) as [GoalCategory, typeof GOAL_CATEGORY_CONFIG['fitness']][]).map(
-              ([cat, config]) => (
-                <Pressable
-                  key={cat}
-                  onPress={() => setCategory(cat)}
-                  style={[
-                    styles.categoryChip,
-                    category === cat && {
-                      backgroundColor: `${config.color}20`,
-                      borderColor: config.color,
-                    },
-                  ]}
-                >
-                  <Ionicons name={config.icon as keyof typeof Ionicons.glyphMap} size={16} color={config.color} />
-                  <Text
-                    style={[
-                      styles.categoryChipText,
-                      category === cat && { color: config.color },
-                    ]}
-                  >
-                    {config.label}
-                  </Text>
-                </Pressable>
-              )
-            )}
-          </View>
-        </View>
-
-        <View style={styles.addFormFooter}>
-          <Button title="Cancel" variant="ghost" onPress={onClose} />
-          <Button title="Create Goal" onPress={handleSubmit} disabled={!title.trim()} />
-        </View>
-      </View>
-    </BottomSheet>
   );
 }
 
@@ -739,7 +635,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   milestoneDate: {
     fontSize: FontSize.xs,
-    color: colors.textDim,
+    color: colors.textMuted,
   },
   checkInsSection: {},
   checkInItem: {
@@ -758,45 +654,5 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: FontSize.xs,
     color: colors.textMuted,
     flex: 1,
-  },
-  // Add form
-  addForm: {
-    paddingBottom: Spacing['2xl'],
-  },
-  formLabel: {
-    fontSize: FontSize.sm,
-    fontFamily: FontFamily.semibold,
-    color: colors.textSecondary,
-    marginBottom: Spacing.sm,
-  },
-  categorySection: {
-    marginTop: Spacing.lg,
-  },
-  categoryGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.sm,
-  },
-  categoryChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surfaceLight,
-  },
-  categoryChipText: {
-    fontSize: FontSize.sm,
-    fontFamily: FontFamily.medium,
-    color: colors.textSecondary,
-  },
-  addFormFooter: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: Spacing.md,
-    marginTop: Spacing.xl,
   },
 });

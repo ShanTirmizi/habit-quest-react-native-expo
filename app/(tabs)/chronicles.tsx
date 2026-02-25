@@ -196,7 +196,7 @@ export default function ChroniclesScreen() {
           <View style={styles.headerActions}>
             <Pressable
               onPress={() => setIsWriting(true)}
-              style={({ pressed }) => [styles.writeBtn, pressed && { opacity: 0.7 }]}
+              style={({ pressed }) => [styles.writeBtn, pressed && { opacity: 0.9, transform: [{ scale: 0.97 }] }]}
             >
               <Ionicons name="create-outline" size={24} color="#FFFFFF" />
             </Pressable>
@@ -281,8 +281,8 @@ export default function ChroniclesScreen() {
             <View style={styles.pastSection}>
               <Text style={styles.pastSectionTitle}>Past Entries</Text>
               <View style={styles.pastList}>
-                {pastEntries.map((entry) => (
-                  <PastEntryCard key={entry.id} entry={entry} onEdit={handleStartEditing} colors={colors} styles={styles} />
+                {pastEntries.map((entry, i) => (
+                    <PastEntryCard key={entry.id} entry={entry} onEdit={handleStartEditing} colors={colors} styles={styles} />
                 ))}
               </View>
             </View>
@@ -322,7 +322,10 @@ export default function ChroniclesScreen() {
                 return (
                   <Pressable
                     key={mood}
-                    onPress={() => setSelectedMood(mood)}
+                    onPress={() => {
+                      Haptics.selectionAsync();
+                      setSelectedMood(mood);
+                    }}
                     style={[styles.moodCircleOuter]}
                   >
                     <View
@@ -373,7 +376,7 @@ export default function ChroniclesScreen() {
                     value={item.value}
                     onChangeText={item.setter}
                     placeholder={item.placeholder}
-                    placeholderTextColor={colors.textDim}
+                    placeholderTextColor={colors.textMuted}
                     selectionColor={colors.primary}
                   />
                 </View>
@@ -391,7 +394,7 @@ export default function ChroniclesScreen() {
               value={improvement}
               onChangeText={setImprovement}
               placeholder="One thing I could improve..."
-              placeholderTextColor={colors.textDim}
+              placeholderTextColor={colors.textMuted}
               selectionColor={colors.primary}
               multiline
             />
@@ -407,7 +410,7 @@ export default function ChroniclesScreen() {
               value={content}
               onChangeText={setContent}
               placeholder="Free-form reflections, ideas, feelings..."
-              placeholderTextColor={colors.textDim}
+              placeholderTextColor={colors.textMuted}
               selectionColor={colors.primary}
               multiline
             />
@@ -423,7 +426,7 @@ export default function ChroniclesScreen() {
           <View style={styles.formActions}>
             <Pressable
               onPress={() => { setIsWriting(false); setIsEditing(false); setEditingEntry(null); }}
-              style={({ pressed }) => [styles.cancelBtn, pressed && { opacity: 0.7 }]}
+              style={({ pressed }) => [styles.cancelBtn, pressed && { opacity: 0.9, transform: [{ scale: 0.97 }] }]}
             >
               <Text style={styles.cancelBtnText}>Cancel</Text>
             </Pressable>
@@ -474,7 +477,10 @@ function PastEntryCard({
     return (
       <GradientCard
         gradient={[moodColor + '15', 'transparent']}
-        onPress={() => setExpanded(false)}
+        onPress={() => {
+          Haptics.selectionAsync();
+          setExpanded(false);
+        }}
         style={styles.pastCardExpanded}
       >
         <View style={styles.expandedHeader}>
@@ -491,7 +497,7 @@ function PastEntryCard({
             >
               <Ionicons name="pencil-outline" size={14} color={colors.primary} />
             </Pressable>
-            <Ionicons name="chevron-up" size={14} color={colors.textDim} />
+            <Ionicons name="chevron-up" size={14} color={colors.textMuted} />
           </View>
         </View>
         <View style={styles.expandedGratitudes}>
@@ -520,7 +526,10 @@ function PastEntryCard({
   return (
     <GradientCard
       gradient={[moodColor + '15', 'transparent']}
-      onPress={() => setExpanded(true)}
+      onPress={() => {
+        Haptics.selectionAsync();
+        setExpanded(true);
+      }}
       style={styles.pastCard}
     >
       <Text style={styles.pastCardDate}>{dateStr}</Text>

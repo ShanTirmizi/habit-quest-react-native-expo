@@ -65,7 +65,7 @@ export function AnimatedFlame({
       <Ionicons
         name="flame"
         size={size}
-        color={active ? effectiveColor : colors.textDim}
+        color={active ? effectiveColor : colors.textMuted}
       />
     </Animated.View>
   );

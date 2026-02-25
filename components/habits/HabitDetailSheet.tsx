@@ -77,6 +77,12 @@ export function HabitDetailSheet({
           />
           <BadgePill label={`+${habit.xpReward} XP`} color={colors.primary} />
           <BadgePill label={freqLabel} color={colors.textSecondary} />
+          {habit.goalId ? (
+            <View style={styles.aiBadge}>
+              <Ionicons name="sparkles" size={12} color={colors.secondary} />
+              <Text style={styles.aiBadgeText}>AI-Generated</Text>
+            </View>
+          ) : null}
         </View>
 
         {/* Stats */}
@@ -119,16 +125,27 @@ export function HabitDetailSheet({
           </View>
         ) : null}
 
-        {/* Rationale */}
+        {/* Research / Rationale */}
         {habit.rationale ? (
           <View style={styles.rationaleSection}>
-            <Text style={styles.sectionTitle}>Why It Works</Text>
-            <Text style={styles.rationaleText}>{habit.rationale}</Text>
-            {habit.citation ? (
-              <Text style={styles.citationText}>
-                — {habit.citation.author} ({habit.citation.year})
-              </Text>
-            ) : null}
+            <View style={styles.rationaleTitleRow}>
+              <Ionicons name="bulb-outline" size={16} color={colors.secondary} />
+              <Text style={styles.sectionTitle}>Why This Habit Works</Text>
+            </View>
+            <View style={styles.rationaleCard}>
+              <Text style={styles.rationaleText}>{habit.rationale}</Text>
+              {habit.citation ? (
+                <View style={styles.citationCard}>
+                  <View style={styles.citationHeader}>
+                    <Ionicons name="book-outline" size={13} color={colors.textMuted} />
+                    <Text style={styles.citationSource}>
+                      {habit.citation.author} ({habit.citation.year})
+                    </Text>
+                  </View>
+                  <Text style={styles.citationFinding}>{habit.citation.finding}</Text>
+                </View>
+              ) : null}
+            </View>
           </View>
         ) : null}
 
@@ -152,7 +169,7 @@ export function HabitDetailSheet({
                 value={noteText}
                 onChangeText={setNoteText}
                 placeholder="Add a note..."
-                placeholderTextColor={colors.textDim}
+                placeholderTextColor={colors.textMuted}
                 multiline
                 autoFocus
               />
@@ -246,18 +263,69 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontFamily: FontFamily.bold,
     color: colors.primary,
   },
-  rationaleSection: {
+  aiBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 4,
+    backgroundColor: colors.secondaryBg,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 3,
+    borderRadius: Radius.full,
+    borderWidth: 1,
+    borderColor: colors.secondaryGlow,
+  },
+  aiBadgeText: {
+    fontSize: FontSize.xs,
+    fontFamily: FontFamily.semibold,
+    color: colors.secondary,
+  },
+  rationaleSection: {
+    gap: Spacing.xs,
+  },
+  rationaleTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    marginBottom: 2,
+  },
+  rationaleCard: {
+    backgroundColor: colors.surfaceLight,
+    borderRadius: Radius.lg,
+    padding: Spacing.md,
+    gap: Spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   rationaleText: {
     fontSize: FontSize.sm,
+    fontFamily: FontFamily.regular,
     color: colors.textSecondary,
     lineHeight: 20,
-    fontStyle: 'italic',
   },
-  citationText: {
+  citationCard: {
+    backgroundColor: colors.surface,
+    borderRadius: Radius.md,
+    padding: Spacing.sm,
+    gap: 4,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.secondary,
+  },
+  citationHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  citationSource: {
     fontSize: FontSize.xs,
-    color: colors.textDim,
+    fontFamily: FontFamily.semibold,
+    color: colors.textMuted,
+  },
+  citationFinding: {
+    fontSize: FontSize.xs,
+    fontFamily: FontFamily.regular,
+    color: colors.textSecondary,
+    lineHeight: 16,
+    marginLeft: 19, // Align with text after icon
   },
   notesSection: {},
   notesHeader: {
@@ -296,7 +364,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   noteDate: {
     fontSize: FontSize.xs,
-    color: colors.textDim,
+    color: colors.textMuted,
   },
   noteContent: {
     fontSize: FontSize.sm,
@@ -305,7 +373,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   noNotes: {
     fontSize: FontSize.sm,
-    color: colors.textDim,
+    color: colors.textMuted,
     fontStyle: 'italic',
   },
   actions: {
