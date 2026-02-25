@@ -14,7 +14,8 @@ import * as Haptics from 'expo-haptics';
 import { format, differenceInDays, parseISO } from 'date-fns';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
-import { Colors, FontSize, Spacing, Radius, FontFamily, Shadows } from '@/constants/theme';
+import { FontSize, Spacing, Radius, FontFamily, Shadows, type ThemeColors } from '@/constants/theme';
+import { useTheme } from '@/contexts/theme-context';
 import { CircularProgress } from '@/components/ui/CircularProgress';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { GradientCard } from '@/components/ui/GradientCard';
@@ -39,25 +40,30 @@ const SPECIES_ICON: Record<string, keyof typeof Ionicons.glyphMap> = {
   keeper: 'flower',
 };
 
-const SPECIES_COLOR: Record<string, string> = {
-  treant: Colors.categoryHealth,
-  phoenix: Colors.accent,
-  owl: Colors.categoryMind,
-  keeper: Colors.categoryLife,
+const MOOD_EMOJI: Record<string, string> = {
+  happy: '\u{1F60A}',
+  content: '\u{1F60C}',
+  sleepy: '\u{1F634}',
+  worried: '\u{1F61F}',
 };
 
-const MOOD_EMOJI: Record<string, string> = {
-  happy: '😊',
-  content: '😌',
-  sleepy: '😴',
-  worried: '😟',
-};
+function getSpeciesColor(species: string, colors: ThemeColors): string {
+  const map: Record<string, string> = {
+    treant: colors.categoryHealth,
+    phoenix: colors.accent,
+    owl: colors.categoryMind,
+    keeper: colors.categoryLife,
+  };
+  return map[species] || colors.primary;
+}
 
 export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { userId, user } = useAuth();
   const { showToast } = useToast();
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [showAddSheet, setShowAddSheet] = useState(false);
 
   const [showCompanionSheet, setShowCompanionSheet] = useState(false);
@@ -176,7 +182,7 @@ export default function DashboardScreen() {
     : 0;
 
   const hpPercent = maxHp > 0 ? Math.round((currentHp / maxHp) * 100) : 100;
-  const hpColor = hpPercent > 60 ? Colors.hpHigh : hpPercent > 30 ? Colors.hpMedium : Colors.hpLow;
+  const hpColor = hpPercent > 60 ? colors.hpHigh : hpPercent > 30 ? colors.hpMedium : colors.hpLow;
 
   const handleToggle = useCallback(async (id: string) => {
     if (!userId) return;
@@ -287,15 +293,15 @@ export default function DashboardScreen() {
               accessibilityLabel="Open Dr. Sage companion"
               accessibilityRole="button"
             >
-              <View style={[styles.sageAvatar, { borderColor: SPECIES_COLOR[companion.species] || Colors.primary }]}>
+              <View style={[styles.sageAvatar, { borderColor: getSpeciesColor(companion.species, colors) }]}>
                 <Ionicons
                   name={SPECIES_ICON[companion.species] || 'paw'}
                   size={18}
-                  color={SPECIES_COLOR[companion.species] || Colors.primary}
+                  color={getSpeciesColor(companion.species, colors)}
                 />
               </View>
               <Text style={styles.sageMoodBadge}>
-                {MOOD_EMOJI[companion.mood] || '😊'}
+                {MOOD_EMOJI[companion.mood] || '\u{1F60A}'}
               </Text>
             </Pressable>
           ) : companion === null ? (
@@ -305,8 +311,8 @@ export default function DashboardScreen() {
               accessibilityLabel="Choose companion"
               accessibilityRole="button"
             >
-              <View style={[styles.sageAvatar, { borderColor: Colors.primary }]}>
-                <Ionicons name="paw" size={18} color={Colors.primary} />
+              <View style={[styles.sageAvatar, { borderColor: colors.primary }]}>
+                <Ionicons name="paw" size={18} color={colors.primary} />
               </View>
             </Pressable>
           ) : null}
@@ -321,7 +327,7 @@ export default function DashboardScreen() {
             accessibilityLabel="Settings"
             accessibilityRole="button"
           >
-            <Ionicons name="settings-outline" size={20} color={Colors.textSecondary} />
+            <Ionicons name="settings-outline" size={20} color={colors.textSecondary} />
           </Pressable>
           <Pressable
             onPress={() => {
@@ -350,7 +356,7 @@ export default function DashboardScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={handleRefresh}
-              tintColor={Colors.primary}
+              tintColor={colors.primary}
             />
           }
         >
@@ -363,8 +369,8 @@ export default function DashboardScreen() {
                   progress={xpProgress}
                   size={44}
                   strokeWidth={4}
-                  color={Colors.primary}
-                  trackColor={Colors.surfaceRaised}
+                  color={colors.primary}
+                  trackColor={colors.surfaceRaised}
                 >
                   <Text style={styles.statsLevelNum}>{level}</Text>
                 </CircularProgress>
@@ -399,7 +405,7 @@ export default function DashboardScreen() {
 
               {/* Completion */}
               <View style={styles.statsItem}>
-                <Text style={[styles.statsValue, { color: completionRate === 100 ? Colors.success : Colors.secondary }]}>
+                <Text style={[styles.statsValue, { color: completionRate === 100 ? colors.success : colors.secondary }]}>
                   {completedIds.size}/{habits.length}
                 </Text>
                 <Text style={styles.statsItemLabel}>DONE</Text>
@@ -410,7 +416,7 @@ export default function DashboardScreen() {
 
               {/* Streak */}
               <View style={styles.statsItem}>
-                <Text style={[styles.statsValue, { color: Colors.accent }]}>
+                <Text style={[styles.statsValue, { color: colors.accent }]}>
                   {longestStreak}
                 </Text>
                 <Text style={styles.statsItemLabel}>STREAK</Text>
@@ -436,10 +442,10 @@ export default function DashboardScreen() {
               {allDone ? (
                 <GradientCard
                   gradient={['rgba(0, 230, 118, 0.15)', 'rgba(255, 184, 0, 0.10)']}
-                  glowColor={Colors.success}
+                  glowColor={colors.success}
                 >
                   <View style={styles.allDoneBanner}>
-                    <Ionicons name="trophy" size={40} color={Colors.accent} />
+                    <Ionicons name="trophy" size={40} color={colors.accent} />
                     <Text style={styles.allDoneTitle}>All Done!</Text>
                     <Text style={styles.allDoneText}>
                       You&apos;ve completed all habits for today. Amazing work!
@@ -522,11 +528,11 @@ export default function DashboardScreen() {
                       onPress={() => router.push('/(tabs)/goals')}
                       style={({ pressed }) => [styles.goalPill, pressed && { opacity: 0.8, transform: [{ scale: 0.97 }] }]}
                     >
-                      <View style={[styles.goalPillIcon, { backgroundColor: catConfig?.color ? `${catConfig.color}20` : Colors.primaryBg }]}>
+                      <View style={[styles.goalPillIcon, { backgroundColor: catConfig?.color ? `${catConfig.color}20` : colors.primaryBg }]}>
                         <Ionicons
                           name={(catConfig?.icon as keyof typeof Ionicons.glyphMap) || 'flag'}
                           size={14}
-                          color={catConfig?.color || Colors.primary}
+                          color={catConfig?.color || colors.primary}
                         />
                       </View>
                       <View style={styles.goalPillContent}>
@@ -537,8 +543,8 @@ export default function DashboardScreen() {
                           ) : null}
                           <Text style={[
                             styles.goalPillDays,
-                            daysLeft < 14 && { color: Colors.warning },
-                            daysLeft < 0 && { color: Colors.danger },
+                            daysLeft < 14 && { color: colors.warning },
+                            daysLeft < 0 && { color: colors.danger },
                           ]}>
                             {daysLeft > 0 ? `${daysLeft}d` : daysLeft === 0 ? 'Today' : 'Overdue'}
                           </Text>
@@ -552,7 +558,7 @@ export default function DashboardScreen() {
                   onPress={() => router.push('/(tabs)/goals')}
                   style={({ pressed }) => [styles.goalPillAdd, pressed && { opacity: 0.7 }]}
                 >
-                  <Ionicons name="add" size={18} color={Colors.primary} />
+                  <Ionicons name="add" size={18} color={colors.primary} />
                 </Pressable>
               </ScrollView>
             </View>
@@ -605,10 +611,10 @@ export default function DashboardScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
   },
 
   // ── Top Bar ──
@@ -631,7 +637,7 @@ const styles = StyleSheet.create({
   topBarGreeting: {
     fontSize: FontSize.sm,
     fontFamily: FontFamily.semibold,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   topBarRight: {
     flexDirection: 'row',
@@ -646,7 +652,7 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
     borderWidth: 2,
-    backgroundColor: Colors.surfaceLight,
+    backgroundColor: colors.surfaceLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -660,7 +666,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: Colors.surfaceLight,
+    backgroundColor: colors.surfaceLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -668,10 +674,10 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    ...Shadows.glow(Colors.primary, 0.3),
+    ...Shadows.glow(colors.primary, 0.3),
   },
   addButtonPressed: {
     transform: [{ scale: 0.92 }],
@@ -698,10 +704,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: Colors.surfaceLight,
+    backgroundColor: colors.surfaceLight,
     borderRadius: Radius.xl,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     paddingVertical: Spacing.sm + 2,
     paddingHorizontal: Spacing.md,
     ...Shadows.card,
@@ -718,23 +724,23 @@ const styles = StyleSheet.create({
   statsLevelNum: {
     fontSize: FontSize.sm,
     fontFamily: FontFamily.extrabold,
-    color: Colors.primary,
+    color: colors.primary,
   },
   statsValue: {
     fontSize: FontSize.base,
     fontFamily: FontFamily.bold,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   statsItemLabel: {
     fontSize: 9,
     fontFamily: FontFamily.semibold,
-    color: Colors.textMuted,
+    color: colors.textMuted,
     letterSpacing: 1,
   },
   statsDivider: {
     width: 1,
     height: 24,
-    backgroundColor: Colors.border,
+    backgroundColor: colors.border,
   },
   hpRow: {
     flexDirection: 'row',
@@ -754,14 +760,14 @@ const styles = StyleSheet.create({
   goalsSectionTitle: {
     fontSize: FontSize.sm,
     fontFamily: FontFamily.bold,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
   goalsSeeAll: {
     fontSize: FontSize.sm,
     fontFamily: FontFamily.semibold,
-    color: Colors.primary,
+    color: colors.primary,
   },
   goalsScroll: {
     gap: Spacing.sm,
@@ -771,9 +777,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,
-    backgroundColor: Colors.surfaceLight,
+    backgroundColor: colors.surfaceLight,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     borderRadius: Radius.lg,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm + 2,
@@ -794,7 +800,7 @@ const styles = StyleSheet.create({
   goalPillTitle: {
     fontSize: FontSize.sm,
     fontFamily: FontFamily.semibold,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   goalPillMeta: {
     flexDirection: 'row',
@@ -804,12 +810,12 @@ const styles = StyleSheet.create({
   goalPillProgress: {
     fontSize: FontSize.xs,
     fontFamily: FontFamily.medium,
-    color: Colors.textMuted,
+    color: colors.textMuted,
   },
   goalPillDays: {
     fontSize: FontSize.xs,
     fontFamily: FontFamily.semibold,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   goalPillAdd: {
     width: 40,
@@ -817,9 +823,9 @@ const styles = StyleSheet.create({
     minHeight: 48,
     borderRadius: Radius.lg,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     borderStyle: 'dashed',
-    backgroundColor: Colors.surfaceLight,
+    backgroundColor: colors.surfaceLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -833,7 +839,7 @@ const styles = StyleSheet.create({
   },
   sectionDivider: {
     alignSelf: 'flex-start',
-    backgroundColor: Colors.surfaceLight,
+    backgroundColor: colors.surfaceLight,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.xs + 2,
     borderRadius: Radius.full,
@@ -841,7 +847,7 @@ const styles = StyleSheet.create({
   sectionDividerText: {
     fontSize: FontSize.xs,
     fontFamily: FontFamily.bold,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     letterSpacing: 1,
   },
   habitList: {
@@ -857,11 +863,11 @@ const styles = StyleSheet.create({
   allDoneTitle: {
     fontSize: FontSize['3xl'],
     fontFamily: FontFamily.extrabold,
-    color: Colors.success,
+    color: colors.success,
   },
   allDoneText: {
     fontSize: FontSize.sm,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     textAlign: 'center',
   },
 

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { View, StyleSheet, ViewStyle } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -8,7 +8,8 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Colors, Radius, Spacing } from '@/constants/theme';
+import { Radius, Spacing, type ThemeColors } from '@/constants/theme';
+import { useTheme } from '@/contexts/theme-context';
 
 interface SkeletonProps {
   width?: number | string;
@@ -18,6 +19,7 @@ interface SkeletonProps {
 }
 
 export function Skeleton({ width = '100%', height = 16, borderRadius = Radius.md, style }: SkeletonProps) {
+  const { colors } = useTheme();
   const opacity = useSharedValue(0.3);
 
   useEffect(() => {
@@ -44,7 +46,7 @@ export function Skeleton({ width = '100%', height = 16, borderRadius = Radius.md
       ]}
     >
       <LinearGradient
-        colors={[Colors.surfaceLight, Colors.surfaceRaised, Colors.surfaceLight]}
+        colors={[colors.surfaceLight, colors.surfaceRaised, colors.surfaceLight]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
         style={StyleSheet.absoluteFill}
@@ -54,6 +56,9 @@ export function Skeleton({ width = '100%', height = 16, borderRadius = Radius.md
 }
 
 export function SkeletonHabitCard() {
+  const { colors } = useTheme();
+  const skeletonStyles = useMemo(() => createSkeletonStyles(colors), [colors]);
+
   return (
     <View style={skeletonStyles.habitCard}>
       <Skeleton width={24} height={24} borderRadius={6} />
@@ -70,6 +75,9 @@ export function SkeletonHabitCard() {
 }
 
 export function SkeletonStatsHeader() {
+  const { colors } = useTheme();
+  const skeletonStyles = useMemo(() => createSkeletonStyles(colors), [colors]);
+
   return (
     <View style={skeletonStyles.statsCard}>
       <View style={skeletonStyles.statsTopRow}>
@@ -93,6 +101,9 @@ export function SkeletonStatsHeader() {
 }
 
 export function SkeletonDashboard() {
+  const { colors } = useTheme();
+  const skeletonStyles = useMemo(() => createSkeletonStyles(colors), [colors]);
+
   return (
     <View style={skeletonStyles.dashboard}>
       <SkeletonStatsHeader />
@@ -106,15 +117,15 @@ export function SkeletonDashboard() {
   );
 }
 
-const skeletonStyles = StyleSheet.create({
+const createSkeletonStyles = (colors: ThemeColors) => StyleSheet.create({
   habitCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.md,
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: Radius.lg,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     padding: Spacing.md,
   },
   habitContent: {
@@ -126,10 +137,10 @@ const skeletonStyles = StyleSheet.create({
     gap: Spacing.sm,
   },
   statsCard: {
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: Radius.lg,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     padding: Spacing.lg,
     gap: Spacing.md,
   },

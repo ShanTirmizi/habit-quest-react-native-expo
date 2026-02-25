@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, FontSize, Spacing, Radius, FontFamily } from '@/constants/theme';
+import { FontSize, Spacing, Radius, FontFamily, type ThemeColors } from '@/constants/theme';
+import { useTheme } from '@/contexts/theme-context';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 
 interface HealthBarProps {
@@ -11,16 +12,18 @@ interface HealthBarProps {
 }
 
 export function HealthBar({ currentHp, maxHp, compact }: HealthBarProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const percentage = maxHp > 0 ? (currentHp / maxHp) * 100 : 0;
   const hpColor =
-    percentage > 60 ? Colors.hpHigh : percentage > 30 ? Colors.hpMedium : Colors.hpLow;
+    percentage > 60 ? colors.hpHigh : percentage > 30 ? colors.hpMedium : colors.hpLow;
   const isCritical = percentage <= 20;
 
   if (compact) {
     return (
       <View style={styles.compactContainer} accessibilityLabel={`HP: ${currentHp} out of ${maxHp}${isCritical ? ', critical' : ''}`}>
         <Ionicons name="heart" size={14} color={hpColor} />
-        <ProgressBar progress={percentage} color={hpColor} height={4} style={styles.compactBar} glowColor={isCritical ? Colors.hpCritical : undefined} />
+        <ProgressBar progress={percentage} color={hpColor} height={4} style={styles.compactBar} glowColor={isCritical ? colors.hpCritical : undefined} />
         <Text style={[styles.compactText, { color: hpColor }]}>
           {currentHp}/{maxHp}
         </Text>
@@ -39,10 +42,10 @@ export function HealthBar({ currentHp, maxHp, compact }: HealthBarProps) {
           {currentHp}/{maxHp}
         </Text>
       </View>
-      <ProgressBar progress={percentage} color={hpColor} height={6} glowColor={isCritical ? Colors.hpCritical : undefined} />
+      <ProgressBar progress={percentage} color={hpColor} height={6} glowColor={isCritical ? colors.hpCritical : undefined} />
       {isCritical ? (
         <View style={styles.criticalRow}>
-          <Ionicons name="warning-outline" size={12} color={Colors.danger} />
+          <Ionicons name="warning-outline" size={12} color={colors.danger} />
           <Text style={styles.criticalText}>Critical! Complete habits to heal.</Text>
         </View>
       ) : null}
@@ -50,7 +53,7 @@ export function HealthBar({ currentHp, maxHp, compact }: HealthBarProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     gap: Spacing.xs,
   },
@@ -67,7 +70,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: FontSize.xs,
     fontFamily: FontFamily.semibold,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   value: {
     fontSize: FontSize.xs,
@@ -81,7 +84,7 @@ const styles = StyleSheet.create({
   },
   criticalText: {
     fontSize: FontSize.xs,
-    color: Colors.danger,
+    color: colors.danger,
   },
   compactContainer: {
     flexDirection: 'row',

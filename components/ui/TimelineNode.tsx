@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, StyleSheet } from 'react-native';
-import { Colors, Spacing } from '@/constants/theme';
+import { Spacing, type ThemeColors } from '@/constants/theme';
+import { useTheme } from '@/contexts/theme-context';
 
 interface TimelineNodeProps {
   color: string;
@@ -15,6 +16,9 @@ export function TimelineNode({
   isLast,
   children,
 }: TimelineNodeProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   return (
     <View style={styles.container}>
       {/* Timeline track */}
@@ -23,7 +27,7 @@ export function TimelineNode({
           style={[
             styles.dot,
             {
-              backgroundColor: isComplete ? color : Colors.surfaceRaised,
+              backgroundColor: isComplete ? color : colors.surfaceRaised,
               borderColor: color,
             },
           ]}
@@ -33,7 +37,7 @@ export function TimelineNode({
             style={[
               styles.line,
               {
-                backgroundColor: isComplete ? color : Colors.border,
+                backgroundColor: isComplete ? color : colors.border,
               },
             ]}
           />
@@ -48,7 +52,7 @@ export function TimelineNode({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flexDirection: 'row',
   },

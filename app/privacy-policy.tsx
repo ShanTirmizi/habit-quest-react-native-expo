@@ -1,10 +1,14 @@
+import React, { useMemo } from 'react';
 import { View, Text, ScrollView, StyleSheet, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, FontSize, Spacing, Radius, FontFamily } from '@/constants/theme';
+import { FontSize, Spacing, Radius, FontFamily, type ThemeColors } from '@/constants/theme';
+import { useTheme } from '@/contexts/theme-context';
 
 export default function PrivacyPolicyScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
@@ -13,7 +17,7 @@ export default function PrivacyPolicyScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="chevron-back" size={24} color={Colors.foreground} />
+          <Ionicons name="chevron-back" size={24} color={colors.foreground} />
         </Pressable>
         <Text style={styles.headerTitle}>Privacy Policy</Text>
         <View style={styles.headerSpacer} />
@@ -125,10 +129,10 @@ export default function PrivacyPolicyScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -136,7 +140,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    borderBottomColor: colors.border,
   },
   backButton: {
     width: 40,
@@ -150,7 +154,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontFamily: FontFamily.semibold,
     fontSize: FontSize.lg,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   headerSpacer: {
     width: 40,
@@ -165,7 +169,7 @@ const styles = StyleSheet.create({
   lastUpdated: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.sm,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     marginBottom: Spacing.xl,
   },
   section: {
@@ -174,13 +178,13 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.base,
-    color: Colors.foreground,
+    color: colors.foreground,
     marginBottom: Spacing.sm,
   },
   sectionBody: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.sm,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     lineHeight: FontSize.sm * 1.6,
   },
 });

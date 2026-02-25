@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo } from 'react';
 import {
   View,
   Text,
@@ -14,13 +14,14 @@ import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
+import { useTheme } from '@/contexts/theme-context';
 import {
-  Colors,
   FontSize,
   Spacing,
   Radius,
   FontFamily,
   Shadows,
+  type ThemeColors,
 } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 
@@ -28,6 +29,8 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user, signOut } = useAuth();
+  const { colors, isDark, toggleTheme } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   // Notification preferences
   const preferences = useQuery(api.notifications.getPreferences);
@@ -105,7 +108,7 @@ export default function SettingsScreen() {
           <Ionicons
             name="chevron-back"
             size={24}
-            color={Colors.foreground}
+            color={colors.foreground}
           />
         </Pressable>
         <Text style={styles.headerTitle}>Settings</Text>
@@ -148,6 +151,8 @@ export default function SettingsScreen() {
             label="Morning reminders"
             value={morningReminder}
             onValueChange={(v) => handleToggle('morningReminder', v)}
+            colors={colors}
+            styles={styles}
           />
           <View style={styles.divider} />
           <ToggleRow
@@ -155,6 +160,8 @@ export default function SettingsScreen() {
             label="Afternoon reminders"
             value={afternoonReminder}
             onValueChange={(v) => handleToggle('afternoonReminder', v)}
+            colors={colors}
+            styles={styles}
           />
           <View style={styles.divider} />
           <ToggleRow
@@ -162,6 +169,21 @@ export default function SettingsScreen() {
             label="Evening reminders"
             value={eveningReminder}
             onValueChange={(v) => handleToggle('eveningReminder', v)}
+            colors={colors}
+            styles={styles}
+          />
+        </View>
+
+        {/* Section: Appearance */}
+        <Text style={styles.sectionTitle}>APPEARANCE</Text>
+        <View style={styles.sectionCard}>
+          <ToggleRow
+            icon={isDark ? 'moon' : 'sunny'}
+            label={isDark ? 'Dark Mode' : 'Light Mode'}
+            value={isDark}
+            onValueChange={() => toggleTheme()}
+            colors={colors}
+            styles={styles}
           />
         </View>
 
@@ -172,12 +194,16 @@ export default function SettingsScreen() {
             icon="shield-checkmark-outline"
             label="Privacy Policy"
             onPress={() => router.push('/privacy-policy')}
+            colors={colors}
+            styles={styles}
           />
           <View style={styles.divider} />
           <ChevronRow
             icon="document-text-outline"
             label="Terms of Service"
             onPress={() => router.push('/terms-of-service')}
+            colors={colors}
+            styles={styles}
           />
         </View>
 
@@ -189,9 +215,9 @@ export default function SettingsScreen() {
               <Ionicons
                 name="log-out-outline"
                 size={20}
-                color={Colors.danger}
+                color={colors.danger}
               />
-              <Text style={[styles.rowLabel, { color: Colors.danger }]}>
+              <Text style={[styles.rowLabel, { color: colors.danger }]}>
                 Sign Out
               </Text>
             </View>
@@ -202,12 +228,12 @@ export default function SettingsScreen() {
               <Ionicons
                 name="trash-outline"
                 size={20}
-                color={Colors.danger}
+                color={colors.danger}
               />
               <Text
                 style={[
                   styles.rowLabel,
-                  { color: Colors.danger, fontFamily: FontFamily.semibold },
+                  { color: colors.danger, fontFamily: FontFamily.semibold },
                 ]}
               >
                 Delete Account
@@ -232,27 +258,31 @@ function ToggleRow({
   label,
   value,
   onValueChange,
+  colors,
+  styles,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
   value: boolean;
   onValueChange: (v: boolean) => void;
+  colors: ThemeColors;
+  styles: ReturnType<typeof createStyles>;
 }) {
   return (
     <View style={styles.row}>
       <View style={styles.rowLeft}>
-        <Ionicons name={icon} size={20} color={Colors.textSecondary} />
+        <Ionicons name={icon} size={20} color={colors.textSecondary} />
         <Text style={styles.rowLabel}>{label}</Text>
       </View>
       <Switch
         value={value}
         onValueChange={onValueChange}
         trackColor={{
-          false: Colors.surfaceHover,
-          true: Colors.primaryBg,
+          false: colors.surfaceHover,
+          true: colors.primaryBg,
         }}
-        thumbColor={value ? Colors.primary : Colors.textSecondary}
-        ios_backgroundColor={Colors.surfaceHover}
+        thumbColor={value ? colors.primary : colors.textSecondary}
+        ios_backgroundColor={colors.surfaceHover}
       />
     </View>
   );
@@ -262,21 +292,25 @@ function ChevronRow({
   icon,
   label,
   onPress,
+  colors,
+  styles,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
   onPress: () => void;
+  colors: ThemeColors;
+  styles: ReturnType<typeof createStyles>;
 }) {
   return (
     <Pressable style={styles.row} onPress={onPress}>
       <View style={styles.rowLeft}>
-        <Ionicons name={icon} size={20} color={Colors.textSecondary} />
+        <Ionicons name={icon} size={20} color={colors.textSecondary} />
         <Text style={styles.rowLabel}>{label}</Text>
       </View>
       <Ionicons
         name="chevron-forward"
         size={18}
-        color={Colors.textMuted}
+        color={colors.textMuted}
       />
     </Pressable>
   );
@@ -284,10 +318,10 @@ function ChevronRow({
 
 /* ----- Styles ----- */
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
   },
 
   /* Header */
@@ -302,14 +336,14 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: Radius.sm,
-    backgroundColor: Colors.surfaceLight,
+    backgroundColor: colors.surfaceLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitle: {
     fontFamily: FontFamily.semibold,
     fontSize: FontSize.lg,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   headerSpacer: {
     width: 36,
@@ -328,17 +362,17 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontFamily: FontFamily.semibold,
     fontSize: FontSize.xs,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     letterSpacing: 1.2,
     marginTop: Spacing.lg,
     marginBottom: Spacing.xs,
     marginLeft: Spacing.xs,
   },
   sectionCard: {
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: Radius.lg,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     overflow: 'hidden',
     ...Shadows.card,
   },
@@ -353,7 +387,7 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: Radius.full,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -369,24 +403,24 @@ const styles = StyleSheet.create({
   profileName: {
     fontFamily: FontFamily.semibold,
     fontSize: FontSize.base,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   profileEmail: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.sm,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     marginTop: 2,
   },
   badge: {
     paddingHorizontal: Spacing.sm,
     paddingVertical: Spacing.xs,
     borderRadius: Radius.sm,
-    backgroundColor: Colors.primaryBg,
+    backgroundColor: colors.primaryBg,
   },
   badgeText: {
     fontFamily: FontFamily.medium,
     fontSize: FontSize.xs,
-    color: Colors.primary,
+    color: colors.primary,
   },
 
   /* Row */
@@ -406,13 +440,13 @@ const styles = StyleSheet.create({
   rowLabel: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.base,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
 
   /* Divider */
   divider: {
     height: 1,
-    backgroundColor: Colors.border,
+    backgroundColor: colors.border,
     marginLeft: Spacing.lg + 20 + Spacing.md,
   },
 
@@ -420,7 +454,7 @@ const styles = StyleSheet.create({
   versionText: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.xs,
-    color: Colors.textMuted,
+    color: colors.textMuted,
     textAlign: 'center',
     marginTop: Spacing['2xl'],
   },

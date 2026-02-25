@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -12,7 +12,8 @@ import Animated, {
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import type { Id } from '@/convex/_generated/dataModel';
-import { Colors, FontSize, Spacing, Radius, FontFamily } from '@/constants/theme';
+import { FontSize, Spacing, Radius, FontFamily, type ThemeColors } from '@/constants/theme';
+import { useTheme } from '@/contexts/theme-context';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { Button } from '@/components/ui/Button';
 import { useToast } from '@/contexts/toast-context';
@@ -22,6 +23,8 @@ interface UnderworldOverlayProps {
 }
 
 export function UnderworldOverlay({ userId }: UnderworldOverlayProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { showToast } = useToast();
   const status = useQuery(api.progress.getUnderworldStatus, { userId });
   const resurrectMutation = useMutation(api.progress.resurrect);
@@ -61,15 +64,17 @@ export function UnderworldOverlay({ userId }: UnderworldOverlayProps) {
 
   if (!status || !status.inUnderworld) return null;
 
-  const progress = status.daysCompleted / (status.daysCompleted + status.daysRemaining) * 100;
+  const completed = status.daysCompleted ?? 0;
+  const remaining = status.daysRemaining ?? 0;
+  const progress = completed + remaining > 0 ? (completed / (completed + remaining)) * 100 : 0;
 
   return (
     <View style={styles.container}>
       <Animated.View style={[StyleSheet.absoluteFill, styles.pulseBg, pulseStyle]} />
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: Colors.surface }]} />
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.surface }]} />
       <View style={styles.content}>
         <View style={styles.headerRow}>
-          <Ionicons name="skull" size={20} color={Colors.danger} />
+          <Ionicons name="skull" size={20} color={colors.danger} />
           <Text style={styles.title}>The Underworld</Text>
         </View>
         <Text style={styles.description}>
@@ -77,9 +82,9 @@ export function UnderworldOverlay({ userId }: UnderworldOverlayProps) {
         </Text>
         <ProgressBar
           progress={progress}
-          color={Colors.danger}
+          color={colors.danger}
           height={4}
-          glowColor={Colors.hpCritical}
+          glowColor={colors.hpCritical}
         />
         {status.readyToResurrect ? (
           <Button title="Resurrect" onPress={handleResurrect} size="sm" />
@@ -89,7 +94,7 @@ export function UnderworldOverlay({ userId }: UnderworldOverlayProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     borderRadius: Radius.lg,
     overflow: 'hidden',
@@ -111,12 +116,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: FontSize.sm,
     fontFamily: FontFamily.extrabold,
-    color: Colors.danger,
+    color: colors.danger,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
   description: {
     fontSize: FontSize.sm,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
 });

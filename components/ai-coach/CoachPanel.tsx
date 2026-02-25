@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { View, Text, StyleSheet, Pressable, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAction } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import type { Id } from '@/convex/_generated/dataModel';
-import { Colors, FontSize, Spacing, Radius, FontFamily, Shadows } from '@/constants/theme';
+import { FontSize, Spacing, Radius, FontFamily, Shadows, type ThemeColors } from '@/constants/theme';
+import { useTheme } from '@/contexts/theme-context';
 import { GradientCard } from '@/components/ui/GradientCard';
 import { Skeleton } from '@/components/ui/Skeleton';
 
@@ -43,99 +44,23 @@ const CATEGORY_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   journal: 'book',
 };
 
-const CATEGORY_COLORS: Record<string, string> = {
-  pattern: Colors.secondary,
-  streak: Colors.accent,
-  mood: Colors.categoryHealth,
-  strategy: Colors.primary,
-  celebration: Colors.accent,
-  recovery: Colors.categoryMind,
-  journal: Colors.categoryLife,
-};
-
 const DEFAULT_ICON: keyof typeof Ionicons.glyphMap = 'sparkles';
-const DEFAULT_COLOR = Colors.textSecondary;
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
 
 function getCategoryIcon(category: string): keyof typeof Ionicons.glyphMap {
   return CATEGORY_ICONS[category] ?? DEFAULT_ICON;
 }
 
-function getCategoryColor(category: string): string {
-  return CATEGORY_COLORS[category] ?? DEFAULT_COLOR;
-}
-
-// ---------------------------------------------------------------------------
-// Sub-components
-// ---------------------------------------------------------------------------
-
-function LoadingSkeleton() {
-  return (
-    <View style={styles.skeletonContainer}>
-      <Skeleton width="100%" height={18} />
-      <Skeleton width="75%" height={14} style={styles.skeletonRow} />
-      <Skeleton width="85%" height={14} style={styles.skeletonRow} />
-      <Skeleton width="60%" height={14} style={styles.skeletonRow} />
-    </View>
-  );
-}
-
-function ErrorState({ onRetry }: { onRetry: () => void }) {
-  return (
-    <View style={styles.stateContainer}>
-      <Ionicons name="moon" size={32} color={Colors.textMuted} />
-      <Text style={styles.stateTitle}>Dr. Sage is resting...</Text>
-      <Text style={styles.stateBody}>
-        Unable to generate insights right now. Please try again in a moment.
-      </Text>
-      <Pressable
-        onPress={onRetry}
-        style={({ pressed }) => [styles.retryButton, pressed && styles.pressedButton]}
-        accessibilityRole="button"
-        accessibilityLabel="Retry loading insights"
-      >
-        <Ionicons name="refresh" size={16} color={Colors.primary} />
-        <Text style={styles.retryButtonText}>Try Again</Text>
-      </Pressable>
-    </View>
-  );
-}
-
-function InsufficientDataState() {
-  return (
-    <View style={styles.stateContainer}>
-      <Ionicons name="leaf" size={32} color={Colors.secondary} />
-      <Text style={styles.stateTitle}>Building your profile...</Text>
-      <Text style={styles.stateBody}>
-        Keep building habits and logging your progress. Dr. Sage will have
-        personalized insights for you soon.
-      </Text>
-    </View>
-  );
-}
-
-function InsightCard({ insight }: { insight: Insight }) {
-  const iconName = getCategoryIcon(insight.category);
-  const iconColor = getCategoryColor(insight.category);
-
-  return (
-    <View style={styles.secondaryCard}>
-      <View style={styles.insightHeader}>
-        <Ionicons name={iconName} size={18} color={iconColor} />
-        <Text style={styles.secondaryTitle}>{insight.title}</Text>
-      </View>
-      <Text style={styles.secondaryBody}>{insight.body}</Text>
-      {insight.actionable ? (
-        <View style={styles.actionableRow}>
-          <Ionicons name="bulb" size={14} color={Colors.accent} />
-          <Text style={styles.actionableText}>{insight.actionable}</Text>
-        </View>
-      ) : null}
-    </View>
-  );
+function getCategoryColorValue(category: string, colors: ThemeColors): string {
+  const CATEGORY_COLORS: Record<string, string> = {
+    pattern: colors.secondary,
+    streak: colors.accent,
+    mood: colors.categoryHealth,
+    strategy: colors.primary,
+    celebration: colors.accent,
+    recovery: colors.categoryMind,
+    journal: colors.categoryLife,
+  };
+  return CATEGORY_COLORS[category] ?? colors.textSecondary;
 }
 
 // ---------------------------------------------------------------------------
@@ -169,6 +94,8 @@ function setCachedInsights(userId: string, insights: CoachingInsights) {
 // ---------------------------------------------------------------------------
 
 export function CoachPanel({ userId }: CoachPanelProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const generateInsights = useAction(api.coaching.generateInsights);
 
   // State — initialize from cache if available
@@ -265,6 +192,68 @@ export function CoachPanel({ userId }: CoachPanelProps) {
     setExpanded((prev) => !prev);
   }, []);
 
+  // ----- Sub-components (inline, using styles from closure) -----
+
+  const LoadingSkeleton = () => (
+    <View style={styles.skeletonContainer}>
+      <Skeleton width="100%" height={18} />
+      <Skeleton width="75%" height={14} style={styles.skeletonRow} />
+      <Skeleton width="85%" height={14} style={styles.skeletonRow} />
+      <Skeleton width="60%" height={14} style={styles.skeletonRow} />
+    </View>
+  );
+
+  const ErrorState = ({ onRetry }: { onRetry: () => void }) => (
+    <View style={styles.stateContainer}>
+      <Ionicons name="moon" size={32} color={colors.textMuted} />
+      <Text style={styles.stateTitle}>Dr. Sage is resting...</Text>
+      <Text style={styles.stateBody}>
+        Unable to generate insights right now. Please try again in a moment.
+      </Text>
+      <Pressable
+        onPress={onRetry}
+        style={({ pressed }) => [styles.retryButton, pressed && styles.pressedButton]}
+        accessibilityRole="button"
+        accessibilityLabel="Retry loading insights"
+      >
+        <Ionicons name="refresh" size={16} color={colors.primary} />
+        <Text style={styles.retryButtonText}>Try Again</Text>
+      </Pressable>
+    </View>
+  );
+
+  const InsufficientDataState = () => (
+    <View style={styles.stateContainer}>
+      <Ionicons name="leaf" size={32} color={colors.secondary} />
+      <Text style={styles.stateTitle}>Building your profile...</Text>
+      <Text style={styles.stateBody}>
+        Keep building habits and logging your progress. Dr. Sage will have
+        personalized insights for you soon.
+      </Text>
+    </View>
+  );
+
+  const InsightCard = ({ insight }: { insight: Insight }) => {
+    const iconName = getCategoryIcon(insight.category);
+    const iconColor = getCategoryColorValue(insight.category, colors);
+
+    return (
+      <View style={styles.secondaryCard}>
+        <View style={styles.insightHeader}>
+          <Ionicons name={iconName} size={18} color={iconColor} />
+          <Text style={styles.secondaryTitle}>{insight.title}</Text>
+        </View>
+        <Text style={styles.secondaryBody}>{insight.body}</Text>
+        {insight.actionable ? (
+          <View style={styles.actionableRow}>
+            <Ionicons name="bulb" size={14} color={colors.accent} />
+            <Text style={styles.actionableText}>{insight.actionable}</Text>
+          </View>
+        ) : null}
+      </View>
+    );
+  };
+
   // ----- Render helpers -----
 
   const renderHeader = () => (
@@ -290,13 +279,13 @@ export function CoachPanel({ userId }: CoachPanelProps) {
           hitSlop={8}
         >
           <Animated.View style={{ transform: [{ rotate: spin }] }}>
-            <Ionicons name="refresh" size={18} color={Colors.textSecondary} />
+            <Ionicons name="refresh" size={18} color={colors.textSecondary} />
           </Animated.View>
         </Pressable>
         <Ionicons
           name={expanded ? 'chevron-up' : 'chevron-down'}
           size={20}
-          color={Colors.textSecondary}
+          color={colors.textSecondary}
           style={styles.chevron}
         />
       </View>
@@ -305,7 +294,7 @@ export function CoachPanel({ userId }: CoachPanelProps) {
 
   const renderPrimaryInsight = (insight: Insight) => {
     const iconName = getCategoryIcon(insight.category);
-    const iconColor = getCategoryColor(insight.category);
+    const iconColor = getCategoryColorValue(insight.category, colors);
 
     return (
       <View style={styles.primarySection}>
@@ -316,8 +305,10 @@ export function CoachPanel({ userId }: CoachPanelProps) {
         <Text style={styles.primaryBody}>{insight.body}</Text>
         {insight.actionable ? (
           <View style={styles.tryThisContainer}>
-            <Ionicons name="bulb" size={16} color={Colors.accent} />
-            <Text style={styles.tryThisLabel}>Try this: </Text>
+            <View style={styles.tryThisHeader}>
+              <Ionicons name="bulb" size={16} color={colors.accent} />
+              <Text style={styles.tryThisLabel}>Try this:</Text>
+            </View>
             <Text style={styles.tryThisText}>{insight.actionable}</Text>
           </View>
         ) : null}
@@ -328,7 +319,7 @@ export function CoachPanel({ userId }: CoachPanelProps) {
   const renderTodayFocus = (focus: string) => (
     <View style={styles.todayFocusContainer}>
       <View style={styles.todayFocusHeader}>
-        <Ionicons name="flag" size={18} color={Colors.primary} />
+        <Ionicons name="flag" size={18} color={colors.primary} />
         <Text style={styles.todayFocusTitle}>Today's Focus</Text>
       </View>
       <Text style={styles.todayFocusBody}>{focus}</Text>
@@ -377,7 +368,7 @@ export function CoachPanel({ userId }: CoachPanelProps) {
   return (
     <GradientCard
       gradient={['#0D1117', '#131A24']}
-      glowColor={Colors.primaryGlow}
+      glowColor={colors.primaryGlow}
       style={styles.container}
     >
       {renderHeader()}
@@ -390,7 +381,7 @@ export function CoachPanel({ userId }: CoachPanelProps) {
 // Styles
 // ---------------------------------------------------------------------------
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     overflow: 'hidden',
   },
@@ -412,12 +403,12 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontFamily: FontFamily.extrabold,
     fontSize: FontSize.lg,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   headerSubtitle: {
     fontFamily: FontFamily.medium,
     fontSize: FontSize.xs,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     marginTop: 1,
   },
   headerRight: {
@@ -429,7 +420,7 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: Radius.full,
-    backgroundColor: Colors.surfaceRaised,
+    backgroundColor: colors.surfaceRaised,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -464,13 +455,13 @@ const styles = StyleSheet.create({
   stateTitle: {
     fontFamily: FontFamily.semibold,
     fontSize: FontSize.base,
-    color: Colors.foreground,
+    color: colors.foreground,
     marginTop: Spacing.xs,
   },
   stateBody: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.sm,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 20,
     paddingHorizontal: Spacing.lg,
@@ -483,12 +474,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.sm,
     borderRadius: Radius.full,
-    backgroundColor: Colors.primaryBg,
+    backgroundColor: colors.primaryBg,
   },
   retryButtonText: {
     fontFamily: FontFamily.semibold,
     fontSize: FontSize.sm,
-    color: Colors.primary,
+    color: colors.primary,
   },
 
   // --- Primary insight ---
@@ -503,42 +494,44 @@ const styles = StyleSheet.create({
   primaryTitle: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.base,
-    color: Colors.foreground,
+    color: colors.foreground,
     flexShrink: 1,
   },
   primaryBody: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.sm,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     lineHeight: 21,
   },
 
   // --- Try this ---
   tryThisContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: Spacing.xs,
-    backgroundColor: Colors.accentBg,
-    padding: Spacing.md,
+    backgroundColor: colors.accentBg,
     borderRadius: Radius.md,
+    padding: Spacing.md,
     marginTop: Spacing.xs,
+    gap: Spacing.sm,
+  },
+  tryThisHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
   },
   tryThisLabel: {
-    fontFamily: FontFamily.semibold,
+    fontFamily: FontFamily.bold,
     fontSize: FontSize.sm,
-    color: Colors.accent,
+    color: colors.accent,
   },
   tryThisText: {
-    fontFamily: FontFamily.regular,
+    fontFamily: FontFamily.medium,
     fontSize: FontSize.sm,
-    color: Colors.foreground,
-    flexShrink: 1,
-    lineHeight: 20,
+    color: colors.foreground,
+    lineHeight: 21,
   },
 
   // --- Today's focus ---
   todayFocusContainer: {
-    backgroundColor: Colors.primaryBg,
+    backgroundColor: colors.primaryBg,
     borderRadius: Radius.md,
     padding: Spacing.md,
     marginTop: Spacing.lg,
@@ -552,12 +545,12 @@ const styles = StyleSheet.create({
   todayFocusTitle: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.sm,
-    color: Colors.primary,
+    color: colors.primary,
   },
   todayFocusBody: {
     fontFamily: FontFamily.medium,
     fontSize: FontSize.sm,
-    color: Colors.foreground,
+    color: colors.foreground,
     lineHeight: 21,
   },
 
@@ -569,27 +562,27 @@ const styles = StyleSheet.create({
   secondarySectionTitle: {
     fontFamily: FontFamily.semibold,
     fontSize: FontSize.sm,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     marginBottom: Spacing.xs,
   },
   secondaryCard: {
-    backgroundColor: Colors.surfaceLight,
+    backgroundColor: colors.surfaceLight,
     borderRadius: Radius.md,
     padding: Spacing.md,
     gap: Spacing.xs,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   secondaryTitle: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.sm,
-    color: Colors.foreground,
+    color: colors.foreground,
     flexShrink: 1,
   },
   secondaryBody: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.xs,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     lineHeight: 18,
   },
   actionableRow: {
@@ -601,7 +594,7 @@ const styles = StyleSheet.create({
   actionableText: {
     fontFamily: FontFamily.medium,
     fontSize: FontSize.xs,
-    color: Colors.accent,
+    color: colors.accent,
     flexShrink: 1,
     lineHeight: 17,
   },

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Pressable, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -7,7 +7,8 @@ import Animated, {
   withSpring,
   useSharedValue,
 } from 'react-native-reanimated';
-import { Colors, Shadows } from '@/constants/theme';
+import { Shadows, type ThemeColors } from '@/constants/theme';
+import { useTheme } from '@/contexts/theme-context';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 
 type IconName = keyof typeof Ionicons.glyphMap;
@@ -31,10 +32,14 @@ function TabButton({
   tab,
   isFocused,
   onPress,
+  colors,
+  styles,
 }: {
   tab: TabDef;
   isFocused: boolean;
   onPress: () => void;
+  colors: ThemeColors;
+  styles: ReturnType<typeof createStyles>;
 }) {
   const scale = useSharedValue(1);
 
@@ -70,7 +75,7 @@ function TabButton({
           <Ionicons
             name={isFocused ? tab.iconFocused : tab.icon}
             size={26}
-            color={isFocused ? '#FFFFFF' : Colors.textSecondary}
+            color={isFocused ? '#FFFFFF' : colors.textSecondary}
           />
         </Animated.View>
       </Pressable>
@@ -96,7 +101,7 @@ function TabButton({
         <Ionicons
           name={isFocused ? tab.iconFocused : tab.icon}
           size={24}
-          color={isFocused ? Colors.primary : Colors.textMuted}
+          color={isFocused ? colors.primary : colors.textMuted}
         />
         {isFocused ? <View style={styles.activeDot} /> : null}
       </Animated.View>
@@ -106,6 +111,8 @@ function TabButton({
 
 export function FloatingTabBar({ state, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   return (
     <View style={[styles.container, { bottom: insets.bottom + 10 }]}>
@@ -134,6 +141,8 @@ export function FloatingTabBar({ state, navigation }: BottomTabBarProps) {
               tab={tab}
               isFocused={isFocused}
               onPress={onPress}
+              colors={colors}
+              styles={styles}
             />
           );
         })}
@@ -142,7 +151,7 @@ export function FloatingTabBar({ state, navigation }: BottomTabBarProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     position: 'absolute',
     left: 20,
@@ -153,10 +162,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
-    backgroundColor: Colors.glass,
+    backgroundColor: colors.glass,
     borderRadius: 28,
     borderWidth: 1,
-    borderColor: Colors.borderStrong,
+    borderColor: colors.borderStrong,
     height: 64,
     width: '100%',
     paddingHorizontal: 8,
@@ -176,13 +185,13 @@ const styles = StyleSheet.create({
     borderRadius: 14,
   },
   tabInnerActive: {
-    backgroundColor: Colors.primaryBg,
+    backgroundColor: colors.primaryBg,
   },
   activeDot: {
     width: 4,
     height: 4,
     borderRadius: 2,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     marginTop: 2,
   },
   centerButtonOuter: {
@@ -194,16 +203,16 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: Colors.surfaceRaised,
+    backgroundColor: colors.surfaceRaised,
     borderWidth: 2,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
     ...Shadows.card,
   },
   centerButtonActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primaryDim,
-    ...Shadows.neonGlow(Colors.primary),
+    backgroundColor: colors.primary,
+    borderColor: colors.primaryDim,
+    ...Shadows.neonGlow(colors.primary),
   },
 });

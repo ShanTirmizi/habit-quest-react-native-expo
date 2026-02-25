@@ -1,8 +1,8 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, FontSize, Spacing, Radius, FontFamily } from '@/constants/theme';
-import { CATEGORY_COLORS } from '@/constants/theme';
+import { FontSize, Spacing, Radius, FontFamily, getCategoryColors, type ThemeColors } from '@/constants/theme';
+import { useTheme } from '@/contexts/theme-context';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
@@ -49,6 +49,9 @@ const DAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 const XP_OPTIONS = [10, 15, 20, 25];
 
 export function AddHabitSheet({ visible, onClose, onAdd }: AddHabitSheetProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  const categoryColors = useMemo(() => getCategoryColors(colors), [colors]);
   const [name, setName] = useState('');
   const [category, setCategory] = useState<HabitCategory>('health');
   const [xpReward, setXpReward] = useState(15);
@@ -127,17 +130,17 @@ export function AddHabitSheet({ visible, onClose, onAdd }: AddHabitSheetProps) {
                 style={[
                   styles.categoryChip,
                   category === cat.value && {
-                    backgroundColor: `${CATEGORY_COLORS[cat.value]}20`,
-                    borderColor: CATEGORY_COLORS[cat.value],
+                    backgroundColor: `${categoryColors[cat.value]}20`,
+                    borderColor: categoryColors[cat.value],
                   },
                 ]}
               >
-                <Ionicons name={cat.icon} size={14} color={category === cat.value ? CATEGORY_COLORS[cat.value] : Colors.textSecondary} />
+                <Ionicons name={cat.icon} size={14} color={category === cat.value ? categoryColors[cat.value] : colors.textSecondary} />
                 <Text
                   style={[
                     styles.chipLabel,
                     category === cat.value && {
-                      color: CATEGORY_COLORS[cat.value],
+                      color: categoryColors[cat.value],
                     },
                   ]}
                 >
@@ -240,7 +243,7 @@ export function AddHabitSheet({ visible, onClose, onAdd }: AddHabitSheetProps) {
                   timeOfDay === tod.value && styles.todChipActive,
                 ]}
               >
-                <Ionicons name={tod.icon} size={14} color={timeOfDay === tod.value ? Colors.primary : Colors.textSecondary} />
+                <Ionicons name={tod.icon} size={14} color={timeOfDay === tod.value ? colors.primary : colors.textSecondary} />
                 <Text
                   style={[
                     styles.todLabel,
@@ -263,7 +266,7 @@ export function AddHabitSheet({ visible, onClose, onAdd }: AddHabitSheetProps) {
           <Ionicons
             name={showAdvanced ? 'chevron-up' : 'chevron-down'}
             size={16}
-            color={Colors.textSecondary}
+            color={colors.textSecondary}
           />
         </Pressable>
 
@@ -309,7 +312,7 @@ export function AddHabitSheet({ visible, onClose, onAdd }: AddHabitSheetProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   form: {
     gap: Spacing.lg,
     paddingBottom: Spacing['2xl'],
@@ -320,7 +323,7 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: FontSize.sm,
     fontFamily: FontFamily.semibold,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   optionRow: {
     flexDirection: 'row',
@@ -334,8 +337,8 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.sm,
     borderRadius: Radius.md,
     borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: Colors.surfaceLight,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceLight,
     gap: 6,
   },
   chipIcon: {
@@ -344,47 +347,47 @@ const styles = StyleSheet.create({
   chipLabel: {
     fontSize: FontSize.sm,
     fontFamily: FontFamily.medium,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   xpChip: {
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     borderRadius: Radius.md,
     borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: Colors.surfaceLight,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceLight,
   },
   xpChipActive: {
-    backgroundColor: Colors.primaryBg,
-    borderColor: Colors.primary,
+    backgroundColor: colors.primaryBg,
+    borderColor: colors.primary,
   },
   xpChipText: {
     fontSize: FontSize.sm,
     fontFamily: FontFamily.semibold,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   xpChipTextActive: {
-    color: Colors.primary,
+    color: colors.primary,
   },
   freqChip: {
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     borderRadius: Radius.md,
     borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: Colors.surfaceLight,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceLight,
   },
   freqChipActive: {
-    backgroundColor: Colors.primaryBg,
-    borderColor: Colors.primary,
+    backgroundColor: colors.primaryBg,
+    borderColor: colors.primary,
   },
   freqChipText: {
     fontSize: FontSize.sm,
     fontFamily: FontFamily.medium,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   freqChipTextActive: {
-    color: Colors.primary,
+    color: colors.primary,
   },
   daysRow: {
     flexDirection: 'row',
@@ -397,21 +400,21 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: Colors.surfaceLight,
+    backgroundColor: colors.surfaceLight,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   dayChipActive: {
-    backgroundColor: Colors.primaryBg,
-    borderColor: Colors.primary,
+    backgroundColor: colors.primaryBg,
+    borderColor: colors.primary,
   },
   dayText: {
     fontSize: FontSize.sm,
     fontFamily: FontFamily.semibold,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   dayTextActive: {
-    color: Colors.primary,
+    color: colors.primary,
   },
   todChip: {
     flexDirection: 'row',
@@ -420,13 +423,13 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.sm,
     borderRadius: Radius.md,
     borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: Colors.surfaceLight,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceLight,
     gap: 4,
   },
   todChipActive: {
-    backgroundColor: Colors.primaryBg,
-    borderColor: Colors.primary,
+    backgroundColor: colors.primaryBg,
+    borderColor: colors.primary,
   },
   todIcon: {
     width: 14,
@@ -434,10 +437,10 @@ const styles = StyleSheet.create({
   todLabel: {
     fontSize: FontSize.sm,
     fontFamily: FontFamily.medium,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   todLabelActive: {
-    color: Colors.primary,
+    color: colors.primary,
   },
   advancedToggle: {
     flexDirection: 'row',
@@ -448,14 +451,14 @@ const styles = StyleSheet.create({
   advancedText: {
     fontSize: FontSize.sm,
     fontFamily: FontFamily.semibold,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   advancedSection: {
     paddingBottom: Spacing.sm,
   },
   intentionHint: {
     fontSize: FontSize.xs,
-    color: Colors.textDim,
+    color: colors.textDim,
     fontStyle: 'italic',
     marginTop: Spacing.sm,
   },

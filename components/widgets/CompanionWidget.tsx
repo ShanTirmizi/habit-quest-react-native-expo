@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useState, useRef } from 'react';
+import React, { useEffect, useCallback, useState, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -21,7 +21,8 @@ import Animated, {
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import type { Id } from '@/convex/_generated/dataModel';
-import { Colors, FontSize, Spacing, Radius, FontFamily, Shadows } from '@/constants/theme';
+import { FontSize, Spacing, Radius, FontFamily, Shadows, type ThemeColors } from '@/constants/theme';
+import { useTheme } from '@/contexts/theme-context';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
@@ -34,12 +35,14 @@ const SPECIES_ICON: Record<string, keyof typeof Ionicons.glyphMap> = {
   keeper: 'flower',
 };
 
-const SPECIES_COLOR: Record<string, string> = {
-  treant: Colors.categoryHealth,
-  phoenix: Colors.accent,
-  owl: Colors.categoryMind,
-  keeper: Colors.categoryLife,
-};
+function getSpeciesColor(colors: ThemeColors): Record<string, string> {
+  return {
+    treant: colors.categoryHealth,
+    phoenix: colors.accent,
+    owl: colors.categoryMind,
+    keeper: colors.categoryLife,
+  };
+}
 
 const MOOD_EMOJI: Record<string, string> = {
   happy: '😊',
@@ -89,6 +92,9 @@ export function CompanionWidget({
   externalVisible,
   onExternalClose,
 }: CompanionWidgetProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  const speciesColorMap = useMemo(() => getSpeciesColor(colors), [colors]);
   const { showToast } = useToast();
   const [editingName, setEditingName] = useState(false);
   const [newName, setNewName] = useState('');
@@ -275,7 +281,7 @@ export function CompanionWidget({
       <BottomSheet visible={isVisible} onClose={handleClose} title="Dr. Sage">
         <View style={styles.ctaContent}>
           <View style={styles.ctaIconCircle}>
-            <Ionicons name="paw" size={40} color={Colors.primary} />
+            <Ionicons name="paw" size={40} color={colors.primary} />
           </View>
           <Text style={styles.ctaTitle}>Choose Your Companion</Text>
           <Text style={styles.ctaSubtitle}>
@@ -296,7 +302,7 @@ export function CompanionWidget({
   if (companion === undefined) return null;
 
   const speciesIcon = SPECIES_ICON[companion.species] || 'paw';
-  const speciesColor = SPECIES_COLOR[companion.species] || Colors.primary;
+  const speciesColor = speciesColorMap[companion.species] || colors.primary;
   const moodEmoji = MOOD_EMOJI[companion.mood] || '😊';
 
   // ---- Tab Switcher ----
@@ -309,7 +315,7 @@ export function CompanionWidget({
         <Ionicons
           name="information-circle-outline"
           size={16}
-          color={activeTab === 'info' ? '#fff' : Colors.textSecondary}
+          color={activeTab === 'info' ? '#fff' : colors.textSecondary}
         />
         <Text style={[styles.tabPillText, activeTab === 'info' && styles.tabPillTextActive]}>
           Info
@@ -322,7 +328,7 @@ export function CompanionWidget({
         <Ionicons
           name="chatbubble-outline"
           size={16}
-          color={activeTab === 'chat' ? '#fff' : Colors.textSecondary}
+          color={activeTab === 'chat' ? '#fff' : colors.textSecondary}
         />
         <Text style={[styles.tabPillText, activeTab === 'chat' && styles.tabPillTextActive]}>
           Chat
@@ -361,7 +367,7 @@ export function CompanionWidget({
       {unclaimedGifts && unclaimedGifts > 0 ? (
         <Animated.View style={giftAnimStyle}>
           <View style={styles.giftBanner}>
-            <Ionicons name="gift" size={18} color={Colors.accent} />
+            <Ionicons name="gift" size={18} color={colors.accent} />
             <Text style={styles.giftBannerText}>
               {unclaimedGifts} unclaimed gift{unclaimedGifts > 1 ? 's' : ''}!
             </Text>
@@ -377,7 +383,7 @@ export function CompanionWidget({
             value={newName}
             onChangeText={setNewName}
             placeholder="New name..."
-            placeholderTextColor={Colors.textDim}
+            placeholderTextColor={colors.textDim}
             autoFocus
           />
           <Button title="Save" size="sm" onPress={handleSaveName} disabled={!newName.trim()} />
@@ -398,7 +404,7 @@ export function CompanionWidget({
               onPress={() => handleClaimGift(gift.id)}
               style={({ pressed }) => [styles.giftItem, pressed && { opacity: 0.7 }]}
             >
-              <Ionicons name="gift" size={16} color={Colors.accent} />
+              <Ionicons name="gift" size={16} color={colors.accent} />
               <Text style={styles.giftLabel}>{gift.type.replace('_', ' ')}</Text>
               <Text style={styles.giftClaim}>Claim</Text>
             </Pressable>
@@ -467,7 +473,7 @@ export function CompanionWidget({
             <Ionicons name={speciesIcon} size={14} color={speciesColor} />
           </View>
           <View style={styles.thinkingBubble}>
-            <ActivityIndicator size="small" color={Colors.textSecondary} />
+            <ActivityIndicator size="small" color={colors.textSecondary} />
             <Text style={styles.thinkingText}>{companion.name} is thinking...</Text>
           </View>
         </View>
@@ -480,7 +486,7 @@ export function CompanionWidget({
           value={chatInput}
           onChangeText={setChatInput}
           placeholder={`Message ${companion.name}...`}
-          placeholderTextColor={Colors.textDim}
+          placeholderTextColor={colors.textDim}
           multiline
           maxLength={500}
           returnKeyType="default"
@@ -498,7 +504,7 @@ export function CompanionWidget({
           <Ionicons
             name="send"
             size={18}
-            color={!chatInput.trim() || isSending ? Colors.textDim : '#fff'}
+            color={!chatInput.trim() || isSending ? colors.textDim : '#fff'}
           />
         </Pressable>
       </View>
@@ -513,12 +519,12 @@ export function CompanionWidget({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   // Tab switcher
   tabSwitcher: {
     flexDirection: 'row',
     alignSelf: 'center',
-    backgroundColor: Colors.surfaceLight,
+    backgroundColor: colors.surfaceLight,
     borderRadius: Radius.full,
     padding: 3,
     marginBottom: Spacing.lg,
@@ -533,12 +539,12 @@ const styles = StyleSheet.create({
     borderRadius: Radius.full,
   },
   tabPillActive: {
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
   },
   tabPillText: {
     fontSize: FontSize.sm,
     fontFamily: FontFamily.semibold,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   tabPillTextActive: {
     color: '#fff',
@@ -554,18 +560,18 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: Colors.primaryBg,
+    backgroundColor: colors.primaryBg,
     alignItems: 'center',
     justifyContent: 'center',
   },
   ctaTitle: {
     fontSize: FontSize.xl,
     fontFamily: FontFamily.extrabold,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   ctaSubtitle: {
     fontSize: FontSize.sm,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 20,
     paddingHorizontal: Spacing.lg,
@@ -596,22 +602,22 @@ const styles = StyleSheet.create({
   detailStatValue: {
     fontSize: FontSize.xl,
     fontFamily: FontFamily.extrabold,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   detailStatLabel: {
     fontSize: FontSize.xs,
-    color: Colors.textMuted,
+    color: colors.textMuted,
   },
   speciesLabel: {
     fontSize: FontSize.sm,
     fontFamily: FontFamily.medium,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   giftBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,
-    backgroundColor: Colors.accentBg,
+    backgroundColor: colors.accentBg,
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.sm,
     borderRadius: Radius.full,
@@ -619,7 +625,7 @@ const styles = StyleSheet.create({
   giftBannerText: {
     fontSize: FontSize.sm,
     fontFamily: FontFamily.bold,
-    color: Colors.accent,
+    color: colors.accent,
   },
   nameEditRow: {
     flexDirection: 'row',
@@ -629,18 +635,18 @@ const styles = StyleSheet.create({
   },
   nameInput: {
     flex: 1,
-    backgroundColor: Colors.surfaceLight,
+    backgroundColor: colors.surfaceLight,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     borderRadius: Radius.md,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     fontSize: FontSize.sm,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   editNameLink: {
     fontSize: FontSize.sm,
-    color: Colors.primary,
+    color: colors.primary,
     fontFamily: FontFamily.semibold,
   },
   giftSection: {
@@ -650,7 +656,7 @@ const styles = StyleSheet.create({
   giftSectionTitle: {
     fontSize: FontSize.sm,
     fontFamily: FontFamily.bold,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
@@ -658,21 +664,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,
-    backgroundColor: Colors.surfaceLight,
+    backgroundColor: colors.surfaceLight,
     padding: Spacing.md,
     borderRadius: Radius.md,
   },
   giftLabel: {
     flex: 1,
     fontSize: FontSize.sm,
-    color: Colors.foreground,
+    color: colors.foreground,
     fontFamily: FontFamily.medium,
     textTransform: 'capitalize',
   },
   giftClaim: {
     fontSize: FontSize.sm,
     fontFamily: FontFamily.bold,
-    color: Colors.accent,
+    color: colors.accent,
   },
 
   // ---- Chat tab ----
@@ -718,11 +724,11 @@ const styles = StyleSheet.create({
     borderRadius: Radius.lg,
   },
   messageBubbleUser: {
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     borderBottomRightRadius: Radius.xs,
   },
   messageBubbleAssistant: {
-    backgroundColor: Colors.surfaceLight,
+    backgroundColor: colors.surfaceLight,
     borderBottomLeftRadius: Radius.xs,
   },
   messageText: {
@@ -734,7 +740,7 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   messageTextAssistant: {
-    color: Colors.foreground,
+    color: colors.foreground,
   },
 
   // Thinking indicator
@@ -749,7 +755,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,
-    backgroundColor: Colors.surfaceLight,
+    backgroundColor: colors.surfaceLight,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     borderRadius: Radius.lg,
@@ -758,7 +764,7 @@ const styles = StyleSheet.create({
   thinkingText: {
     fontSize: FontSize.xs,
     fontFamily: FontFamily.medium,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     fontStyle: 'italic',
   },
 
@@ -782,12 +788,12 @@ const styles = StyleSheet.create({
   chatEmptyTitle: {
     fontSize: FontSize.base,
     fontFamily: FontFamily.bold,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   chatEmptySubtitle: {
     fontSize: FontSize.sm,
     fontFamily: FontFamily.regular,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     textAlign: 'center',
     paddingHorizontal: Spacing.lg,
     lineHeight: 19,
@@ -801,19 +807,19 @@ const styles = StyleSheet.create({
     marginTop: Spacing.sm,
     paddingTop: Spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: Colors.border,
+    borderTopColor: colors.border,
   },
   chatTextInput: {
     flex: 1,
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     borderRadius: Radius.lg,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm + 2,
     fontSize: FontSize.sm,
     fontFamily: FontFamily.regular,
-    color: Colors.foreground,
+    color: colors.foreground,
     maxHeight: 80,
     minHeight: 40,
   },
@@ -821,11 +827,11 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   sendButtonDisabled: {
-    backgroundColor: Colors.surfaceLight,
+    backgroundColor: colors.surfaceLight,
   },
 });

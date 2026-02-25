@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import Animated, { useSharedValue, useAnimatedProps, withTiming, Easing } from 'react-native-reanimated';
-import { Colors } from '@/constants/theme';
+import { useTheme } from '@/contexts/theme-context';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
@@ -19,10 +19,14 @@ export function CircularProgress({
   progress,
   size,
   strokeWidth = 4,
-  color = Colors.primary,
-  trackColor = Colors.surfaceRaised,
+  color,
+  trackColor,
   children,
 }: CircularProgressProps) {
+  const { colors } = useTheme();
+  const effectiveColor = color ?? colors.primary;
+  const effectiveTrackColor = trackColor ?? colors.surfaceRaised;
+
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const animatedProgress = useSharedValue(0);
@@ -45,7 +49,7 @@ export function CircularProgress({
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke={trackColor}
+          stroke={effectiveTrackColor}
           strokeWidth={strokeWidth}
           fill="none"
         />
@@ -53,7 +57,7 @@ export function CircularProgress({
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke={color}
+          stroke={effectiveColor}
           strokeWidth={strokeWidth}
           fill="none"
           strokeLinecap="round"

@@ -16,7 +16,8 @@ import * as Haptics from 'expo-haptics';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { useAuth } from '@/contexts/auth-context';
-import { Colors, FontSize, Spacing, Radius, FontFamily, Shadows } from '@/constants/theme';
+import { useTheme } from '@/contexts/theme-context';
+import { FontSize, Spacing, Radius, FontFamily, Shadows, type ThemeColors } from '@/constants/theme';
 import { GradientCard } from '@/components/ui/GradientCard';
 import { BadgePill } from '@/components/ui/BadgePill';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -31,6 +32,8 @@ export default function QuestsScreen() {
   const insets = useSafeAreaInsets();
   const { userId } = useAuth();
   const { showToast } = useToast();
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [showAddSheet, setShowAddSheet] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [completedExpanded, setCompletedExpanded] = useState(false);
@@ -180,7 +183,7 @@ export default function QuestsScreen() {
                 setRefreshing(true);
                 setTimeout(() => setRefreshing(false), 1000);
               }}
-              tintColor={Colors.primary}
+              tintColor={colors.primary}
             />
           }
         >
@@ -204,6 +207,8 @@ export default function QuestsScreen() {
                         quest={quest}
                         onComplete={handleComplete}
                         onDelete={handleDelete}
+                        colors={colors}
+                        styles={styles}
                       />
                     ))}
                   </View>
@@ -229,7 +234,7 @@ export default function QuestsScreen() {
                     <Ionicons
                       name={completedExpanded ? 'chevron-up' : 'chevron-down'}
                       size={16}
-                      color={Colors.textSecondary}
+                      color={colors.textSecondary}
                     />
                   </Pressable>
                   {completedExpanded ? (
@@ -240,6 +245,8 @@ export default function QuestsScreen() {
                           quest={quest}
                           onUncomplete={handleUncomplete}
                           onDelete={handleDelete}
+                          colors={colors}
+                          styles={styles}
                         />
                       ))}
                     </View>
@@ -256,6 +263,8 @@ export default function QuestsScreen() {
         visible={showAddSheet}
         onClose={() => setShowAddSheet(false)}
         onAdd={handleAdd}
+        colors={colors}
+        styles={styles}
       />
     </View>
   );
@@ -267,10 +276,14 @@ function ActiveQuestCard({
   quest,
   onComplete,
   onDelete,
+  colors,
+  styles,
 }: {
   quest: SideQuest;
   onComplete: (id: string) => void;
   onDelete: (id: string) => void;
+  colors: ThemeColors;
+  styles: ReturnType<typeof createStyles>;
 }) {
   const priorityConfig = QUEST_PRIORITY_CONFIG[quest.priority];
   const btnScale = useRef(new Animated.Value(1)).current;
@@ -296,7 +309,7 @@ function ActiveQuestCard({
           hitSlop={10}
           style={({ pressed }) => [styles.deleteBtn, pressed && { opacity: 0.5 }]}
         >
-          <Ionicons name="trash-outline" size={17} color={Colors.textDim} />
+          <Ionicons name="trash-outline" size={17} color={colors.textDim} />
         </Pressable>
       </View>
 
@@ -342,10 +355,14 @@ function CompletedQuestRow({
   quest,
   onUncomplete,
   onDelete,
+  colors,
+  styles,
 }: {
   quest: SideQuest;
   onUncomplete: (id: string) => void;
   onDelete: (id: string) => void;
+  colors: ThemeColors;
+  styles: ReturnType<typeof createStyles>;
 }) {
   return (
     <View style={styles.completedRow}>
@@ -361,14 +378,14 @@ function CompletedQuestRow({
           hitSlop={8}
           style={({ pressed }) => [styles.undoBtn, pressed && { opacity: 0.5 }]}
         >
-          <Ionicons name="arrow-undo" size={15} color={Colors.textMuted} />
+          <Ionicons name="arrow-undo" size={15} color={colors.textMuted} />
         </Pressable>
         <Pressable
           onPress={() => onDelete(quest.id)}
           hitSlop={8}
           style={({ pressed }) => [styles.undoBtn, pressed && { opacity: 0.5 }]}
         >
-          <Ionicons name="trash-outline" size={14} color={Colors.textDim} />
+          <Ionicons name="trash-outline" size={14} color={colors.textDim} />
         </Pressable>
       </View>
     </View>
@@ -381,10 +398,14 @@ function AddQuestSheet({
   visible,
   onClose,
   onAdd,
+  colors,
+  styles,
 }: {
   visible: boolean;
   onClose: () => void;
   onAdd: (quest: { title: string; description?: string; priority: QuestPriority }) => void;
+  colors: ThemeColors;
+  styles: ReturnType<typeof createStyles>;
 }) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -459,10 +480,10 @@ function AddQuestSheet({
 
 /* ─── Styles ─────────────────────────────────────────────────────────────── */
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
   },
 
   /* Header */
@@ -480,14 +501,14 @@ const styles = StyleSheet.create({
   title: {
     fontSize: FontSize['3xl'],
     fontFamily: FontFamily.extrabold,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   badgeRow: {
     flexDirection: 'row',
     gap: Spacing.sm,
   },
   activeBadge: {
-    backgroundColor: `${Colors.primary}18`,
+    backgroundColor: `${colors.primary}18`,
     paddingHorizontal: Spacing.sm + 2,
     paddingVertical: 3,
     borderRadius: Radius.full,
@@ -495,10 +516,10 @@ const styles = StyleSheet.create({
   activeBadgeText: {
     fontSize: FontSize.xs,
     fontFamily: FontFamily.semibold,
-    color: Colors.primary,
+    color: colors.primary,
   },
   completedBadge: {
-    backgroundColor: `${Colors.success}18`,
+    backgroundColor: `${colors.success}18`,
     paddingHorizontal: Spacing.sm + 2,
     paddingVertical: 3,
     borderRadius: Radius.full,
@@ -506,16 +527,16 @@ const styles = StyleSheet.create({
   completedBadgeText: {
     fontSize: FontSize.xs,
     fontFamily: FontFamily.semibold,
-    color: Colors.success,
+    color: colors.success,
   },
   addBtn: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    ...Shadows.neonGlow(Colors.primary),
+    ...Shadows.neonGlow(colors.primary),
   },
 
   /* Loading */
@@ -554,7 +575,7 @@ const styles = StyleSheet.create({
   activeCardTitle: {
     fontSize: FontSize.lg,
     fontFamily: FontFamily.bold,
-    color: Colors.foreground,
+    color: colors.foreground,
     flex: 1,
     marginRight: Spacing.sm,
   },
@@ -564,7 +585,7 @@ const styles = StyleSheet.create({
   activeCardDesc: {
     fontSize: FontSize.sm,
     fontFamily: FontFamily.regular,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     lineHeight: 19,
   },
   activeCardBottomRow: {
@@ -574,7 +595,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   xpBadge: {
-    backgroundColor: Colors.primaryBg,
+    backgroundColor: colors.primaryBg,
     paddingHorizontal: Spacing.sm + 2,
     paddingVertical: 3,
     borderRadius: Radius.full,
@@ -582,13 +603,13 @@ const styles = StyleSheet.create({
   xpBadgeText: {
     fontSize: FontSize.xs,
     fontFamily: FontFamily.bold,
-    color: Colors.primary,
+    color: colors.primary,
   },
   completeButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: Colors.success,
+    backgroundColor: colors.success,
     paddingVertical: Spacing.sm + 4,
     borderRadius: Radius.lg,
     marginTop: Spacing.sm,
@@ -607,7 +628,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
-    backgroundColor: Colors.surfaceLight,
+    backgroundColor: colors.surfaceLight,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     borderRadius: Radius.full,
@@ -616,7 +637,7 @@ const styles = StyleSheet.create({
   completedHeaderText: {
     fontSize: FontSize.xs,
     fontFamily: FontFamily.bold,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     letterSpacing: 0.8,
   },
   completedList: {
@@ -628,7 +649,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: Colors.surfaceRaised,
+    backgroundColor: colors.surfaceRaised,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm + 2,
     borderRadius: Radius.md,
@@ -636,7 +657,7 @@ const styles = StyleSheet.create({
   completedRowTitle: {
     fontSize: FontSize.sm,
     fontFamily: FontFamily.medium,
-    color: Colors.textMuted,
+    color: colors.textMuted,
     textDecorationLine: 'line-through',
     flex: 1,
     marginRight: Spacing.sm,
@@ -647,7 +668,7 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   completedXpBadge: {
-    backgroundColor: `${Colors.success}18`,
+    backgroundColor: `${colors.success}18`,
     paddingHorizontal: Spacing.sm,
     paddingVertical: 2,
     borderRadius: Radius.full,
@@ -655,13 +676,13 @@ const styles = StyleSheet.create({
   completedXpText: {
     fontSize: FontSize.xs,
     fontFamily: FontFamily.semibold,
-    color: Colors.success,
+    color: colors.success,
   },
   undoBtn: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: Colors.surfaceLight,
+    backgroundColor: colors.surfaceLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -677,7 +698,7 @@ const styles = StyleSheet.create({
   priorityLabel: {
     fontSize: FontSize.sm,
     fontFamily: FontFamily.semibold,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   priorityRow: {
     flexDirection: 'row',
@@ -689,14 +710,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     borderRadius: Radius.md,
     borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: Colors.surfaceLight,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceLight,
     alignItems: 'center',
   },
   priorityChipText: {
     fontSize: FontSize.xs,
     fontFamily: FontFamily.semibold,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   addFormFooter: {
     flexDirection: 'row',

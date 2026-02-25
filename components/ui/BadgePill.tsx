@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Radius, FontSize, Spacing, FontFamily } from '@/constants/theme';
+import { Radius, FontSize, Spacing, FontFamily, type ThemeColors } from '@/constants/theme';
+import { useTheme } from '@/contexts/theme-context';
 
 interface BadgePillProps {
   label: string;
@@ -14,13 +15,17 @@ interface BadgePillProps {
 
 export function BadgePill({
   label,
-  color = Colors.primary,
+  color,
   bgColor,
   icon,
   size = 'sm',
   style,
 }: BadgePillProps) {
-  const bg = bgColor || `${color}15`;
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
+  const resolvedColor = color ?? colors.primary;
+  const bg = bgColor || `${resolvedColor}15`;
   const isSmall = size === 'sm';
 
   return (
@@ -36,13 +41,13 @@ export function BadgePill({
       ]}
     >
       {icon ? (
-        <Ionicons name={icon as keyof typeof Ionicons.glyphMap} size={isSmall ? 10 : 12} color={color} />
+        <Ionicons name={icon as keyof typeof Ionicons.glyphMap} size={isSmall ? 10 : 12} color={resolvedColor} />
       ) : null}
       <Text
         style={[
           styles.label,
           {
-            color,
+            color: resolvedColor,
             fontSize: isSmall ? FontSize.xs : FontSize.sm,
           },
         ]}
@@ -53,7 +58,7 @@ export function BadgePill({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   pill: {
     flexDirection: 'row',
     alignItems: 'center',

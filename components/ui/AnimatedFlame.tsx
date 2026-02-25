@@ -8,7 +8,7 @@ import Animated, {
   withTiming,
   Easing,
 } from 'react-native-reanimated';
-import { Colors } from '@/constants/theme';
+import { useTheme } from '@/contexts/theme-context';
 
 interface AnimatedFlameProps {
   size?: number;
@@ -18,9 +18,12 @@ interface AnimatedFlameProps {
 
 export function AnimatedFlame({
   size = 32,
-  color = Colors.accent,
+  color,
   active = true,
 }: AnimatedFlameProps) {
+  const { colors } = useTheme();
+  const effectiveColor = color ?? colors.accent;
+
   const scale = useSharedValue(1);
   const rotate = useSharedValue(0);
 
@@ -62,7 +65,7 @@ export function AnimatedFlame({
       <Ionicons
         name="flame"
         size={size}
-        color={active ? color : Colors.textDim}
+        color={active ? effectiveColor : colors.textDim}
       />
     </Animated.View>
   );

@@ -1,6 +1,7 @@
-import React, { forwardRef } from 'react';
+import React, { forwardRef, useMemo } from 'react';
 import { TextInput, View, Text, StyleSheet, ViewStyle, TextInputProps } from 'react-native';
-import { Colors, Radius, FontSize, Spacing, FontFamily } from '@/constants/theme';
+import { Radius, FontSize, Spacing, FontFamily, type ThemeColors } from '@/constants/theme';
+import { useTheme } from '@/contexts/theme-context';
 
 interface InputProps extends TextInputProps {
   label?: string;
@@ -10,14 +11,17 @@ interface InputProps extends TextInputProps {
 
 export const Input = forwardRef<TextInput, InputProps>(
   ({ label, error, containerStyle, style, ...props }, ref) => {
+    const { colors } = useTheme();
+    const styles = useMemo(() => createStyles(colors), [colors]);
+
     return (
       <View style={containerStyle}>
         {label ? <Text style={styles.label}>{label}</Text> : null}
         <TextInput
           ref={ref}
           style={[styles.input, error && styles.inputError, style]}
-          placeholderTextColor={Colors.textDim}
-          selectionColor={Colors.primary}
+          placeholderTextColor={colors.textDim}
+          selectionColor={colors.primary}
           {...props}
         />
         {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -28,30 +32,30 @@ export const Input = forwardRef<TextInput, InputProps>(
 
 Input.displayName = 'Input';
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   label: {
     fontSize: FontSize.sm,
     fontFamily: FontFamily.semibold,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     marginBottom: Spacing.xs,
   },
   input: {
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     borderRadius: Radius.lg,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm + 2,
     fontSize: FontSize.base,
-    color: Colors.foreground,
+    color: colors.foreground,
     fontFamily: FontFamily.regular,
   },
   inputError: {
-    borderColor: Colors.danger,
+    borderColor: colors.danger,
   },
   error: {
     fontSize: FontSize.xs,
-    color: Colors.danger,
+    color: colors.danger,
     marginTop: Spacing.xs,
     fontFamily: FontFamily.regular,
   },

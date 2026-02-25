@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { View, StyleSheet, ViewStyle } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -8,7 +8,8 @@ import Animated, {
   withSequence,
   Easing,
 } from 'react-native-reanimated';
-import { Colors, Radius } from '@/constants/theme';
+import { Radius, type ThemeColors } from '@/constants/theme';
+import { useTheme } from '@/contexts/theme-context';
 
 interface ProgressBarProps {
   progress: number; // 0-100
@@ -22,13 +23,19 @@ interface ProgressBarProps {
 
 export function ProgressBar({
   progress,
-  color = Colors.primary,
-  trackColor = Colors.surfaceRaised,
+  color,
+  trackColor,
   height = 8,
   style,
   animated = true,
   glowColor,
 }: ProgressBarProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
+  const resolvedColor = color ?? colors.primary;
+  const resolvedTrackColor = trackColor ?? colors.surfaceRaised;
+
   const clampedProgress = Math.min(100, Math.max(0, progress));
   const widthProgress = useSharedValue(animated ? 0 : clampedProgress);
   const glowOpacity = useSharedValue(0);
@@ -61,7 +68,7 @@ export function ProgressBar({
 
   const fillStyle = useAnimatedStyle(() => ({
     width: `${widthProgress.value}%` as any,
-    backgroundColor: color,
+    backgroundColor: resolvedColor,
     height,
   }));
 
@@ -71,7 +78,7 @@ export function ProgressBar({
 
   return (
     <View
-      style={[styles.track, { backgroundColor: trackColor, height }, style]}
+      style={[styles.track, { backgroundColor: resolvedTrackColor, height }, style]}
       accessibilityRole="progressbar"
       accessibilityValue={{ min: 0, max: 100, now: Math.round(clampedProgress) }}
     >
@@ -89,7 +96,7 @@ export function ProgressBar({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   track: {
     borderRadius: Radius.full,
     overflow: 'hidden',

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -13,39 +13,43 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
-import { Colors, FontSize, Spacing, Radius, FontFamily, Shadows } from '@/constants/theme';
+import { useTheme } from '@/contexts/theme-context';
+import { FontSize, Spacing, Radius, FontFamily, Shadows, type ThemeColors } from '@/constants/theme';
 import { Button } from '@/components/ui/Button';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-const SLIDES = [
-  {
-    id: '1',
-    icon: 'flame' as const,
-    iconColor: Colors.accent,
-    title: 'Build Powerful Habits',
-    description:
-      'Create daily habits, track streaks, and earn XP for every completion. Small steps lead to extraordinary results.',
-  },
-  {
-    id: '2',
-    icon: 'trophy' as const,
-    iconColor: Colors.primary,
-    title: 'Level Up & Compete',
-    description:
-      'Gain experience points, level up your character, defeat weekly bosses, and unlock achievements along the way.',
-  },
-  {
-    id: '3',
-    icon: 'compass' as const,
-    iconColor: Colors.secondary,
-    title: 'Meet Dr. Sage',
-    description:
-      'Your AI companion provides personalized coaching, tracks your patterns, and helps you overcome challenges.',
-  },
-];
-
 export default function OnboardingScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
+  const SLIDES = useMemo(() => [
+    {
+      id: '1',
+      icon: 'flame' as const,
+      iconColor: colors.accent,
+      title: 'Build Powerful Habits',
+      description:
+        'Create daily habits, track streaks, and earn XP for every completion. Small steps lead to extraordinary results.',
+    },
+    {
+      id: '2',
+      icon: 'trophy' as const,
+      iconColor: colors.primary,
+      title: 'Level Up & Compete',
+      description:
+        'Gain experience points, level up your character, defeat weekly bosses, and unlock achievements along the way.',
+    },
+    {
+      id: '3',
+      icon: 'compass' as const,
+      iconColor: colors.secondary,
+      title: 'Meet Dr. Sage',
+      description:
+        'Your AI companion provides personalized coaching, tracks your patterns, and helps you overcome challenges.',
+    },
+  ], [colors]);
+
   const [currentIndex, setCurrentIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
   const insets = useSafeAreaInsets();
@@ -121,7 +125,7 @@ export default function OnboardingScreen() {
                 styles.dot,
                 {
                   backgroundColor:
-                    index === currentIndex ? Colors.primary : Colors.surfaceRaised,
+                    index === currentIndex ? colors.primary : colors.surfaceRaised,
                 },
               ]}
             />
@@ -133,17 +137,17 @@ export default function OnboardingScreen() {
           onPress={handleNext}
           size="lg"
           fullWidth
-          style={{ ...Shadows.glow(Colors.primary) }}
+          style={{ ...Shadows.glow(colors.primary) }}
         />
       </View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -158,7 +162,7 @@ const styles = StyleSheet.create({
   skipText: {
     fontFamily: FontFamily.medium,
     fontSize: FontSize.base,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   slide: {
     width: SCREEN_WIDTH,
@@ -171,7 +175,7 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: Colors.surfaceLight,
+    backgroundColor: colors.surfaceLight,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: Spacing['2xl'],
@@ -179,14 +183,14 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: FontFamily.extrabold,
     fontSize: FontSize['3xl'],
-    color: Colors.foreground,
+    color: colors.foreground,
     textAlign: 'center',
     marginBottom: Spacing.md,
   },
   description: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.base,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     textAlign: 'center',
     maxWidth: 280,
     lineHeight: FontSize.base * 1.6,

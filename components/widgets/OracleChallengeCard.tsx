@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -6,7 +6,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import type { Id } from '@/convex/_generated/dataModel';
-import { Colors, FontSize, Spacing, Radius, FontFamily } from '@/constants/theme';
+import { FontSize, Spacing, Radius, FontFamily, type ThemeColors } from '@/constants/theme';
+import { useTheme } from '@/contexts/theme-context';
 import { Button } from '@/components/ui/Button';
 import { useToast } from '@/contexts/toast-context';
 
@@ -15,6 +16,8 @@ interface OracleChallengeCardProps {
 }
 
 export function OracleChallengeCard({ userId }: OracleChallengeCardProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { showToast } = useToast();
   const challenge = useQuery(api.oracle.getChallenge, { userId });
   const generateMutation = useMutation(api.oracle.generateChallenge);
@@ -87,7 +90,7 @@ export function OracleChallengeCard({ userId }: OracleChallengeCardProps) {
         />
         <View style={styles.content}>
           <View style={styles.headerRow}>
-            <Ionicons name="eye-outline" size={20} color={Colors.categoryMind} />
+            <Ionicons name="eye-outline" size={20} color={colors.categoryMind} />
             <Text style={styles.title}>Oracle Challenge</Text>
           </View>
           <Text style={styles.description}>Consult the Oracle for a daily challenge and earn bonus XP.</Text>
@@ -112,7 +115,7 @@ export function OracleChallengeCard({ userId }: OracleChallengeCardProps) {
       />
       <View style={styles.content}>
         <View style={styles.headerRow}>
-          <Ionicons name="eye" size={20} color={Colors.categoryMind} />
+          <Ionicons name="eye" size={20} color={colors.categoryMind} />
           <Text style={styles.title}>Oracle Challenge</Text>
           <Text style={styles.xpBadge}>+{challenge.xpReward} XP</Text>
         </View>
@@ -127,7 +130,7 @@ export function OracleChallengeCard({ userId }: OracleChallengeCardProps) {
             <Button title="Complete" onPress={handleComplete} size="sm" loading={actionLoading} disabled={actionLoading} />
           ) : challenge.completed ? (
             <View style={styles.completedBadge}>
-              <Ionicons name="checkmark-circle" size={18} color={Colors.success} />
+              <Ionicons name="checkmark-circle" size={18} color={colors.success} />
               <Text style={styles.completedText}>Completed</Text>
             </View>
           ) : null}
@@ -137,7 +140,7 @@ export function OracleChallengeCard({ userId }: OracleChallengeCardProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   wrapper: {
     borderRadius: Radius.lg,
     borderWidth: 1,
@@ -157,23 +160,23 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: FontSize.sm,
     fontFamily: FontFamily.bold,
-    color: Colors.categoryMind,
+    color: colors.categoryMind,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   xpBadge: {
     fontSize: FontSize.xs,
     fontFamily: FontFamily.extrabold,
-    color: Colors.primary,
+    color: colors.primary,
   },
   description: {
     fontSize: FontSize.sm,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     lineHeight: 18,
   },
   challengeText: {
     fontSize: FontSize.sm,
-    color: Colors.foreground,
+    color: colors.foreground,
     lineHeight: 20,
   },
   actions: {
@@ -189,6 +192,6 @@ const styles = StyleSheet.create({
   completedText: {
     fontSize: FontSize.sm,
     fontFamily: FontFamily.semibold,
-    color: Colors.success,
+    color: colors.success,
   },
 });

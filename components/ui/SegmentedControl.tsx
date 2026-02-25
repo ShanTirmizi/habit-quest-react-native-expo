@@ -1,4 +1,4 @@
-import React, { useRef, useCallback } from 'react';
+import React, { useRef, useCallback, useMemo } from 'react';
 import { View, Text, Pressable, StyleSheet, ViewStyle, LayoutChangeEvent } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -6,7 +6,8 @@ import Animated, {
   withTiming,
   Easing,
 } from 'react-native-reanimated';
-import { Colors, Radius, FontSize, Spacing, FontFamily } from '@/constants/theme';
+import { Radius, FontSize, Spacing, FontFamily, type ThemeColors } from '@/constants/theme';
+import { useTheme } from '@/contexts/theme-context';
 
 interface Segment {
   label: string;
@@ -27,6 +28,9 @@ export function SegmentedControl({
   onValueChange,
   style,
 }: SegmentedControlProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   const layouts = useRef<Record<string, { x: number; width: number }>>({});
   const indicatorX = useSharedValue(0);
   const indicatorWidth = useSharedValue(0);
@@ -94,10 +98,10 @@ export function SegmentedControl({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flexDirection: 'row',
-    backgroundColor: Colors.surfaceLight,
+    backgroundColor: colors.surfaceLight,
     borderRadius: Radius.md,
     padding: 3,
     position: 'relative',
@@ -106,10 +110,10 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 3,
     bottom: 3,
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: Radius.sm,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   segment: {
     flex: 1,
@@ -125,30 +129,30 @@ const styles = StyleSheet.create({
   label: {
     fontSize: FontSize.sm,
     fontFamily: FontFamily.medium,
-    color: Colors.textMuted,
+    color: colors.textMuted,
   },
   labelActive: {
-    color: Colors.foreground,
+    color: colors.foreground,
     fontFamily: FontFamily.semibold,
   },
   badge: {
     minWidth: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: Colors.border,
+    backgroundColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 5,
   },
   badgeActive: {
-    backgroundColor: Colors.primaryBg,
+    backgroundColor: colors.primaryBg,
   },
   badgeText: {
     fontSize: 10,
     fontFamily: FontFamily.bold,
-    color: Colors.textMuted,
+    color: colors.textMuted,
   },
   badgeTextActive: {
-    color: Colors.primary,
+    color: colors.primary,
   },
 });

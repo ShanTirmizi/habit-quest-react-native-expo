@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { Text, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,7 +10,8 @@ import Animated, {
   withTiming,
   runOnJS,
 } from 'react-native-reanimated';
-import { Colors, FontSize, Spacing, Radius, FontFamily, Shadows } from '@/constants/theme';
+import { FontSize, Spacing, Radius, FontFamily, Shadows, type ThemeColors } from '@/constants/theme';
+import { useTheme } from '@/contexts/theme-context';
 import { useToast, type ToastType } from '@/contexts/toast-context';
 
 const ICON_MAP: Record<ToastType, keyof typeof Ionicons.glyphMap> = {
@@ -20,14 +21,20 @@ const ICON_MAP: Record<ToastType, keyof typeof Ionicons.glyphMap> = {
   error: 'alert-circle',
 };
 
-const COLOR_MAP: Record<ToastType, string> = {
-  xp: Colors.primary,
-  level: Colors.accent,
-  hp: Colors.hpHigh,
-  error: Colors.danger,
-};
+function getColorMap(colors: ThemeColors): Record<ToastType, string> {
+  return {
+    xp: colors.primary,
+    level: colors.accent,
+    hp: colors.hpHigh,
+    error: colors.danger,
+  };
+}
 
 export function XpToast() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  const colorMap = useMemo(() => getColorMap(colors), [colors]);
+
   const insets = useSafeAreaInsets();
   const { toast, dismissToast } = useToast();
 
@@ -68,7 +75,7 @@ export function XpToast() {
   if (!toast) return null;
 
   const icon = ICON_MAP[toast.type];
-  const color = COLOR_MAP[toast.type];
+  const color = colorMap[toast.type];
 
   return (
     <GestureDetector gesture={panGesture}>
@@ -91,7 +98,7 @@ export function XpToast() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     position: 'absolute',
     left: Spacing.lg,
@@ -102,10 +109,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.md,
-    backgroundColor: Colors.surfaceLight,
+    backgroundColor: colors.surfaceLight,
     borderRadius: Radius.xl,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     paddingVertical: Spacing.md,
     paddingHorizontal: Spacing.lg,
     ...Shadows.cardRaised,
@@ -114,7 +121,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: FontSize.sm,
     fontFamily: FontFamily.semibold,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   xp: {
     fontSize: FontSize.base,

@@ -10,18 +10,10 @@ import Animated, {
   withDelay,
   runOnJS,
 } from 'react-native-reanimated';
-import { Colors, FontSize, FontFamily, Spacing } from '@/constants/theme';
+import { FontSize, FontFamily, Spacing, type ThemeColors } from '@/constants/theme';
+import { useTheme } from '@/contexts/theme-context';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-
-const CONFETTI_COLORS = [
-  Colors.primary,
-  Colors.accent,
-  Colors.categoryHealth,
-  Colors.categoryCareer,
-  Colors.categoryMind,
-  Colors.rarityLegendary,
-];
 
 interface LevelUpCelebrationProps {
   level: number;
@@ -29,13 +21,22 @@ interface LevelUpCelebrationProps {
   onDismiss: () => void;
 }
 
-function ConfettiPiece({ index }: { index: number }) {
+function ConfettiPiece({ index, colors }: { index: number; colors: ThemeColors }) {
   const translateX = useSharedValue(SCREEN_WIDTH / 2);
   const translateY = useSharedValue(SCREEN_HEIGHT / 3);
   const opacity = useSharedValue(0);
   const scale = useSharedValue(0);
 
-  const color = CONFETTI_COLORS[index % CONFETTI_COLORS.length];
+  const confettiColors = useMemo(() => [
+    colors.primary,
+    colors.accent,
+    colors.categoryHealth,
+    colors.categoryCareer,
+    colors.categoryMind,
+    colors.rarityLegendary,
+  ], [colors]);
+
+  const color = confettiColors[index % confettiColors.length];
   const size = 8 + (index % 4) * 3;
 
   useEffect(() => {
@@ -73,6 +74,8 @@ function ConfettiPiece({ index }: { index: number }) {
 }
 
 export function LevelUpCelebration({ level, visible, onDismiss }: LevelUpCelebrationProps) {
+  const { colors } = useTheme();
+  const dynamicStyles = useMemo(() => createStyles(colors), [colors]);
   const levelScale = useSharedValue(0);
   const backdropOpacity = useSharedValue(0);
   const textOpacity = useSharedValue(0);
@@ -118,23 +121,24 @@ export function LevelUpCelebration({ level, visible, onDismiss }: LevelUpCelebra
 
       {/* Confetti */}
       {confettiPieces.map((i) => (
-        <ConfettiPiece key={i} index={i} />
+        <ConfettiPiece key={i} index={i} colors={colors} />
       ))}
 
       {/* Level number */}
       <View style={styles.center}>
-        <Animated.View style={[styles.levelCircle, levelStyle]}>
-          <Text style={styles.levelNumber}>{level}</Text>
+        <Animated.View style={[dynamicStyles.levelCircle, levelStyle]}>
+          <Text style={dynamicStyles.levelNumber}>{level}</Text>
         </Animated.View>
         <Animated.View style={textStyle}>
-          <Text style={styles.levelUpText}>Level Up!</Text>
-          <Text style={styles.levelSubtext}>You reached level {level}</Text>
+          <Text style={dynamicStyles.levelUpText}>Level Up!</Text>
+          <Text style={dynamicStyles.levelSubtext}>You reached level {level}</Text>
         </Animated.View>
       </View>
     </Animated.View>
   );
 }
 
+// Static styles that don't depend on theme colors
 const styles = StyleSheet.create({
   overlay: {
     ...StyleSheet.absoluteFillObject,
@@ -146,34 +150,37 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 16,
   },
+  confetti: {
+    position: 'absolute',
+  },
+});
+
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   levelCircle: {
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: Colors.primaryBg,
+    backgroundColor: colors.primaryBg,
     borderWidth: 3,
-    borderColor: Colors.primary,
+    borderColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   levelNumber: {
     fontSize: 48,
     fontFamily: FontFamily.extrabold,
-    color: Colors.primary,
+    color: colors.primary,
   },
   levelUpText: {
     fontSize: FontSize['4xl'],
     fontFamily: FontFamily.extrabold,
-    color: Colors.accent,
+    color: colors.accent,
     textAlign: 'center',
   },
   levelSubtext: {
     fontSize: FontSize.base,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     textAlign: 'center',
     marginTop: 4,
-  },
-  confetti: {
-    position: 'absolute',
   },
 });

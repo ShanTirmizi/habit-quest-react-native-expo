@@ -6,6 +6,7 @@ import {
   ScrollView,
   Pressable,
   TextInput,
+  Dimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,7 +14,8 @@ import * as Haptics from 'expo-haptics';
 import { format, isToday, parseISO } from 'date-fns';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
-import { Colors, FontSize, Spacing, Radius, FontFamily, Shadows } from '@/constants/theme';
+import { useTheme } from '@/contexts/theme-context';
+import { FontSize, Spacing, Radius, FontFamily, Shadows, type ThemeColors } from '@/constants/theme';
 import { GradientCard } from '@/components/ui/GradientCard';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -35,6 +37,8 @@ export default function ChroniclesScreen() {
   const insets = useSafeAreaInsets();
   const { userId } = useAuth();
   const { showToast } = useToast();
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [isWriting, setIsWriting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editingEntry, setEditingEntry] = useState<JournalEntry | null>(null);
@@ -176,7 +180,7 @@ export default function ChroniclesScreen() {
 
   const todayMoodColor = todayEntry?.mood
     ? MOOD_CONFIG[todayEntry.mood].color
-    : Colors.textMuted;
+    : colors.textMuted;
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -194,7 +198,7 @@ export default function ChroniclesScreen() {
               onPress={() => setIsWriting(true)}
               style={({ pressed }) => [styles.writeBtn, pressed && { opacity: 0.7 }]}
             >
-              <Ionicons name="create-outline" size={20} color={Colors.background} />
+              <Ionicons name="create-outline" size={20} color={colors.background} />
             </Pressable>
           </View>
         ) : null}
@@ -239,7 +243,7 @@ export default function ChroniclesScreen() {
                     </Text>
                   </View>
                 </View>
-                <Ionicons name="pencil-outline" size={16} color={Colors.textMuted} />
+                <Ionicons name="pencil-outline" size={16} color={colors.textMuted} />
               </View>
 
               <View style={styles.featuredGratitudes}>
@@ -264,7 +268,7 @@ export default function ChroniclesScreen() {
                 <View style={styles.featuredFooterRight}>
                   <Text style={styles.tapToEditText}>Tap to edit</Text>
                   <View style={styles.featuredXpBadge}>
-                    <Ionicons name="flash" size={12} color={Colors.accent} />
+                    <Ionicons name="flash" size={12} color={colors.accent} />
                     <Text style={styles.featuredXpText}>+{todayEntry.xpAwarded} XP</Text>
                   </View>
                 </View>
@@ -272,19 +276,15 @@ export default function ChroniclesScreen() {
             </GradientCard>
           ) : null}
 
-          {/* ── Past Entries: Horizontal Gallery ── */}
+          {/* ── Past Entries ── */}
           {pastEntries.length > 0 && !isWriting && !isEditing ? (
             <View style={styles.pastSection}>
               <Text style={styles.pastSectionTitle}>Past Entries</Text>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.pastGallery}
-              >
+              <View style={styles.pastList}>
                 {pastEntries.map((entry) => (
-                  <PastEntryCard key={entry.id} entry={entry} onEdit={handleStartEditing} />
+                  <PastEntryCard key={entry.id} entry={entry} onEdit={handleStartEditing} colors={colors} styles={styles} />
                 ))}
-              </ScrollView>
+              </View>
             </View>
           ) : null}
 
@@ -338,7 +338,7 @@ export default function ChroniclesScreen() {
                       <Ionicons
                         name={config.icon as keyof typeof Ionicons.glyphMap}
                         size={24}
-                        color={isSelected ? config.color : Colors.textMuted}
+                        color={isSelected ? config.color : colors.textMuted}
                       />
                     </View>
                     <Text
@@ -373,8 +373,8 @@ export default function ChroniclesScreen() {
                     value={item.value}
                     onChangeText={item.setter}
                     placeholder={item.placeholder}
-                    placeholderTextColor={Colors.textDim}
-                    selectionColor={Colors.primary}
+                    placeholderTextColor={colors.textDim}
+                    selectionColor={colors.primary}
                   />
                 </View>
               ))}
@@ -391,8 +391,8 @@ export default function ChroniclesScreen() {
               value={improvement}
               onChangeText={setImprovement}
               placeholder="One thing I could improve..."
-              placeholderTextColor={Colors.textDim}
-              selectionColor={Colors.primary}
+              placeholderTextColor={colors.textDim}
+              selectionColor={colors.primary}
               multiline
             />
           </View>
@@ -407,8 +407,8 @@ export default function ChroniclesScreen() {
               value={content}
               onChangeText={setContent}
               placeholder="Free-form reflections, ideas, feelings..."
-              placeholderTextColor={Colors.textDim}
-              selectionColor={Colors.primary}
+              placeholderTextColor={colors.textDim}
+              selectionColor={colors.primary}
               multiline
             />
           </View>
@@ -448,14 +448,24 @@ export default function ChroniclesScreen() {
 }
 
 /* ── Past Entry Gallery Card ── */
-function PastEntryCard({ entry, onEdit }: { entry: JournalEntry; onEdit: (entry: JournalEntry) => void }) {
+function PastEntryCard({
+  entry,
+  onEdit,
+  colors,
+  styles,
+}: {
+  entry: JournalEntry;
+  onEdit: (entry: JournalEntry) => void;
+  colors: ThemeColors;
+  styles: ReturnType<typeof createStyles>;
+}) {
   const [expanded, setExpanded] = useState(false);
 
   const dateStr = entry.entryDate
     ? format(parseISO(entry.entryDate), 'MMM d')
     : format(parseISO(entry.createdAt), 'MMM d');
 
-  const moodColor = entry.mood ? MOOD_CONFIG[entry.mood].color : Colors.textMuted;
+  const moodColor = entry.mood ? MOOD_CONFIG[entry.mood].color : colors.textMuted;
   const moodIcon = entry.mood
     ? MOOD_CONFIG[entry.mood].icon
     : 'document-text-outline';
@@ -479,9 +489,9 @@ function PastEntryCard({ entry, onEdit }: { entry: JournalEntry; onEdit: (entry:
               hitSlop={8}
               style={({ pressed }) => [pressed && { opacity: 0.6 }]}
             >
-              <Ionicons name="pencil-outline" size={14} color={Colors.primary} />
+              <Ionicons name="pencil-outline" size={14} color={colors.primary} />
             </Pressable>
-            <Ionicons name="chevron-up" size={14} color={Colors.textDim} />
+            <Ionicons name="chevron-up" size={14} color={colors.textDim} />
           </View>
         </View>
         <View style={styles.expandedGratitudes}>
@@ -523,10 +533,10 @@ function PastEntryCard({ entry, onEdit }: { entry: JournalEntry; onEdit: (entry:
       </View>
       <View style={styles.pastCardBottom}>
         <Text style={styles.pastCardPreview} numberOfLines={1}>
-          {entry.gratitudes[0]}
+          {entry.gratitudes[0] || 'No gratitudes'}
         </Text>
         <View style={styles.pastCardXp}>
-          <Ionicons name="flash" size={10} color={Colors.accent} />
+          <Ionicons name="flash" size={10} color={colors.accent} />
           <Text style={styles.pastCardXpText}>+{entry.xpAwarded}</Text>
         </View>
       </View>
@@ -536,10 +546,10 @@ function PastEntryCard({ entry, onEdit }: { entry: JournalEntry; onEdit: (entry:
 
 /* ──────────────── Styles ──────────────── */
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
   },
 
   /* Header */
@@ -554,11 +564,11 @@ const styles = StyleSheet.create({
   title: {
     fontSize: FontSize['3xl'],
     fontFamily: FontFamily.extrabold,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   subtitle: {
     fontSize: FontSize.xs,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     marginTop: 2,
   },
   headerActions: {
@@ -570,10 +580,10 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    ...Shadows.glow(Colors.primary, 0.3),
+    ...Shadows.glow(colors.primary, 0.3),
   },
 
   /* Loading */
@@ -599,12 +609,12 @@ const styles = StyleSheet.create({
   formTitle: {
     fontSize: FontSize.lg,
     fontFamily: FontFamily.bold,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   formLabel: {
     fontSize: FontSize.sm,
     fontFamily: FontFamily.semibold,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     marginBottom: Spacing.sm,
   },
 
@@ -624,16 +634,16 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: Colors.surfaceLight,
+    backgroundColor: colors.surfaceLight,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
   moodCircleLabel: {
     fontSize: FontSize.xs,
     fontFamily: FontFamily.semibold,
-    color: Colors.textMuted,
+    color: colors.textMuted,
   },
 
   /* Gratitudes */
@@ -650,39 +660,39 @@ const styles = StyleSheet.create({
     width: 26,
     height: 26,
     borderRadius: 13,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   gratitudeNumberText: {
     fontSize: FontSize.xs,
     fontFamily: FontFamily.bold,
-    color: Colors.background,
+    color: colors.background,
   },
   gratitudeInput: {
     flex: 1,
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     borderRadius: Radius.md,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     fontSize: FontSize.sm,
-    color: Colors.foreground,
+    color: colors.foreground,
     fontFamily: FontFamily.regular,
   },
 
   /* Text areas */
   section: {},
   textArea: {
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     borderRadius: Radius.md,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     fontSize: FontSize.sm,
-    color: Colors.foreground,
+    color: colors.foreground,
     fontFamily: FontFamily.regular,
     textAlignVertical: 'top',
   },
@@ -692,19 +702,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: Colors.accentBg,
+    backgroundColor: colors.accentBg,
     padding: Spacing.md,
     borderRadius: Radius.lg,
   },
   xpPreviewLabel: {
     fontSize: FontSize.sm,
     fontFamily: FontFamily.semibold,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   xpPreviewValue: {
     fontSize: FontSize.xl,
     fontFamily: FontFamily.extrabold,
-    color: Colors.accent,
+    color: colors.accent,
   },
 
   /* Form actions */
@@ -719,12 +729,12 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.md,
     borderRadius: Radius.lg,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   cancelBtnText: {
     fontSize: FontSize.sm,
     fontFamily: FontFamily.semibold,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   saveBtn: {
     flex: 2,
@@ -732,12 +742,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: Spacing.md,
     borderRadius: Radius.lg,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
   },
   saveBtnText: {
     fontSize: FontSize.sm,
     fontFamily: FontFamily.bold,
-    color: Colors.background,
+    color: colors.background,
   },
 
   /* ── Featured Today Card ── */
@@ -756,7 +766,7 @@ const styles = StyleSheet.create({
   featuredLabel: {
     fontSize: FontSize.xs,
     fontFamily: FontFamily.semibold,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   featuredMoodText: {
     fontSize: FontSize.base,
@@ -785,7 +795,7 @@ const styles = StyleSheet.create({
   featuredGratitudeText: {
     flex: 1,
     fontSize: FontSize.sm,
-    color: Colors.foreground,
+    color: colors.foreground,
     fontFamily: FontFamily.regular,
   },
   featuredFooter: {
@@ -795,11 +805,11 @@ const styles = StyleSheet.create({
     marginTop: Spacing.md,
     paddingTop: Spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: Colors.border,
+    borderTopColor: colors.border,
   },
   featuredFooterText: {
     fontSize: FontSize.xs,
-    color: Colors.textMuted,
+    color: colors.textMuted,
     fontFamily: FontFamily.regular,
   },
   featuredFooterRight: {
@@ -810,14 +820,14 @@ const styles = StyleSheet.create({
   tapToEditText: {
     fontSize: FontSize.xs,
     fontFamily: FontFamily.medium,
-    color: Colors.primary,
+    color: colors.primary,
     fontStyle: 'italic',
   },
   featuredXpBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: Colors.accentBg,
+    backgroundColor: colors.accentBg,
     paddingHorizontal: Spacing.sm,
     paddingVertical: 4,
     borderRadius: Radius.full,
@@ -825,7 +835,7 @@ const styles = StyleSheet.create({
   featuredXpText: {
     fontSize: FontSize.xs,
     fontFamily: FontFamily.bold,
-    color: Colors.accent,
+    color: colors.accent,
   },
 
   /* ── Past Entries Gallery ── */
@@ -835,27 +845,28 @@ const styles = StyleSheet.create({
   pastSectionTitle: {
     fontSize: FontSize.xs,
     fontFamily: FontFamily.bold,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     paddingLeft: 2,
   },
-  pastGallery: {
+  pastList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: Spacing.sm,
-    paddingRight: Spacing.lg,
   },
 
-  /* Individual past card */
+  /* Individual past card — chunky square tile in 2-col grid */
   pastCard: {
-    width: 200,
-    height: 170,
+    width: (Dimensions.get('window').width - Spacing.lg * 2 - Spacing.sm) / 2,
+    aspectRatio: 0.9,
     justifyContent: 'space-between',
     padding: Spacing.md,
   },
   pastCardDate: {
     fontSize: FontSize.xs,
     fontFamily: FontFamily.semibold,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   pastCardCenter: {
     alignItems: 'center',
@@ -863,13 +874,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   pastCardBottom: {
-    gap: 6,
+    gap: 4,
   },
   pastCardPreview: {
     fontSize: FontSize.xs,
-    color: Colors.foreground,
+    color: colors.foreground,
     fontFamily: FontFamily.regular,
-    fontStyle: 'italic',
+    fontStyle: 'italic' as const,
   },
   pastCardXp: {
     flexDirection: 'row',
@@ -879,12 +890,12 @@ const styles = StyleSheet.create({
   pastCardXpText: {
     fontSize: 10,
     fontFamily: FontFamily.bold,
-    color: Colors.accent,
+    color: colors.accent,
   },
 
-  /* Expanded past card (inline) */
+  /* Expanded past card — full width */
   pastCardExpanded: {
-    width: 280,
+    width: Dimensions.get('window').width - Spacing.lg * 2,
     padding: Spacing.md,
   },
   expandedHeader: {
@@ -901,14 +912,14 @@ const styles = StyleSheet.create({
   expandedDate: {
     fontSize: FontSize.sm,
     fontFamily: FontFamily.semibold,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   expandedGratitudes: {
     gap: 4,
   },
   expandedGratitude: {
     fontSize: FontSize.sm,
-    color: Colors.foreground,
+    color: colors.foreground,
     lineHeight: 20,
     fontFamily: FontFamily.regular,
   },
@@ -919,12 +930,12 @@ const styles = StyleSheet.create({
   expandedBlockLabel: {
     fontSize: FontSize.xs,
     fontFamily: FontFamily.bold,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     textTransform: 'uppercase',
   },
   expandedBlockText: {
     fontSize: FontSize.sm,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     lineHeight: 20,
     fontFamily: FontFamily.regular,
   },

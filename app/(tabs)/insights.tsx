@@ -20,8 +20,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { useAuth } from '@/contexts/auth-context';
-import { Colors, FontSize, Spacing, Radius, FontFamily, Shadows } from '@/constants/theme';
-import { CATEGORY_COLORS } from '@/constants/theme';
+import { useTheme } from '@/contexts/theme-context';
+import { FontSize, Spacing, Radius, FontFamily, Shadows, getCategoryColors, type ThemeColors } from '@/constants/theme';
 import { GradientCard } from '@/components/ui/GradientCard';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { BadgePill } from '@/components/ui/BadgePill';
@@ -97,7 +97,6 @@ function computeWeeklyStats(habits: Array<{ category: HabitCategory; xpReward: n
   let totalXpEarned = 0;
 
   for (const habit of habits) {
-    // Each habit counts as 1 possible completion per day for simplicity
     totalPossible += 7;
     categoryTotals[habit.category] += 7;
 
@@ -113,7 +112,6 @@ function computeWeeklyStats(habits: Array<{ category: HabitCategory; xpReward: n
 
   const rate = totalPossible > 0 ? Math.round((totalCompletions / totalPossible) * 100) : 0;
 
-  // Find best day
   let bestDay = 'N/A';
   let bestDayCount = 0;
   for (const [dateStr, count] of Object.entries(dayCompletionCounts)) {
@@ -123,7 +121,6 @@ function computeWeeklyStats(habits: Array<{ category: HabitCategory; xpReward: n
     }
   }
 
-  // Category rates
   const categories: Record<HabitCategory, number> = {
     health: categoryTotals.health > 0 ? Math.round((categoryCompletions.health / categoryTotals.health) * 100) : 0,
     career: categoryTotals.career > 0 ? Math.round((categoryCompletions.career / categoryTotals.career) * 100) : 0,
@@ -142,7 +139,7 @@ function computeWeeklyStats(habits: Array<{ category: HabitCategory; xpReward: n
 }
 
 // ─── Animated Vertical Bar ────────────────────────────────────────────────────
-function AnimatedBar({ percentage, color, label, delay }: { percentage: number; color: string; label: string; delay: number }) {
+function AnimatedBar({ percentage, color, label, delay, colors, styles }: { percentage: number; color: string; label: string; delay: number; colors: ThemeColors; styles: ReturnType<typeof createStyles> }) {
   const MAX_HEIGHT = 100;
   const barHeight = useSharedValue(0);
 
@@ -176,6 +173,8 @@ export default function InsightsScreen() {
   const insets = useSafeAreaInsets();
   const [tab, setTab] = useState<InsightsTab>('overview');
   const { userId } = useAuth();
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   const progress = useQuery(
     api.progress.getProgress,
@@ -236,7 +235,7 @@ export default function InsightsScreen() {
                 <Ionicons
                   name={chip.icon}
                   size={14}
-                  color={isActive ? '#FFFFFF' : Colors.textMuted}
+                  color={isActive ? '#FFFFFF' : colors.textMuted}
                 />
                 <Text style={[styles.chipText, isActive ? styles.chipTextActive : styles.chipTextInactive]}>
                   {chip.label}
@@ -253,10 +252,10 @@ export default function InsightsScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {tab === 'overview' ? <OverviewTab userId={userId} progress={progress} habits={habits ?? []} /> : null}
-        {tab === 'history' ? <HistoryTab userId={userId} habits={habits ?? []} /> : null}
-        {tab === 'achievements' ? <AchievementsTab userId={userId} progress={progress} /> : null}
-        {tab === 'gamification' ? <GamificationTab userId={userId} progress={progress} /> : null}
+        {tab === 'overview' ? <OverviewTab userId={userId} progress={progress} habits={habits ?? []} colors={colors} styles={styles} /> : null}
+        {tab === 'history' ? <HistoryTab userId={userId} habits={habits ?? []} colors={colors} styles={styles} /> : null}
+        {tab === 'achievements' ? <AchievementsTab userId={userId} progress={progress} colors={colors} styles={styles} /> : null}
+        {tab === 'gamification' ? <GamificationTab userId={userId} progress={progress} colors={colors} styles={styles} /> : null}
         <View style={{ height: 100 }} />
       </ScrollView>
     </View>
@@ -282,10 +281,13 @@ interface OverviewTabProps {
     };
   } | null;
   habits: Array<{ category: HabitCategory; xpReward: number; completedDates: string[] }>;
+  colors: ThemeColors;
+  styles: ReturnType<typeof createStyles>;
 }
 
-function OverviewTab({ userId, progress, habits }: OverviewTabProps) {
+function OverviewTab({ userId, progress, habits, colors, styles }: OverviewTabProps) {
   const stats = useMemo(() => computeWeeklyStats(habits), [habits]);
+  const CATEGORY_COLORS = useMemo(() => getCategoryColors(colors), [colors]);
 
   // Get current weekly boss info
   const weeklyBoss = getWeeklyBoss();
@@ -312,34 +314,34 @@ function OverviewTab({ userId, progress, habits }: OverviewTabProps) {
       {/* ── Weekly Boss Card (dramatic) ── */}
       <GradientCard
         gradient={bossData.defeated ? ['rgba(0,230,118,0.12)', 'transparent'] : ['rgba(255,107,107,0.12)', 'transparent']}
-        glowColor={bossData.defeated ? Colors.success : undefined}
+        glowColor={bossData.defeated ? colors.success : undefined}
       >
         <View style={styles.bossRow}>
-          <Ionicons name={bossData.icon} size={36} color={bossData.defeated ? Colors.success : Colors.danger} />
+          <Ionicons name={bossData.icon} size={36} color={bossData.defeated ? colors.success : colors.danger} />
           <View style={{ flex: 1, marginLeft: Spacing.md }}>
             <View style={styles.bossNameRow}>
-              <Text style={[styles.bossName, bossData.defeated && { color: Colors.success }]}>
+              <Text style={[styles.bossName, bossData.defeated && { color: colors.success }]}>
                 {bossData.name}
               </Text>
               {bossData.defeated ? (
-                <BadgePill label="DEFEATED" color={Colors.success} />
+                <BadgePill label="DEFEATED" color={colors.success} />
               ) : null}
             </View>
             <ProgressBar
               progress={bossData.progress}
-              color={bossData.defeated ? Colors.success : Colors.danger}
+              color={bossData.defeated ? colors.success : colors.danger}
               height={14}
-              glowColor={bossData.defeated ? Colors.success : Colors.danger}
+              glowColor={bossData.defeated ? colors.success : colors.danger}
               style={{ marginTop: Spacing.sm }}
             />
           </View>
         </View>
         <View style={styles.bossDamageRow}>
-          <Text style={[styles.bossDamageNumber, { color: bossData.defeated ? Colors.success : Colors.danger }]}>
+          <Text style={[styles.bossDamageNumber, { color: bossData.defeated ? colors.success : colors.danger }]}>
             {bossData.completions}
           </Text>
           <Text style={styles.bossDamageSlash}>/</Text>
-          <Text style={[styles.bossDamageNumber, { color: Colors.textSecondary }]}>
+          <Text style={[styles.bossDamageNumber, { color: colors.textSecondary }]}>
             {bossData.required}
           </Text>
           <Text style={styles.bossDamageLabel}>hits</Text>
@@ -353,7 +355,7 @@ function OverviewTab({ userId, progress, habits }: OverviewTabProps) {
           <OversizedMetric
             value={stats.rate}
             label="Completion"
-            color={Colors.secondary}
+            color={colors.secondary}
             suffix="%"
             size="md"
           />
@@ -362,7 +364,7 @@ function OverviewTab({ userId, progress, habits }: OverviewTabProps) {
           <OversizedMetric
             value={stats.xpEarned}
             label="XP Earned"
-            color={Colors.primary}
+            color={colors.primary}
             suffix="XP"
             size="md"
           />
@@ -371,7 +373,7 @@ function OverviewTab({ userId, progress, habits }: OverviewTabProps) {
           <OversizedMetric
             value={stats.completions}
             label="Completions"
-            color={Colors.accent}
+            color={colors.accent}
             size="md"
           />
         </BentoCell>
@@ -395,6 +397,8 @@ function OverviewTab({ userId, progress, habits }: OverviewTabProps) {
               color={CATEGORY_COLORS[cat]}
               label={cat.charAt(0).toUpperCase() + cat.slice(1)}
               delay={idx * 100}
+              colors={colors}
+              styles={styles}
             />
           ))}
         </View>
@@ -410,6 +414,8 @@ function OverviewTab({ userId, progress, habits }: OverviewTabProps) {
 interface HistoryTabProps {
   userId: Id<'users'>;
   habits: Array<{ completedDates: string[] }>;
+  colors: ThemeColors;
+  styles: ReturnType<typeof createStyles>;
 }
 
 function computeStreakStats(habits: Array<{ completedDates: string[] }>) {
@@ -424,7 +430,6 @@ function computeStreakStats(habits: Array<{ completedDates: string[] }>) {
     const sorted = [...habit.completedDates].sort();
     if (sorted.length === 0) continue;
 
-    // Current streak: walk backwards from today
     let currentStreak = 0;
     const d = new Date(today);
     while (true) {
@@ -439,7 +444,6 @@ function computeStreakStats(habits: Array<{ completedDates: string[] }>) {
     if (currentStreak > bestCurrentStreak) bestCurrentStreak = currentStreak;
     if (currentStreak > 0) activeStreaksCount++;
 
-    // Longest ever streak
     let longest = 1;
     let run = 1;
     for (let i = 1; i < sorted.length; i++) {
@@ -459,13 +463,11 @@ function computeStreakStats(habits: Array<{ completedDates: string[] }>) {
   return { bestCurrentStreak, longestEverStreak, activeStreaksCount, totalHabits: habits.length };
 }
 
-function HistoryTab({ userId, habits }: HistoryTabProps) {
-  // Build real heat map data from habit completions over last 8 weeks
+function HistoryTab({ userId, habits, colors, styles }: HistoryTabProps) {
   const weeks = 8;
   const days = 7;
 
   const { heatData, monthLabels, gridStart } = useMemo(() => {
-    // Collect all completed dates across all habits
     const allDates: Record<string, number> = {};
     for (const habit of habits) {
       for (const dateStr of habit.completedDates) {
@@ -473,13 +475,10 @@ function HistoryTab({ userId, habits }: HistoryTabProps) {
       }
     }
 
-    // Find max completions in a day for normalization
     const maxCompletions = Math.max(1, ...Object.values(allDates));
 
-    // Build 8 weeks of data ending today
     const now = new Date();
-    const todayDayOfWeek = now.getDay(); // 0 = Sunday
-    // Go back to the start of the grid (8 weeks ago, starting on Sunday)
+    const todayDayOfWeek = now.getDay();
     const start = new Date(now);
     start.setDate(now.getDate() - todayDayOfWeek - (weeks - 1) * 7);
 
@@ -494,7 +493,6 @@ function HistoryTab({ userId, habits }: HistoryTabProps) {
       const count = allDates[dateStr] ?? 0;
       data.push(count / maxCompletions);
 
-      // Track month labels (on first day of week, i.e. Sunday)
       if (i % 7 === 0) {
         const month = d.getMonth();
         if (month !== lastMonth) {
@@ -509,9 +507,8 @@ function HistoryTab({ userId, habits }: HistoryTabProps) {
   const streakStats = useMemo(() => computeStreakStats(habits), [habits]);
 
   const DAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-  const SHOW_DAY_INDICES = [1, 3, 5]; // M, W, F
+  const SHOW_DAY_INDICES = [1, 3, 5];
 
-  // Determine today's index in the heatmap grid
   const todayGridIndex = useMemo(() => {
     const now = new Date();
     const diffMs = now.getTime() - gridStart.getTime();
@@ -561,7 +558,7 @@ function HistoryTab({ userId, habits }: HistoryTabProps) {
                       key={dayIdx}
                       style={[
                         styles.heatCell,
-                        { backgroundColor: Colors.primary, opacity },
+                        { backgroundColor: colors.primary, opacity },
                         isToday && styles.heatCellToday,
                       ]}
                     />
@@ -577,14 +574,14 @@ function HistoryTab({ userId, habits }: HistoryTabProps) {
           {[0.08, 0.3, 0.6, 1].map((op) => (
             <View
               key={op}
-              style={[styles.heatLegendDot, { backgroundColor: Colors.primary, opacity: op }]}
+              style={[styles.heatLegendDot, { backgroundColor: colors.primary, opacity: op }]}
             />
           ))}
           <Text style={styles.heatLegendText}>More</Text>
         </View>
       </GradientCard>
 
-      {/* ── Streak Summary: 4 oversized metrics in a row ── */}
+      {/* ── Streak Summary ── */}
       <BentoGrid>
         <BentoCell index={0} height={100}>
           <OversizedMetric
@@ -597,7 +594,7 @@ function HistoryTab({ userId, habits }: HistoryTabProps) {
           <OversizedMetric
             value={streakStats.longestEverStreak}
             label="Longest Ever"
-            color={Colors.accent}
+            color={colors.accent}
             size="md"
           />
         </BentoCell>
@@ -605,7 +602,7 @@ function HistoryTab({ userId, habits }: HistoryTabProps) {
           <OversizedMetric
             value={streakStats.activeStreaksCount}
             label="Active Streaks"
-            color={Colors.primary}
+            color={colors.primary}
             size="md"
           />
         </BentoCell>
@@ -630,9 +627,11 @@ interface AchievementsTabProps {
   progress: {
     achievements: string[];
   } | null;
+  colors: ThemeColors;
+  styles: ReturnType<typeof createStyles>;
 }
 
-function AchievementsTab({ userId, progress }: AchievementsTabProps) {
+function AchievementsTab({ userId, progress, colors, styles }: AchievementsTabProps) {
   const unlockedAchievementIds = new Set(progress?.achievements ?? []);
 
   const achievements = ACHIEVEMENT_DEFINITIONS.map((a) => ({
@@ -650,7 +649,7 @@ function AchievementsTab({ userId, progress }: AchievementsTabProps) {
         <OversizedMetric
           value={unlocked}
           label="Unlocked"
-          color={Colors.accent}
+          color={colors.accent}
           suffix={`/${total}`}
           size="lg"
         />
@@ -669,19 +668,19 @@ function AchievementsTab({ userId, progress }: AchievementsTabProps) {
               <Ionicons
                 name={achievement.icon}
                 size={28}
-                color={achievement.unlocked ? Colors.accent : Colors.textDim}
+                color={achievement.unlocked ? colors.accent : colors.textDim}
                 style={!achievement.unlocked ? { opacity: 0.4 } : undefined}
               />
               {!achievement.unlocked ? (
                 <View style={styles.medalLockOverlay}>
-                  <Ionicons name="lock-closed" size={10} color={Colors.textDim} />
+                  <Ionicons name="lock-closed" size={10} color={colors.textDim} />
                 </View>
               ) : null}
             </View>
             <Text
               style={[
                 styles.medalName,
-                !achievement.unlocked && { color: Colors.textDim },
+                !achievement.unlocked && { color: colors.textDim },
               ]}
               numberOfLines={1}
             >
@@ -703,9 +702,11 @@ interface GamificationTabProps {
   progress: {
     unlockedSkills?: Array<{ skillId: string; unlockedAt: string }>;
   } | null;
+  colors: ThemeColors;
+  styles: ReturnType<typeof createStyles>;
 }
 
-function GamificationTab({ userId, progress }: GamificationTabProps) {
+function GamificationTab({ userId, progress, colors, styles }: GamificationTabProps) {
   const unlockedSkillIds = new Set(
     (progress?.unlockedSkills ?? []).map((s) => s.skillId)
   );
@@ -717,10 +718,10 @@ function GamificationTab({ userId, progress }: GamificationTabProps) {
 
   const categories = ['discipline', 'wellness', 'growth', 'balance'] as const;
   const categoryColors = {
-    discipline: Colors.danger,
-    wellness: Colors.categoryHealth,
-    growth: Colors.categoryCareer,
-    balance: Colors.categoryLife,
+    discipline: colors.danger,
+    wellness: colors.categoryHealth,
+    growth: colors.categoryCareer,
+    balance: colors.categoryLife,
   };
 
   return (
@@ -747,18 +748,18 @@ function GamificationTab({ userId, progress }: GamificationTabProps) {
                     skill.unlocked ? styles.skillCardUnlocked : styles.skillCardLocked,
                   ]}
                 >
-                  <View style={[styles.skillIconWrap, { backgroundColor: skill.unlocked ? `${catColor}20` : Colors.surfaceLight }]}>
+                  <View style={[styles.skillIconWrap, { backgroundColor: skill.unlocked ? `${catColor}20` : colors.surfaceLight }]}>
                     <Ionicons
                       name={skill.icon}
                       size={20}
-                      color={skill.unlocked ? catColor : Colors.textMuted}
+                      color={skill.unlocked ? catColor : colors.textMuted}
                     />
                   </View>
                   <View style={styles.skillInfo}>
                     <Text
                       style={[
                         styles.skillName,
-                        !skill.unlocked && { color: Colors.textMuted },
+                        !skill.unlocked && { color: colors.textMuted },
                       ]}
                     >
                       {skill.name}
@@ -766,7 +767,7 @@ function GamificationTab({ userId, progress }: GamificationTabProps) {
                     <Text style={styles.skillDesc}>{skill.description}</Text>
                   </View>
                   {skill.unlocked ? (
-                    <Ionicons name="checkmark-circle" size={22} color={Colors.success} />
+                    <Ionicons name="checkmark-circle" size={22} color={colors.success} />
                   ) : (
                     <View style={styles.skillCostBadge}>
                       <Text style={styles.skillCostText}>{skill.xpCost} XP</Text>
@@ -786,11 +787,11 @@ function GamificationTab({ userId, progress }: GamificationTabProps) {
 // STYLES
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   // ── Layout ──
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
   },
   centered: {
     justifyContent: 'center',
@@ -799,7 +800,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: Spacing.md,
     fontSize: FontSize.base,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   header: {
     paddingHorizontal: Spacing.xl,
@@ -808,7 +809,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: FontSize['3xl'],
     fontFamily: FontFamily.extrabold,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   scrollView: {
     flex: 1,
@@ -837,10 +838,10 @@ const styles = StyleSheet.create({
     borderRadius: Radius.full,
   },
   chipActive: {
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
   },
   chipInactive: {
-    backgroundColor: Colors.surfaceLight,
+    backgroundColor: colors.surfaceLight,
   },
   chipText: {
     fontSize: FontSize.sm,
@@ -850,7 +851,7 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.semibold,
   },
   chipTextInactive: {
-    color: Colors.textMuted,
+    color: colors.textMuted,
     fontFamily: FontFamily.medium,
   },
 
@@ -858,12 +859,12 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: FontSize.lg,
     fontFamily: FontFamily.bold,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   cardTitle: {
     fontSize: FontSize.base,
     fontFamily: FontFamily.bold,
-    color: Colors.foreground,
+    color: colors.foreground,
     marginBottom: Spacing.md,
   },
 
@@ -881,7 +882,7 @@ const styles = StyleSheet.create({
   bossName: {
     fontSize: FontSize.xl,
     fontFamily: FontFamily.extrabold,
-    color: Colors.danger,
+    color: colors.danger,
   },
   bossDamageRow: {
     flexDirection: 'row',
@@ -897,12 +898,12 @@ const styles = StyleSheet.create({
   bossDamageSlash: {
     fontSize: FontSize.xl,
     fontFamily: FontFamily.bold,
-    color: Colors.textMuted,
+    color: colors.textMuted,
   },
   bossDamageLabel: {
     fontSize: FontSize.sm,
     fontFamily: FontFamily.semibold,
-    color: Colors.textMuted,
+    color: colors.textMuted,
     marginLeft: 4,
   },
 
@@ -925,7 +926,7 @@ const styles = StyleSheet.create({
   barTrack: {
     width: 50,
     height: 100,
-    backgroundColor: Colors.surfaceRaised,
+    backgroundColor: colors.surfaceRaised,
     borderRadius: Radius.sm,
     justifyContent: 'flex-end',
     overflow: 'hidden',
@@ -937,7 +938,7 @@ const styles = StyleSheet.create({
   barLabel: {
     fontSize: FontSize.xs,
     fontFamily: FontFamily.semibold,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
 
   // ── Heatmap ──
@@ -956,7 +957,7 @@ const styles = StyleSheet.create({
   },
   heatCellToday: {
     borderWidth: 2,
-    borderColor: Colors.primary,
+    borderColor: colors.primary,
   },
   heatLegend: {
     flexDirection: 'row',
@@ -967,7 +968,7 @@ const styles = StyleSheet.create({
   },
   heatLegendText: {
     fontSize: 10,
-    color: Colors.textDim,
+    color: colors.textDim,
     fontFamily: FontFamily.medium,
   },
   heatLegendDot: {
@@ -982,7 +983,7 @@ const styles = StyleSheet.create({
   heatMonthLabel: {
     position: 'absolute',
     fontSize: 10,
-    color: Colors.textDim,
+    color: colors.textDim,
     fontFamily: FontFamily.medium,
   },
   heatDayLabels: {
@@ -993,7 +994,7 @@ const styles = StyleSheet.create({
   heatDayLabel: {
     height: 18,
     fontSize: 10,
-    color: Colors.textDim,
+    color: colors.textDim,
     lineHeight: 18,
     textAlign: 'right',
     width: 18,
@@ -1020,15 +1021,15 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   medalUnlocked: {
-    backgroundColor: Colors.surfaceRaised,
+    backgroundColor: colors.surfaceRaised,
     borderWidth: 2,
-    borderColor: Colors.accent,
-    ...Shadows.glow(Colors.accentGlow, 0.5),
+    borderColor: colors.accent,
+    ...Shadows.glow(colors.accentGlow, 0.5),
   },
   medalLocked: {
-    backgroundColor: Colors.surfaceLight,
+    backgroundColor: colors.surfaceLight,
     borderWidth: 2,
-    borderColor: Colors.textDim,
+    borderColor: colors.textDim,
     borderStyle: 'dashed',
   },
   medalLockOverlay: {
@@ -1038,16 +1039,16 @@ const styles = StyleSheet.create({
     width: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: Colors.surfaceLight,
+    backgroundColor: colors.surfaceLight,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   medalName: {
     fontSize: FontSize.xs,
     fontFamily: FontFamily.semibold,
-    color: Colors.foreground,
+    color: colors.foreground,
     textAlign: 'center',
   },
 
@@ -1080,12 +1081,12 @@ const styles = StyleSheet.create({
     borderRadius: Radius.lg,
   },
   skillCardUnlocked: {
-    backgroundColor: Colors.surfaceRaised,
+    backgroundColor: colors.surfaceRaised,
     borderWidth: 1,
-    borderColor: Colors.borderStrong,
+    borderColor: colors.borderStrong,
   },
   skillCardLocked: {
-    backgroundColor: Colors.surfaceLight,
+    backgroundColor: colors.surfaceLight,
     opacity: 0.6,
   },
   skillIconWrap: {
@@ -1101,15 +1102,15 @@ const styles = StyleSheet.create({
   skillName: {
     fontSize: FontSize.sm,
     fontFamily: FontFamily.semibold,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   skillDesc: {
     fontSize: FontSize.xs,
-    color: Colors.textMuted,
+    color: colors.textMuted,
     marginTop: 2,
   },
   skillCostBadge: {
-    backgroundColor: Colors.accentBg,
+    backgroundColor: colors.accentBg,
     paddingHorizontal: Spacing.sm,
     paddingVertical: 3,
     borderRadius: Radius.full,
@@ -1117,6 +1118,6 @@ const styles = StyleSheet.create({
   skillCostText: {
     fontSize: FontSize.xs,
     fontFamily: FontFamily.bold,
-    color: Colors.accent,
+    color: colors.accent,
   },
 });

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -15,7 +15,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { makeRedirectUri } from 'expo-auth-session';
 import { openAuthSessionAsync } from 'expo-web-browser';
 import * as AppleAuthentication from 'expo-apple-authentication';
-import { Colors, FontSize, Spacing, Radius, FontFamily, Shadows } from '@/constants/theme';
+import { useTheme } from '@/contexts/theme-context';
+import { FontSize, Spacing, Radius, FontFamily, Shadows, type ThemeColors } from '@/constants/theme';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/contexts/auth-context';
@@ -26,6 +27,8 @@ export default function LoginScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { signIn } = useAuth();
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -140,12 +143,12 @@ export default function LoginScreen() {
         <View style={styles.hero}>
           <View style={styles.logoContainer}>
             <LinearGradient
-              colors={[Colors.primaryBg, 'transparent']}
+              colors={[colors.primaryBg, 'transparent']}
               style={StyleSheet.absoluteFill}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
             />
-            <Ionicons name="shield-half" size={36} color={Colors.primary} />
+            <Ionicons name="shield-half" size={36} color={colors.primary} />
           </View>
           <Text style={styles.appName}>HabitQuest</Text>
           <Text style={styles.tagline}>Level up your life, one habit at a time</Text>
@@ -219,7 +222,7 @@ export default function LoginScreen() {
             onPress={handleGoogleSignIn}
             disabled={appleLoading || googleLoading}
           >
-            <Ionicons name="logo-google" size={20} color={Colors.foreground} />
+            <Ionicons name="logo-google" size={20} color={colors.foreground} />
             <Text style={styles.oauthText}>
               {googleLoading ? 'Connecting...' : 'Continue with Google'}
             </Text>
@@ -241,9 +244,9 @@ export default function LoginScreen() {
         {/* Features Preview */}
         <View style={styles.features}>
           {([
-            { icon: 'flame' as const, color: Colors.accent, text: 'Track habits & build streaks' },
-            { icon: 'shield' as const, color: Colors.primary, text: 'Defeat weekly bosses' },
-            { icon: 'compass' as const, color: Colors.secondary, text: 'AI-powered insights' },
+            { icon: 'flame' as const, color: colors.accent, text: 'Track habits & build streaks' },
+            { icon: 'shield' as const, color: colors.primary, text: 'Defeat weekly bosses' },
+            { icon: 'compass' as const, color: colors.secondary, text: 'AI-powered insights' },
           ]).map((f, i) => (
             <View key={i} style={styles.featureItem}>
               <View style={[styles.featureIcon, { backgroundColor: f.color + '15' }]}>
@@ -258,10 +261,10 @@ export default function LoginScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
   },
   content: {
     flex: 1,
@@ -276,31 +279,31 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 24,
-    backgroundColor: Colors.surfaceRaised,
+    backgroundColor: colors.surfaceRaised,
     borderWidth: 1,
-    borderColor: Colors.primaryGlow,
+    borderColor: colors.primaryGlow,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: Spacing.lg,
     overflow: 'hidden',
-    ...Shadows.glow(Colors.primary, 0.25),
+    ...Shadows.glow(colors.primary, 0.25),
   },
   appName: {
     fontSize: FontSize['4xl'],
     fontFamily: FontFamily.extrabold,
-    color: Colors.foreground,
+    color: colors.foreground,
     letterSpacing: -1,
   },
   tagline: {
     fontSize: FontSize.sm,
     fontFamily: FontFamily.medium,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     marginTop: Spacing.xs,
   },
   form: {},
   mainButtonWrap: {
     marginTop: Spacing.xl,
-    ...Shadows.glow(Colors.primary, 0.2),
+    ...Shadows.glow(colors.primary, 0.2),
     borderRadius: Radius.md,
   },
   divider: {
@@ -311,10 +314,10 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: Colors.border,
+    backgroundColor: colors.border,
   },
   dividerText: {
-    color: Colors.textMuted,
+    color: colors.textMuted,
     fontSize: FontSize.sm,
     fontFamily: FontFamily.medium,
     marginHorizontal: Spacing.md,
@@ -324,9 +327,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: Spacing.md,
-    backgroundColor: Colors.surfaceLight,
+    backgroundColor: colors.surfaceLight,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     borderRadius: Radius.lg,
     paddingVertical: Spacing.md,
   },
@@ -338,7 +341,7 @@ const styles = StyleSheet.create({
   oauthText: {
     fontSize: FontSize.base,
     fontFamily: FontFamily.semibold,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   toggleRow: {
     flexDirection: 'row',
@@ -349,13 +352,13 @@ const styles = StyleSheet.create({
   },
   toggleText: {
     fontSize: FontSize.sm,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     fontFamily: FontFamily.regular,
   },
   toggleLink: {
     fontSize: FontSize.sm,
     fontFamily: FontFamily.bold,
-    color: Colors.primary,
+    color: colors.primary,
   },
   features: {
     marginTop: Spacing['4xl'],
@@ -376,6 +379,6 @@ const styles = StyleSheet.create({
   featureText: {
     fontSize: FontSize.sm,
     fontFamily: FontFamily.medium,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
 });

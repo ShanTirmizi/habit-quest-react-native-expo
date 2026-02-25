@@ -1,4 +1,4 @@
-import React, { useCallback, useRef } from 'react';
+import React, { useCallback, useRef, useMemo } from 'react';
 import { View, Text, StyleSheet, Pressable, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -12,16 +12,17 @@ import ReAnimated, {
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
-  Colors,
   FontSize,
   Spacing,
   Radius,
   FontFamily,
   Shadows,
-  CATEGORY_COLORS,
-  CATEGORY_BG_COLORS,
-  CATEGORY_GRADIENTS,
+  getCategoryColors,
+  getCategoryBgColors,
+  getCategoryGradients,
+  type ThemeColors,
 } from '@/constants/theme';
+import { useTheme } from '@/contexts/theme-context';
 import type { Habit, HabitCategory, TimeOfDay } from '@/types';
 import { BadgePill } from '@/components/ui/BadgePill';
 
@@ -42,9 +43,15 @@ const TIME_ICON_NAMES: Record<TimeOfDay, keyof typeof Ionicons.glyphMap | null> 
 const SWIPE_THRESHOLD = 70;
 
 export function HabitCard({ habit, isCompleted, onToggle, onPress }: HabitCardProps) {
-  const categoryColor = CATEGORY_COLORS[habit.category] || Colors.textSecondary;
-  const categoryBg = CATEGORY_BG_COLORS[habit.category] || Colors.surfaceLight;
-  const categoryGradient = CATEGORY_GRADIENTS[habit.category] || [Colors.textDim, Colors.textDim];
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  const categoryColors = useMemo(() => getCategoryColors(colors), [colors]);
+  const categoryBgColors = useMemo(() => getCategoryBgColors(colors), [colors]);
+  const categoryGradients = useMemo(() => getCategoryGradients(colors), [colors]);
+
+  const categoryColor = categoryColors[habit.category] || colors.textSecondary;
+  const categoryBg = categoryBgColors[habit.category] || colors.surfaceLight;
+  const categoryGradient = categoryGradients[habit.category] || [colors.textDim, colors.textDim];
   const checkboxScale = useRef(new Animated.Value(1)).current;
 
   // Swipe-to-complete
@@ -125,7 +132,7 @@ export function HabitCard({ habit, isCompleted, onToggle, onPress }: HabitCardPr
           >
             {/* Category gradient left strip */}
             {isCompleted ? (
-              <View style={[styles.gradientStrip, { backgroundColor: Colors.textDim }]} />
+              <View style={[styles.gradientStrip, { backgroundColor: colors.textDim }]} />
             ) : (
               <LinearGradient
                 colors={categoryGradient}
@@ -145,7 +152,7 @@ export function HabitCard({ habit, isCompleted, onToggle, onPress }: HabitCardPr
                   style={({ pressed }) => [
                     styles.checkbox,
                     isCompleted && { backgroundColor: categoryColor, borderColor: categoryColor },
-                    !isCompleted && { borderColor: Colors.borderStrong },
+                    !isCompleted && { borderColor: colors.borderStrong },
                     pressed && { transform: [{ scale: 0.9 }] },
                   ]}
                 >
@@ -175,11 +182,11 @@ export function HabitCard({ habit, isCompleted, onToggle, onPress }: HabitCardPr
                     <Ionicons
                       name={TIME_ICON_NAMES[habit.timeOfDay]!}
                       size={13}
-                      color={Colors.textSecondary}
+                      color={colors.textSecondary}
                     />
                   ) : null}
                   {habit.notes && habit.notes.length > 0 ? (
-                    <Ionicons name="chatbubble-outline" size={12} color={Colors.textSecondary} />
+                    <Ionicons name="chatbubble-outline" size={12} color={colors.textSecondary} />
                   ) : null}
                 </View>
               </View>
@@ -194,7 +201,7 @@ export function HabitCard({ habit, isCompleted, onToggle, onPress }: HabitCardPr
           {/* Floating streak badge — overlaps bottom-right of card */}
           {habit.streak > 0 ? (
             <View style={styles.streakFloat}>
-              <Ionicons name="flame" size={11} color={Colors.accent} />
+              <Ionicons name="flame" size={11} color={colors.accent} />
               <Text style={styles.streakFloatText}>{habit.streak}</Text>
             </View>
           ) : null}
@@ -204,7 +211,7 @@ export function HabitCard({ habit, isCompleted, onToggle, onPress }: HabitCardPr
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   swipeContainer: {
     position: 'relative',
     overflow: 'visible',
@@ -224,10 +231,10 @@ const styles = StyleSheet.create({
   },
   card: {
     position: 'relative',
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: Radius.xl,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     padding: Spacing.md,
     overflow: 'hidden',
     ...Shadows.card,
@@ -236,7 +243,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   cardPressed: {
-    backgroundColor: Colors.surfaceHover,
+    backgroundColor: colors.surfaceHover,
   },
   gradientStrip: {
     position: 'absolute',
@@ -269,10 +276,10 @@ const styles = StyleSheet.create({
   name: {
     fontSize: FontSize.base,
     fontFamily: FontFamily.semibold,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   nameCompleted: {
-    color: Colors.textDim,
+    color: colors.textDim,
     textDecorationLine: 'line-through',
   },
   metaRow: {
@@ -284,7 +291,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: Spacing.md,
     right: Spacing.md,
-    backgroundColor: Colors.primaryBg,
+    backgroundColor: colors.primaryBg,
     borderRadius: Radius.full,
     paddingHorizontal: 10,
     paddingVertical: 3,
@@ -292,7 +299,7 @@ const styles = StyleSheet.create({
   xpPillText: {
     fontSize: FontSize.xs,
     fontFamily: FontFamily.bold,
-    color: Colors.primary,
+    color: colors.primary,
   },
   streakFloat: {
     position: 'absolute',
@@ -301,16 +308,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    backgroundColor: Colors.accentBg,
+    backgroundColor: colors.accentBg,
     borderRadius: Radius.full,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   streakFloatText: {
     fontSize: FontSize.xs,
     fontFamily: FontFamily.bold,
-    color: Colors.accent,
+    color: colors.accent,
   },
 });

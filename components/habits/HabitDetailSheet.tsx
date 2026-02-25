@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { View, Text, StyleSheet, Pressable, Alert, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { format, parseISO } from 'date-fns';
-import { Colors, FontSize, Spacing, Radius, FontFamily } from '@/constants/theme';
-import { CATEGORY_COLORS } from '@/constants/theme';
+import { FontSize, Spacing, Radius, FontFamily, getCategoryColors, type ThemeColors } from '@/constants/theme';
+import { useTheme } from '@/contexts/theme-context';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
 import { BadgePill } from '@/components/ui/BadgePill';
@@ -28,12 +28,15 @@ export function HabitDetailSheet({
   onDelete,
   onAddNote,
 }: HabitDetailSheetProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  const categoryColors = useMemo(() => getCategoryColors(colors), [colors]);
   const [noteText, setNoteText] = useState('');
   const [showNoteInput, setShowNoteInput] = useState(false);
 
   if (!habit) return null;
 
-  const categoryColor = CATEGORY_COLORS[habit.category] || Colors.textSecondary;
+  const categoryColor = categoryColors[habit.category] || colors.textSecondary;
   const freqLabel = habit.frequency?.type
     ? FREQUENCY_LABELS[habit.frequency.type]
     : 'Every day';
@@ -72,24 +75,24 @@ export function HabitDetailSheet({
             label={habit.category.charAt(0).toUpperCase() + habit.category.slice(1)}
             color={categoryColor}
           />
-          <BadgePill label={`+${habit.xpReward} XP`} color={Colors.primary} />
-          <BadgePill label={freqLabel} color={Colors.textSecondary} />
+          <BadgePill label={`+${habit.xpReward} XP`} color={colors.primary} />
+          <BadgePill label={freqLabel} color={colors.textSecondary} />
         </View>
 
         {/* Stats */}
         <View style={styles.statsGrid}>
           <View style={styles.statCard}>
-            <Ionicons name="flame" size={20} color={Colors.accent} />
+            <Ionicons name="flame" size={20} color={colors.accent} />
             <Text style={styles.statValue}>{habit.streak}</Text>
             <Text style={styles.statLabel}>Streak</Text>
           </View>
           <View style={styles.statCard}>
-            <Ionicons name="bar-chart" size={20} color={Colors.info} />
+            <Ionicons name="bar-chart" size={20} color={colors.info} />
             <Text style={styles.statValue}>{habit.completedDates.length}</Text>
             <Text style={styles.statLabel}>Total</Text>
           </View>
           <View style={styles.statCard}>
-            <Ionicons name="flash" size={20} color={Colors.primary} />
+            <Ionicons name="flash" size={20} color={colors.primary} />
             <Text style={styles.statValue}>
               {habit.completedDates.length * habit.xpReward}
             </Text>
@@ -137,7 +140,7 @@ export function HabitDetailSheet({
               <Ionicons
                 name={showNoteInput ? 'close' : 'add-circle-outline'}
                 size={20}
-                color={Colors.primary}
+                color={colors.primary}
               />
             </Pressable>
           </View>
@@ -149,7 +152,7 @@ export function HabitDetailSheet({
                 value={noteText}
                 onChangeText={setNoteText}
                 placeholder="Add a note..."
-                placeholderTextColor={Colors.textDim}
+                placeholderTextColor={colors.textDim}
                 multiline
                 autoFocus
               />
@@ -193,7 +196,7 @@ export function HabitDetailSheet({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     gap: Spacing.lg,
     paddingBottom: Spacing['3xl'],
@@ -210,7 +213,7 @@ const styles = StyleSheet.create({
   statCard: {
     flex: 1,
     alignItems: 'center',
-    backgroundColor: Colors.surfaceLight,
+    backgroundColor: colors.surfaceLight,
     borderRadius: Radius.md,
     padding: Spacing.md,
     gap: 2,
@@ -218,16 +221,16 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: FontSize.lg,
     fontFamily: FontFamily.extrabold,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   statLabel: {
     fontSize: FontSize.xs,
-    color: Colors.textMuted,
+    color: colors.textMuted,
   },
   sectionTitle: {
     fontSize: FontSize.sm,
     fontFamily: FontFamily.bold,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: Spacing.xs,
@@ -237,24 +240,24 @@ const styles = StyleSheet.create({
   },
   intentionText: {
     fontSize: FontSize.sm,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   intentionLabel: {
     fontFamily: FontFamily.bold,
-    color: Colors.primary,
+    color: colors.primary,
   },
   rationaleSection: {
     gap: 4,
   },
   rationaleText: {
     fontSize: FontSize.sm,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     lineHeight: 20,
     fontStyle: 'italic',
   },
   citationText: {
     fontSize: FontSize.xs,
-    color: Colors.textDim,
+    color: colors.textDim,
   },
   notesSection: {},
   notesHeader: {
@@ -271,14 +274,14 @@ const styles = StyleSheet.create({
   },
   noteTextInput: {
     flex: 1,
-    backgroundColor: Colors.surfaceLight,
+    backgroundColor: colors.surfaceLight,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     borderRadius: Radius.md,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     fontSize: FontSize.sm,
-    color: Colors.foreground,
+    color: colors.foreground,
     minHeight: 60,
     textAlignVertical: 'top',
   },
@@ -286,23 +289,23 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   noteCard: {
-    backgroundColor: Colors.surfaceLight,
+    backgroundColor: colors.surfaceLight,
     borderRadius: Radius.md,
     padding: Spacing.md,
     gap: 4,
   },
   noteDate: {
     fontSize: FontSize.xs,
-    color: Colors.textDim,
+    color: colors.textDim,
   },
   noteContent: {
     fontSize: FontSize.sm,
-    color: Colors.foreground,
+    color: colors.foreground,
     lineHeight: 18,
   },
   noNotes: {
     fontSize: FontSize.sm,
-    color: Colors.textDim,
+    color: colors.textDim,
     fontStyle: 'italic',
   },
   actions: {

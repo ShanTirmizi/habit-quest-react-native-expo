@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { Colors, FontSize, FontFamily } from '@/constants/theme';
+import { FontSize, FontFamily, type ThemeColors } from '@/constants/theme';
+import { useTheme } from '@/contexts/theme-context';
 
 interface OversizedMetricProps {
   value: string | number;
@@ -20,27 +21,33 @@ const SIZE_MAP = {
 export function OversizedMetric({
   value,
   label,
-  color = Colors.foreground,
+  color,
   size = 'lg',
   suffix,
-  labelColor = Colors.textMuted,
+  labelColor,
 }: OversizedMetricProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
+  const effectiveColor = color ?? colors.foreground;
+  const effectiveLabelColor = labelColor ?? colors.textMuted;
+
   return (
     <View style={styles.container}>
       <View style={styles.valueRow}>
-        <Text style={[styles.value, { fontSize: SIZE_MAP[size], color }]}>
+        <Text style={[styles.value, { fontSize: SIZE_MAP[size], color: effectiveColor }]}>
           {value}
         </Text>
         {suffix ? (
-          <Text style={[styles.suffix, { color }]}>{suffix}</Text>
+          <Text style={[styles.suffix, { color: effectiveColor }]}>{suffix}</Text>
         ) : null}
       </View>
-      <Text style={[styles.label, { color: labelColor }]}>{label}</Text>
+      <Text style={[styles.label, { color: effectiveLabelColor }]}>{label}</Text>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     alignItems: 'center',
   },

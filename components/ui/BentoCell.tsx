@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { Pressable, StyleSheet, ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
@@ -8,7 +8,8 @@ import Animated, {
   withDelay,
   Easing,
 } from 'react-native-reanimated';
-import { Colors, BentoRadius, Shadows, Spacing } from '@/constants/theme';
+import { BentoRadius, Shadows, Spacing, type ThemeColors } from '@/constants/theme';
+import { useTheme } from '@/contexts/theme-context';
 import { useBentoContext } from './BentoGrid';
 
 interface BentoCellProps {
@@ -32,6 +33,8 @@ export function BentoCell({
   style,
   index = 0,
 }: BentoCellProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { columnWidth, gap } = useBentoContext();
   const width = span === 2 ? columnWidth * 2 + gap : columnWidth;
   const defaultHeight = span === 2 ? 100 : columnWidth;
@@ -99,18 +102,18 @@ export function BentoCell({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   cell: {
-    backgroundColor: Colors.surfaceRaised,
+    backgroundColor: colors.surfaceRaised,
     borderRadius: BentoRadius,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     padding: Spacing.md,
     overflow: 'hidden',
   },
   gradient: {
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   pressed: {
     opacity: 0.88,

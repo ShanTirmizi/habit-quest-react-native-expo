@@ -16,7 +16,8 @@ import * as Haptics from 'expo-haptics';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { useAuth } from '@/contexts/auth-context';
-import { Colors, FontSize, Spacing, Radius, FontFamily, Shadows, BentoRadius } from '@/constants/theme';
+import { useTheme } from '@/contexts/theme-context';
+import { FontSize, Spacing, Radius, FontFamily, Shadows, type ThemeColors } from '@/constants/theme';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { GradientCard } from '@/components/ui/GradientCard';
 import { BadgePill } from '@/components/ui/BadgePill';
@@ -57,6 +58,8 @@ export default function MedicinesScreen() {
   const insets = useSafeAreaInsets();
   const { userId } = useAuth();
   const { showToast } = useToast();
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [tab, setTab] = useState('today');
   const [showAddSheet, setShowAddSheet] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -202,7 +205,7 @@ export default function MedicinesScreen() {
           <Text style={styles.title}>Medicines</Text>
           <BadgePill
             label={`${medicineStreak} day streak`}
-            color={Colors.accent}
+            color={colors.accent}
             size="sm"
           />
         </View>
@@ -210,7 +213,7 @@ export default function MedicinesScreen() {
           onPress={() => setShowAddSheet(true)}
           style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.7 }]}
         >
-          <Ionicons name="add" size={24} color={Colors.background} />
+          <Ionicons name="add" size={24} color={colors.background} />
         </Pressable>
       </View>
 
@@ -220,24 +223,24 @@ export default function MedicinesScreen() {
           size={160}
           strokeWidth={8}
           rings={[
-            { progress: stats.percentage, color: Colors.primary, label: 'Adherence' },
-            { progress: takenProgress, color: Colors.secondary, label: 'Taken' },
-            { progress: streakProgress, color: Colors.accent, label: 'Streak' },
+            { progress: stats.percentage, color: colors.primary, label: 'Adherence' },
+            { progress: takenProgress, color: colors.secondary, label: 'Taken' },
+            { progress: streakProgress, color: colors.accent, label: 'Streak' },
           ]}
         >
           <Text style={styles.ringsCenterNumber}>{stats.percentage}%</Text>
         </ConcentricRings>
         <View style={styles.ringsLegend}>
           <View style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: Colors.primary }]} />
+            <View style={[styles.legendDot, { backgroundColor: colors.primary }]} />
             <Text style={styles.legendLabel}>Adherence</Text>
           </View>
           <View style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: Colors.secondary }]} />
+            <View style={[styles.legendDot, { backgroundColor: colors.secondary }]} />
             <Text style={styles.legendLabel}>Taken</Text>
           </View>
           <View style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: Colors.accent }]} />
+            <View style={[styles.legendDot, { backgroundColor: colors.accent }]} />
             <Text style={styles.legendLabel}>Streak</Text>
           </View>
         </View>
@@ -273,7 +276,7 @@ export default function MedicinesScreen() {
                 setRefreshing(true);
                 setTimeout(() => setRefreshing(false), 1000);
               }}
-              tintColor={Colors.primary}
+              tintColor={colors.primary}
             />
           }
         >
@@ -289,7 +292,7 @@ export default function MedicinesScreen() {
             ) : (
               <View style={styles.timelineContainer}>
                 {slotEntries.map(([slot, items]) => {
-                  const config = TIME_SLOT_CONFIG[slot] || { icon: 'medkit-outline' as keyof typeof Ionicons.glyphMap, label: slot, color: Colors.textSecondary };
+                  const config = TIME_SLOT_CONFIG[slot] || { icon: 'medkit-outline' as keyof typeof Ionicons.glyphMap, label: slot, color: colors.textSecondary };
 
                   return (
                     <View key={slot} style={styles.slotSection}>
@@ -310,6 +313,8 @@ export default function MedicinesScreen() {
                             item={item}
                             onMarkTaken={handleMarkTaken}
                             onMarkSkipped={handleMarkSkipped}
+                            colors={colors}
+                            styles={styles}
                           />
                         ))}
                       </View>
@@ -322,6 +327,8 @@ export default function MedicinesScreen() {
             <MedicineHistoryView
               history={medicineHistory}
               medicines={allMedicines}
+              colors={colors}
+              styles={styles}
             />
           )}
 
@@ -334,6 +341,8 @@ export default function MedicinesScreen() {
         visible={showAddSheet}
         onClose={() => setShowAddSheet(false)}
         onAdd={handleAddMedicine}
+        colors={colors}
+        styles={styles}
       />
     </View>
   );
@@ -343,10 +352,14 @@ function MedicineCard({
   item,
   onMarkTaken,
   onMarkSkipped,
+  colors,
+  styles,
 }: {
   item: TodayMedicineScheduleItem;
   onMarkTaken: (id: string) => void;
   onMarkSkipped: (id: string) => void;
+  colors: ThemeColors;
+  styles: ReturnType<typeof createStyles>;
 }) {
   const isTaken = item.status === 'taken';
   const isSkipped = item.status === 'skipped';
@@ -376,7 +389,7 @@ function MedicineCard({
       <View style={styles.medActions}>
         {isTaken ? (
           <View style={styles.takenBadge}>
-            <Ionicons name="checkmark-circle" size={24} color={Colors.success} />
+            <Ionicons name="checkmark-circle" size={24} color={colors.success} />
             <Text style={styles.takenText}>Taken</Text>
           </View>
         ) : isSkipped ? (
@@ -390,14 +403,14 @@ function MedicineCard({
                 onPress={handleTaken}
                 style={({ pressed }) => [styles.takeBtn, pressed && { opacity: 0.7 }]}
               >
-                <Ionicons name="checkmark" size={20} color={Colors.background} />
+                <Ionicons name="checkmark" size={20} color={colors.background} />
               </Pressable>
             </Animated.View>
             <Pressable
               onPress={() => onMarkSkipped(item.medicineId)}
               style={({ pressed }) => [styles.skipBtn, pressed && { opacity: 0.7 }]}
             >
-              <Ionicons name="close" size={16} color={Colors.textMuted} />
+              <Ionicons name="close" size={16} color={colors.textMuted} />
             </Pressable>
           </View>
         )}
@@ -409,6 +422,8 @@ function MedicineCard({
 function MedicineHistoryView({
   history,
   medicines,
+  colors,
+  styles,
 }: {
   history: Array<{
     medicineId: Id<'medicines'>;
@@ -418,6 +433,8 @@ function MedicineHistoryView({
     xpAwarded?: number;
   }> | undefined;
   medicines: Array<{ _id: Id<'medicines'>; name: string }> | undefined;
+  colors: ThemeColors;
+  styles: ReturnType<typeof createStyles>;
 }) {
   const grouped = useMemo(() => {
     if (!history) return null;
@@ -481,7 +498,7 @@ function MedicineHistoryView({
                 <Ionicons
                   name={item.status === 'taken' ? 'checkmark-circle' : 'close-circle'}
                   size={18}
-                  color={item.status === 'taken' ? Colors.success : Colors.danger}
+                  color={item.status === 'taken' ? colors.success : colors.danger}
                 />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.historyMedName}>{item.medicineName}</Text>
@@ -503,10 +520,14 @@ function AddMedicineSheet({
   visible,
   onClose,
   onAdd,
+  colors,
+  styles,
 }: {
   visible: boolean;
   onClose: () => void;
   onAdd: (name: string, dosage: string, timeSlotLabel: string, timeSlotTime: string) => void;
+  colors: ThemeColors;
+  styles: ReturnType<typeof createStyles>;
 }) {
   const [name, setName] = useState('');
   const [dosage, setDosage] = useState('');
@@ -563,19 +584,19 @@ function AddMedicineSheet({
                 onPress={() => setSelectedSlot(option)}
                 style={[
                   styles.timeSlotChip,
-                  isSelected && { borderColor: config?.color ?? Colors.primary, backgroundColor: `${config?.color ?? Colors.primary}15` },
+                  isSelected && { borderColor: config?.color ?? colors.primary, backgroundColor: `${config?.color ?? colors.primary}15` },
                 ]}
               >
-                {config && <Ionicons name={config.icon} size={14} color={isSelected ? config.color : Colors.textMuted} />}
+                {config && <Ionicons name={config.icon} size={14} color={isSelected ? config.color : colors.textMuted} />}
                 <Text
                   style={[
                     styles.timeSlotChipText,
-                    isSelected && { color: config?.color ?? Colors.primary, fontFamily: FontFamily.semibold },
+                    isSelected && { color: config?.color ?? colors.primary, fontFamily: FontFamily.semibold },
                   ]}
                 >
                   {option.label}
                 </Text>
-                <Text style={[styles.timeSlotChipTime, isSelected && { color: config?.color ?? Colors.primary }]}>
+                <Text style={[styles.timeSlotChipTime, isSelected && { color: config?.color ?? colors.primary }]}>
                   {formatMedicineTime(option.time)}
                 </Text>
               </Pressable>
@@ -596,10 +617,10 @@ function AddMedicineSheet({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
   },
   centered: {
     flex: 1,
@@ -608,7 +629,7 @@ const styles = StyleSheet.create({
   },
   signInText: {
     fontSize: FontSize.sm,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     textAlign: 'center',
     padding: Spacing['2xl'],
   },
@@ -629,16 +650,16 @@ const styles = StyleSheet.create({
   title: {
     fontSize: FontSize['3xl'],
     fontFamily: FontFamily.extrabold,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   addBtn: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    ...Shadows.glow(Colors.primaryGlow, 0.5),
+    ...Shadows.glow(colors.primaryGlow, 0.5),
   },
 
   // Concentric Rings Stats
@@ -650,7 +671,7 @@ const styles = StyleSheet.create({
   ringsCenterNumber: {
     fontSize: FontSize['2xl'],
     fontFamily: FontFamily.extrabold,
-    color: Colors.foreground,
+    color: colors.foreground,
     textAlign: 'center',
   },
   ringsLegend: {
@@ -671,7 +692,7 @@ const styles = StyleSheet.create({
   legendLabel: {
     fontSize: FontSize.xs,
     fontFamily: FontFamily.medium,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
 
   // Tabs
@@ -711,7 +732,7 @@ const styles = StyleSheet.create({
   },
   slotTime: {
     fontSize: FontSize.xs,
-    color: Colors.textDim,
+    color: colors.textDim,
     fontFamily: FontFamily.regular,
   },
   slotCards: {
@@ -722,7 +743,7 @@ const styles = StyleSheet.create({
   medCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.surfaceLight,
+    backgroundColor: colors.surfaceLight,
     borderRadius: Radius.lg,
     padding: Spacing.md,
   },
@@ -736,20 +757,20 @@ const styles = StyleSheet.create({
   medName: {
     fontSize: FontSize.base,
     fontFamily: FontFamily.semibold,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   medNameTaken: {
     textDecorationLine: 'line-through',
-    color: Colors.textMuted,
+    color: colors.textMuted,
   },
   medDosage: {
     fontSize: FontSize.sm,
-    color: Colors.primary,
+    color: colors.primary,
     fontFamily: FontFamily.medium,
   },
   medInstructions: {
     fontSize: FontSize.xs,
-    color: Colors.textDim,
+    color: colors.textDim,
     fontStyle: 'italic',
   },
   medActions: {
@@ -762,7 +783,7 @@ const styles = StyleSheet.create({
   },
   takenText: {
     fontSize: FontSize.xs,
-    color: Colors.success,
+    color: colors.success,
     fontFamily: FontFamily.semibold,
   },
   skippedBadge: {
@@ -773,7 +794,7 @@ const styles = StyleSheet.create({
   },
   skippedText: {
     fontSize: FontSize.xs,
-    color: Colors.danger,
+    color: colors.danger,
     fontFamily: FontFamily.semibold,
   },
   actionButtons: {
@@ -785,7 +806,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: Colors.success,
+    backgroundColor: colors.success,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -793,7 +814,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: Colors.surfaceRaised,
+    backgroundColor: colors.surfaceRaised,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -802,7 +823,7 @@ const styles = StyleSheet.create({
   historyDateTitle: {
     fontSize: FontSize.sm,
     fontFamily: FontFamily.bold,
-    color: Colors.foreground,
+    color: colors.foreground,
     marginBottom: Spacing.sm,
   },
   historyRow: {
@@ -814,16 +835,16 @@ const styles = StyleSheet.create({
   historyMedName: {
     fontSize: FontSize.sm,
     fontFamily: FontFamily.semibold,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   historyMedTime: {
     fontSize: FontSize.xs,
-    color: Colors.textDim,
+    color: colors.textDim,
   },
   historyXp: {
     fontSize: FontSize.xs,
     fontFamily: FontFamily.bold,
-    color: Colors.primary,
+    color: colors.primary,
   },
 
   // Add Medicine Sheet
@@ -839,7 +860,7 @@ const styles = StyleSheet.create({
   timeSlotLabelText: {
     fontSize: FontSize.sm,
     fontFamily: FontFamily.semibold,
-    color: Colors.foreground,
+    color: colors.foreground,
     marginTop: Spacing.md,
     marginBottom: Spacing.sm,
   },
@@ -856,15 +877,15 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.xs,
     borderRadius: Radius.md,
     borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: Colors.surface,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
   },
   timeSlotChipText: {
     fontSize: FontSize.xs,
-    color: Colors.textMuted,
+    color: colors.textMuted,
   },
   timeSlotChipTime: {
     fontSize: FontSize.xs,
-    color: Colors.textDim,
+    color: colors.textDim,
   },
 });

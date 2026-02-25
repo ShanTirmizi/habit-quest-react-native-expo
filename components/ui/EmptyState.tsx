@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, FontSize, Spacing, Radius, FontFamily } from '@/constants/theme';
+import { FontSize, Spacing, Radius, FontFamily, type ThemeColors } from '@/constants/theme';
+import { useTheme } from '@/contexts/theme-context';
 
 interface EmptyStateProps {
   icon: keyof typeof Ionicons.glyphMap;
@@ -12,10 +13,13 @@ interface EmptyStateProps {
 }
 
 export function EmptyState({ icon, title, description, actionLabel, onAction }: EmptyStateProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   return (
     <View style={styles.container}>
       <View style={styles.iconContainer}>
-        <Ionicons name={icon} size={48} color={Colors.textMuted} />
+        <Ionicons name={icon} size={48} color={colors.textMuted} />
       </View>
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.description}>{description}</Text>
@@ -33,7 +37,7 @@ export function EmptyState({ icon, title, description, actionLabel, onAction }: 
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -44,7 +48,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: Colors.surfaceLight,
+    backgroundColor: colors.surfaceLight,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: Spacing.lg,
@@ -52,21 +56,21 @@ const styles = StyleSheet.create({
   title: {
     fontSize: FontSize.lg,
     fontFamily: FontFamily.bold,
-    color: Colors.foreground,
+    color: colors.foreground,
     marginBottom: Spacing.sm,
     textAlign: 'center',
   },
   description: {
     fontSize: FontSize.sm,
     fontFamily: FontFamily.regular,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 20,
     maxWidth: 280,
   },
   button: {
     marginTop: Spacing.xl,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     paddingHorizontal: Spacing['2xl'],
     paddingVertical: Spacing.md,
     borderRadius: Radius.lg,

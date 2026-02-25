@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useEffect } from 'react';
+import React, { useCallback, useRef, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,8 @@ import {
   ScrollView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Colors, Radius, Spacing, FontSize, FontFamily } from '@/constants/theme';
+import { Radius, Spacing, FontSize, FontFamily, type ThemeColors } from '@/constants/theme';
+import { useTheme } from '@/contexts/theme-context';
 
 interface BottomSheetProps {
   visible: boolean;
@@ -25,6 +26,8 @@ interface BottomSheetProps {
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export function BottomSheet({ visible, onClose, title, children }: BottomSheetProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const insets = useSafeAreaInsets();
   const translateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
 
@@ -82,22 +85,22 @@ export function BottomSheet({ visible, onClose, title, children }: BottomSheetPr
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   overlay: {
     flex: 1,
     justifyContent: 'flex-end',
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: Colors.overlay,
+    backgroundColor: colors.overlay,
   },
   sheet: {
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderTopLeftRadius: Radius['2xl'],
     borderTopRightRadius: Radius['2xl'],
     borderWidth: 1,
     borderBottomWidth: 0,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     maxHeight: SCREEN_HEIGHT * 0.85,
     paddingTop: Spacing.sm,
     paddingHorizontal: Spacing.xl,
@@ -106,14 +109,14 @@ const styles = StyleSheet.create({
     width: 36,
     height: 4,
     borderRadius: 2,
-    backgroundColor: Colors.textDim,
+    backgroundColor: colors.textDim,
     alignSelf: 'center',
     marginBottom: Spacing.lg,
   },
   title: {
     fontSize: FontSize.lg,
     fontFamily: FontFamily.bold,
-    color: Colors.foreground,
+    color: colors.foreground,
     marginBottom: Spacing.lg,
   },
   content: {

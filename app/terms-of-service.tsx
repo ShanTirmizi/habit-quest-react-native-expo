@@ -1,21 +1,46 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, ScrollView, StyleSheet, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, FontSize, Spacing, Radius, FontFamily } from '@/constants/theme';
+import { FontSize, Spacing, Radius, FontFamily, type ThemeColors } from '@/constants/theme';
+import { useTheme } from '@/contexts/theme-context';
 
 const LAST_UPDATED = 'February 24, 2026';
 
 export default function TermsOfServiceScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const router = useRouter();
   const insets = useSafeAreaInsets();
+
+  function Section({ title, children }: { title: string; children: React.ReactNode }) {
+    return (
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>{title}</Text>
+        {children}
+      </View>
+    );
+  }
+
+  function P({ children }: { children: React.ReactNode }) {
+    return <Text style={styles.paragraph}>{children}</Text>;
+  }
+
+  function Bullet({ text }: { text: string }) {
+    return (
+      <View style={styles.bulletRow}>
+        <Text style={styles.bulletDot}>{'  \u2022  '}</Text>
+        <Text style={styles.bulletText}>{text}</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} hitSlop={12} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={22} color={Colors.foreground} />
+          <Ionicons name="chevron-back" size={22} color={colors.foreground} />
         </Pressable>
         <Text style={styles.title}>Terms of Service</Text>
         <View style={{ width: 32 }} />
@@ -144,30 +169,8 @@ export default function TermsOfServiceScreen() {
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      {children}
-    </View>
-  );
-}
-
-function P({ children }: { children: React.ReactNode }) {
-  return <Text style={styles.paragraph}>{children}</Text>;
-}
-
-function Bullet({ text }: { text: string }) {
-  return (
-    <View style={styles.bulletRow}>
-      <Text style={styles.bulletDot}>{'  \u2022  '}</Text>
-      <Text style={styles.bulletText}>{text}</Text>
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.background },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -185,37 +188,37 @@ const styles = StyleSheet.create({
   title: {
     fontSize: FontSize.xl,
     fontFamily: FontFamily.bold,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   scrollView: { flex: 1 },
   content: { paddingHorizontal: Spacing.xl, paddingTop: Spacing.md },
   lastUpdated: {
     fontSize: FontSize.xs,
     fontFamily: FontFamily.medium,
-    color: Colors.textMuted,
+    color: colors.textMuted,
     marginBottom: Spacing.xl,
   },
   section: { marginBottom: Spacing.xl },
   sectionTitle: {
     fontSize: FontSize.base,
     fontFamily: FontFamily.bold,
-    color: Colors.foreground,
+    color: colors.foreground,
     marginBottom: Spacing.sm,
   },
   paragraph: {
     fontSize: FontSize.sm,
     fontFamily: FontFamily.regular,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     lineHeight: 22,
     marginBottom: Spacing.sm,
   },
   bulletRow: { flexDirection: 'row', paddingRight: Spacing.lg, marginBottom: 4 },
-  bulletDot: { fontSize: FontSize.sm, color: Colors.textSecondary },
+  bulletDot: { fontSize: FontSize.sm, color: colors.textSecondary },
   bulletText: {
     flex: 1,
     fontSize: FontSize.sm,
     fontFamily: FontFamily.regular,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     lineHeight: 22,
   },
 });

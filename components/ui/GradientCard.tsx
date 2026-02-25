@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Pressable, StyleSheet, ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Colors, Radius, Spacing, Shadows } from '@/constants/theme';
+import { Radius, Spacing, Shadows, type ThemeColors } from '@/constants/theme';
+import { useTheme } from '@/contexts/theme-context';
 
 interface GradientCardProps {
   children: React.ReactNode;
@@ -24,6 +25,9 @@ export function GradientCard({
   padding,
   elevated,
 }: GradientCardProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   const cardStyles: ViewStyle[] = [
     styles.card,
     elevated && Shadows.cardRaised,
@@ -63,12 +67,12 @@ export function GradientCard({
   return inner;
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   card: {
-    backgroundColor: Colors.surfaceLight,
+    backgroundColor: colors.surfaceLight,
     borderRadius: Radius.xl,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     padding: Spacing.lg,
   },
   pressed: {

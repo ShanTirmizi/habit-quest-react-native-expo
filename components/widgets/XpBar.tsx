@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { Colors, FontSize, Spacing, FontFamily } from '@/constants/theme';
+import { FontSize, Spacing, FontFamily, type ThemeColors } from '@/constants/theme';
+import { useTheme } from '@/contexts/theme-context';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 
 interface XpBarProps {
@@ -11,6 +12,9 @@ interface XpBarProps {
 }
 
 export function XpBar({ totalXp, level, progress, xpToNext }: XpBarProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -21,7 +25,7 @@ export function XpBar({ totalXp, level, progress, xpToNext }: XpBarProps) {
           {totalXp.toLocaleString()} XP
         </Text>
       </View>
-      <ProgressBar progress={progress} color={Colors.primary} height={6} />
+      <ProgressBar progress={progress} color={colors.primary} height={6} />
       <Text style={styles.nextLevel}>
         {xpToNext.toLocaleString()} XP to Level {level + 1}
       </Text>
@@ -29,7 +33,7 @@ export function XpBar({ totalXp, level, progress, xpToNext }: XpBarProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     gap: Spacing.xs,
   },
@@ -39,7 +43,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   levelBadge: {
-    backgroundColor: Colors.primaryBg,
+    backgroundColor: colors.primaryBg,
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 6,
@@ -47,15 +51,15 @@ const styles = StyleSheet.create({
   levelText: {
     fontSize: FontSize.sm,
     fontFamily: FontFamily.extrabold,
-    color: Colors.primary,
+    color: colors.primary,
   },
   xpText: {
     fontSize: FontSize.xs,
     fontFamily: FontFamily.semibold,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   nextLevel: {
     fontSize: FontSize.xs,
-    color: Colors.textDim,
+    color: colors.textDim,
   },
 });

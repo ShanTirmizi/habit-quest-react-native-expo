@@ -19,7 +19,7 @@ const ToastContext = createContext<ToastContextValue | undefined>(undefined);
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toast, setToast] = useState<ToastItem | null>(null);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const timeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const dismissToast = useCallback(() => {
     setToast(null);

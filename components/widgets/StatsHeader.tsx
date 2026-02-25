@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, FontSize, Spacing, Radius, FontFamily } from '@/constants/theme';
+import { FontSize, Spacing, Radius, FontFamily, type ThemeColors } from '@/constants/theme';
+import { useTheme } from '@/contexts/theme-context';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { HealthBar } from './HealthBar';
@@ -29,6 +30,8 @@ export function StatsHeader({
   todayTotal,
   longestStreak,
 }: StatsHeaderProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const completionPercentage = todayTotal > 0 ? Math.round((todayCompleted / todayTotal) * 100) : 0;
 
   return (
@@ -62,7 +65,7 @@ export function StatsHeader({
           <Text style={styles.progressLabel}>XP Progress</Text>
           <Text style={styles.progressText}>{xpToNext} to next</Text>
         </View>
-        <ProgressBar progress={xpProgress} color={Colors.primary} height={6} />
+        <ProgressBar progress={xpProgress} color={colors.primary} height={6} />
       </View>
 
       {/* Health Bar */}
@@ -74,7 +77,7 @@ export function StatsHeader({
           <View style={styles.completionBar}>
             <ProgressBar
               progress={completionPercentage}
-              color={completionPercentage === 100 ? Colors.success : Colors.accent}
+              color={completionPercentage === 100 ? colors.success : colors.accent}
               height={4}
             />
           </View>
@@ -90,7 +93,7 @@ export function StatsHeader({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   card: {
     gap: Spacing.md,
   },
@@ -108,25 +111,25 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: Colors.primaryBg,
+    backgroundColor: colors.primaryBg,
     borderWidth: 2,
-    borderColor: Colors.primary,
+    borderColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   levelNumber: {
     fontSize: FontSize.lg,
     fontFamily: FontFamily.extrabold,
-    color: Colors.primary,
+    color: colors.primary,
   },
   levelLabel: {
     fontSize: FontSize.sm,
     fontFamily: FontFamily.bold,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   xpTotal: {
     fontSize: FontSize.xs,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   statsRight: {
     flexDirection: 'row',
@@ -138,11 +141,11 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: FontSize.base,
     fontFamily: FontFamily.bold,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   statLabel: {
     fontSize: FontSize.xs,
-    color: Colors.textMuted,
+    color: colors.textMuted,
   },
   progressSection: {
     gap: Spacing.xs,
@@ -154,11 +157,11 @@ const styles = StyleSheet.create({
   progressLabel: {
     fontSize: FontSize.xs,
     fontFamily: FontFamily.semibold,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   progressText: {
     fontSize: FontSize.xs,
-    color: Colors.textDim,
+    color: colors.textDim,
   },
   completionRow: {
     flexDirection: 'row',
@@ -171,11 +174,11 @@ const styles = StyleSheet.create({
   completionText: {
     fontSize: FontSize.xs,
     fontFamily: FontFamily.bold,
-    color: Colors.accent,
+    color: colors.accent,
     minWidth: 60,
     textAlign: 'right',
   },
   completionTextDone: {
-    color: Colors.success,
+    color: colors.success,
   },
 });
