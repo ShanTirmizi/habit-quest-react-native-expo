@@ -732,7 +732,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   slotTime: {
     fontSize: FontSize.xs,
-    color: colors.textDim,
+    color: colors.textMuted,
     fontFamily: FontFamily.regular,
   },
   slotCards: {
@@ -770,7 +770,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   medInstructions: {
     fontSize: FontSize.xs,
-    color: colors.textDim,
+    color: colors.textMuted,
     fontStyle: 'italic',
   },
   medActions: {
@@ -839,7 +839,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   historyMedTime: {
     fontSize: FontSize.xs,
-    color: colors.textDim,
+    color: colors.textSecondary,
   },
   historyXp: {
     fontSize: FontSize.xs,

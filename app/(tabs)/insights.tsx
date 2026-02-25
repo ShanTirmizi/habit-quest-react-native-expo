@@ -759,7 +759,7 @@ function GamificationTab({ userId, progress, colors, styles }: GamificationTabPr
                     <Text
                       style={[
                         styles.skillName,
-                        !skill.unlocked && { color: colors.textMuted },
+                        !skill.unlocked && { color: colors.textSecondary },
                       ]}
                     >
                       {skill.name}
@@ -1087,7 +1087,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   skillCardLocked: {
     backgroundColor: colors.surfaceLight,
-    opacity: 0.6,
   },
   skillIconWrap: {
     width: 36,
@@ -1106,7 +1105,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   skillDesc: {
     fontSize: FontSize.xs,
-    color: colors.textMuted,
+    color: colors.textSecondary,
     marginTop: 2,
   },
   skillCostBadge: {
