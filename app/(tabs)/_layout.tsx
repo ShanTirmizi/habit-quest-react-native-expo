@@ -14,17 +14,11 @@ export default function TabLayout() {
         tabBarStyle: { display: 'none' },
       }}
     >
+      <Tabs.Screen name="index" options={{ title: 'Dashboard' }} />
       <Tabs.Screen name="medicines" options={{ title: 'Medicines' }} />
       <Tabs.Screen name="chronicles" options={{ title: 'Chronicle' }} />
-      <Tabs.Screen name="index" options={{ title: 'Dashboard' }} />
       <Tabs.Screen name="quests" options={{ title: 'Quests' }} />
       <Tabs.Screen name="insights" options={{ title: 'Insights' }} />
-      <Tabs.Screen
-        name="goals"
-        options={{
-          href: null, // hide from tab bar, accessible via Dashboard goals strip
-        }}
-      />
     </Tabs>
   );
 }

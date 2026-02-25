@@ -213,7 +213,7 @@ export default function MedicinesScreen() {
           onPress={() => setShowAddSheet(true)}
           style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.7 }]}
         >
-          <Ionicons name="add" size={24} color={colors.background} />
+          <Ionicons name="add" size={24} color="#FFFFFF" />
         </Pressable>
       </View>
 

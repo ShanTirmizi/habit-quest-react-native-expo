@@ -198,7 +198,7 @@ export default function ChroniclesScreen() {
               onPress={() => setIsWriting(true)}
               style={({ pressed }) => [styles.writeBtn, pressed && { opacity: 0.7 }]}
             >
-              <Ionicons name="create-outline" size={20} color={colors.background} />
+              <Ionicons name="create-outline" size={20} color="#FFFFFF" />
             </Pressable>
           </View>
         ) : null}

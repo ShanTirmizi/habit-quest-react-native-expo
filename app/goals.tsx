@@ -7,6 +7,7 @@ import {
   Pressable,
   RefreshControl,
 } from 'react-native';
+import { useRouter } from 'expo-router';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -57,6 +58,7 @@ function mapConvexGoal(raw: any): Goal {
 
 export default function GoalsScreen() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { userId } = useAuth();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -112,6 +114,13 @@ export default function GoalsScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
+        <Pressable
+          onPress={() => router.back()}
+          style={styles.backBtn}
+          hitSlop={12}
+        >
+          <Ionicons name="chevron-back" size={24} color={colors.foreground} />
+        </Pressable>
         <View style={styles.headerLeft}>
           <Text style={styles.title}>Goals</Text>
           <View style={styles.badgeRow}>
@@ -517,11 +526,21 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: Spacing.xl,
+    paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
     paddingBottom: Spacing.lg,
+    gap: Spacing.sm,
+  },
+  backBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: Radius.sm,
+    backgroundColor: colors.surfaceLight,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerLeft: {
+    flex: 1,
     gap: Spacing.sm,
   },
   title: {

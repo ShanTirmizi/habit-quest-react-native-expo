@@ -83,6 +83,10 @@ function ThemedApp() {
             options={{ animation: 'fade', gestureEnabled: false }}
           />
           <Stack.Screen
+            name="goals"
+            options={{ animation: 'slide_from_right' }}
+          />
+          <Stack.Screen
             name="settings"
             options={{ animation: 'slide_from_right' }}
           />

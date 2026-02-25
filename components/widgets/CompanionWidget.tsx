@@ -17,6 +17,8 @@ import Animated, {
   withRepeat,
   withSequence,
   withTiming,
+  Easing,
+  runOnJS,
 } from 'react-native-reanimated';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
@@ -99,6 +101,10 @@ export function CompanionWidget({
   const [editingName, setEditingName] = useState(false);
   const [newName, setNewName] = useState('');
   const [activeTab, setActiveTab] = useState<TabType>('info');
+  const tabProgress = useSharedValue(0); // 0 = info, 1 = chat
+  const [switcherWidth, setSwitcherWidth] = useState(0);
+  const contentHeight = useSharedValue(0);
+  const isFirstMeasure = useRef(true);
   const [chatInput, setChatInput] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [localMessages, setLocalMessages] = useState<ChatMessage[]>([]);
@@ -153,6 +159,57 @@ export function CompanionWidget({
   // Use external visibility when provided
   const isVisible = externalVisible ?? false;
 
+  const contentOpacity = useSharedValue(1);
+
+  const switchTab = useCallback((tab: TabType) => {
+    if (tab === activeTab) return;
+    // Animate indicator
+    tabProgress.value = withTiming(tab === 'chat' ? 1 : 0, {
+      duration: 300,
+      easing: Easing.out(Easing.cubic),
+    });
+    // Fade out → swap → fade in
+    contentOpacity.value = withTiming(0, { duration: 120 }, () => {
+      runOnJS(setActiveTab)(tab);
+      contentOpacity.value = withTiming(1, { duration: 180 });
+    });
+  }, [activeTab]);
+
+  // Pill indicator: half the switcher inner width, slides between pills
+  const pillHalf = switcherWidth > 0 ? (switcherWidth - 6) / 2 : 0; // 6 = padding*2 (3+3)
+  const indicatorStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: tabProgress.value * (pillHalf + 2) }], // +2 for gap
+    width: pillHalf,
+  }));
+
+  // Content fade wrapper
+  const contentAnimStyle = useAnimatedStyle(() => ({
+    opacity: contentOpacity.value,
+  }));
+
+  // Animated height — smoothly transitions when tab content changes size
+  const handleContentLayout = useCallback((e: { nativeEvent: { layout: { height: number } } }) => {
+    const h = e.nativeEvent.layout.height;
+    if (h === 0) return;
+    if (isFirstMeasure.current || contentHeight.value === 0) {
+      contentHeight.value = h;
+      isFirstMeasure.current = false;
+    } else if (Math.abs(contentHeight.value - h) > 2) {
+      contentHeight.value = withTiming(h, {
+        duration: 300,
+        easing: Easing.out(Easing.cubic),
+      });
+    }
+  }, []);
+
+  const heightWrapperStyle = useAnimatedStyle(() => {
+    if (contentHeight.value === 0) return {};
+    return {
+      height: contentHeight.value,
+      overflow: 'hidden' as const,
+    };
+  });
+
   // Reset session ID and tab when the sheet opens
   useEffect(() => {
     if (isVisible) {
@@ -163,6 +220,10 @@ export function CompanionWidget({
   const handleClose = () => {
     setEditingName(false);
     setActiveTab('info');
+    tabProgress.value = 0;
+    contentOpacity.value = 1;
+    contentHeight.value = 0;
+    isFirstMeasure.current = true;
     setChatInput('');
     setLocalMessages([]);
     onExternalClose?.();
@@ -307,10 +368,17 @@ export function CompanionWidget({
 
   // ---- Tab Switcher ----
   const renderTabSwitcher = () => (
-    <View style={styles.tabSwitcher}>
+    <View
+      style={styles.tabSwitcher}
+      onLayout={(e) => setSwitcherWidth(e.nativeEvent.layout.width)}
+    >
+      {/* Sliding indicator */}
+      {pillHalf > 0 && (
+        <Animated.View style={[styles.tabIndicator, indicatorStyle]} />
+      )}
       <Pressable
-        onPress={() => setActiveTab('info')}
-        style={[styles.tabPill, activeTab === 'info' && styles.tabPillActive]}
+        onPress={() => switchTab('info')}
+        style={styles.tabPill}
       >
         <Ionicons
           name="information-circle-outline"
@@ -322,8 +390,8 @@ export function CompanionWidget({
         </Text>
       </Pressable>
       <Pressable
-        onPress={() => setActiveTab('chat')}
-        style={[styles.tabPill, activeTab === 'chat' && styles.tabPillActive]}
+        onPress={() => switchTab('chat')}
+        style={styles.tabPill}
       >
         <Ionicons
           name="chatbubble-outline"
@@ -514,7 +582,11 @@ export function CompanionWidget({
   return (
     <BottomSheet visible={isVisible} onClose={handleClose} title={companion.name}>
       {renderTabSwitcher()}
-      {activeTab === 'info' ? renderInfoTab() : renderChatTab()}
+      <Animated.View style={heightWrapperStyle}>
+        <Animated.View style={contentAnimStyle} onLayout={handleContentLayout}>
+          {activeTab === 'info' ? renderInfoTab() : renderChatTab()}
+        </Animated.View>
+      </Animated.View>
     </BottomSheet>
   );
 }
@@ -530,16 +602,24 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginBottom: Spacing.lg,
     gap: 2,
   },
+  tabIndicator: {
+    position: 'absolute',
+    top: 3,
+    left: 3,
+    bottom: 3,
+    backgroundColor: colors.primary,
+    borderRadius: Radius.full,
+  },
   tabPill: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: Spacing.xs,
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.sm,
     borderRadius: Radius.full,
-  },
-  tabPillActive: {
-    backgroundColor: colors.primary,
+    zIndex: 1,
   },
   tabPillText: {
     fontSize: FontSize.sm,

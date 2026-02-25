@@ -367,8 +367,8 @@ export default function DashboardScreen() {
               <View style={styles.statsItem}>
                 <CircularProgress
                   progress={xpProgress}
-                  size={44}
-                  strokeWidth={4}
+                  size={36}
+                  strokeWidth={3}
                   color={colors.primary}
                   trackColor={colors.surfaceRaised}
                 >
@@ -397,7 +397,9 @@ export default function DashboardScreen() {
                     {currentHp}
                   </Text>
                 </View>
-                <ProgressBar progress={hpPercent} color={hpColor} height={4} />
+                <View style={{ width: '80%' }}>
+                  <ProgressBar progress={hpPercent} color={hpColor} height={3} />
+                </View>
               </View>
 
               {/* Divider */}
@@ -506,7 +508,7 @@ export default function DashboardScreen() {
               <View style={styles.goalsSectionHeader}>
                 <Text style={styles.goalsSectionTitle}>Active Goals</Text>
                 <Pressable
-                  onPress={() => router.push('/(tabs)/goals')}
+                  onPress={() => router.push('/goals')}
                   style={({ pressed }) => [pressed && { opacity: 0.7 }]}
                 >
                   <Text style={styles.goalsSeeAll}>See all</Text>
@@ -525,7 +527,7 @@ export default function DashboardScreen() {
                   return (
                     <Pressable
                       key={goal.id}
-                      onPress={() => router.push('/(tabs)/goals')}
+                      onPress={() => router.push('/goals')}
                       style={({ pressed }) => [styles.goalPill, pressed && { opacity: 0.8, transform: [{ scale: 0.97 }] }]}
                     >
                       <View style={[styles.goalPillIcon, { backgroundColor: catConfig?.color ? `${catConfig.color}20` : colors.primaryBg }]}>
@@ -555,7 +557,7 @@ export default function DashboardScreen() {
                 })}
                 {/* Add goal pill */}
                 <Pressable
-                  onPress={() => router.push('/(tabs)/goals')}
+                  onPress={() => router.push('/goals')}
                   style={({ pressed }) => [styles.goalPillAdd, pressed && { opacity: 0.7 }]}
                 >
                   <Ionicons name="add" size={18} color={colors.primary} />
@@ -702,7 +704,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   // ── Compact Stats Strip ──
   statsStrip: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'stretch',
     justifyContent: 'space-between',
     backgroundColor: colors.surfaceLight,
     borderRadius: Radius.xl,
@@ -710,19 +712,21 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderColor: colors.border,
     paddingVertical: Spacing.sm + 2,
     paddingHorizontal: Spacing.md,
-    ...Shadows.card,
   },
   statsItem: {
+    flex: 1,
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 2,
   },
   statsItemWide: {
+    flex: 1,
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 3,
-    width: 56,
   },
   statsLevelNum: {
-    fontSize: FontSize.sm,
+    fontSize: FontSize.xs,
     fontFamily: FontFamily.extrabold,
     color: colors.primary,
   },
@@ -739,7 +743,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   statsDivider: {
     width: 1,
-    height: 24,
+    alignSelf: 'stretch',
+    marginVertical: 4,
     backgroundColor: colors.border,
   },
   hpRow: {
