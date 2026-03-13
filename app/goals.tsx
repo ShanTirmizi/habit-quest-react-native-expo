@@ -59,8 +59,8 @@ export default function GoalsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { userId } = useAuth();
-  const { colors } = useTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const { colors, isDark } = useTheme();
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
 
   const { showToast } = useToast();
   const [filter, setFilter] = useState<FilterValue>('all');
@@ -197,6 +197,7 @@ export default function GoalsScreen() {
                 onPress={() => setSelectedGoal(goal)}
                 colors={colors}
                 styles={styles}
+                isDark={isDark}
               />
             ))}
           </View>
@@ -254,24 +255,29 @@ export default function GoalsScreen() {
   );
 }
 
-function GoalCard({ goal, onPress, colors, styles }: { goal: Goal; onPress: () => void; colors: ThemeColors; styles: ReturnType<typeof createStyles> }) {
+const GOAL_CARD_BG_MAP: Record<string, string> = {
+  health: '#2AB872',
+  career: '#E29628',
+  mind: '#D44E82',
+  life: '#24A894',
+};
+
+function GoalCard({ goal, onPress, colors, styles, isDark }: { goal: Goal; onPress: () => void; colors: ThemeColors; styles: ReturnType<typeof createStyles>; isDark: boolean }) {
   const categoryConfig = GOAL_CATEGORY_CONFIG[goal.category];
   const statusConfig = GOAL_STATUS_CONFIG[goal.status];
   const daysRemaining = differenceInDays(parseISO(goal.targetDate), new Date());
   const completedMilestones = goal.milestones?.filter((m) => m.completed).length || 0;
   const totalMilestones = goal.milestones?.length || 0;
   const progress = totalMilestones > 0 ? (completedMilestones / totalMilestones) * 100 : 0;
+  const cardBg = !isDark ? (GOAL_CARD_BG_MAP[goal.category] ?? colors.primary) : undefined;
 
   return (
-    <GradientCard onPress={onPress} style={styles.goalCard}>
+    <GradientCard onPress={onPress} style={{ ...styles.goalCard, ...(cardBg ? { backgroundColor: cardBg } : {}) }}>
       <View style={styles.goalTop}>
-        <Ionicons name={categoryConfig.icon as keyof typeof Ionicons.glyphMap} size={24} color={categoryConfig.color} />
-        <BadgePill
-          label={statusConfig.label}
-          icon={statusConfig.icon}
-          color={statusConfig.color}
-          size="sm"
-        />
+        <Ionicons name={categoryConfig.icon as keyof typeof Ionicons.glyphMap} size={24} color={isDark ? categoryConfig.color : '#FFFFFF'} />
+        <View style={styles.goalStatusBadge}>
+          <Text style={styles.goalStatusText}>{statusConfig.label}</Text>
+        </View>
       </View>
       <Text style={styles.goalTitle} numberOfLines={2}>{goal.title}</Text>
       {goal.description ? (
@@ -282,7 +288,7 @@ function GoalCard({ goal, onPress, colors, styles }: { goal: Goal; onPress: () =
         <View style={styles.goalProgress}>
           <ProgressBar
             progress={progress}
-            color={categoryConfig.color}
+            color={isDark ? categoryConfig.color : '#FFFFFF'}
             height={4}
           />
           <Text style={styles.goalMilestones}>
@@ -292,15 +298,13 @@ function GoalCard({ goal, onPress, colors, styles }: { goal: Goal; onPress: () =
       ) : null}
 
       <View style={styles.goalFooter}>
-        <BadgePill
-          label={categoryConfig.label}
-          color={categoryConfig.color}
-          size="sm"
-        />
+        <View style={styles.goalCategoryBadge}>
+          <Text style={styles.goalCategoryText}>{categoryConfig.label}</Text>
+        </View>
         <Text style={[
           styles.goalDays,
-          daysRemaining < 14 && { color: colors.warning },
-          daysRemaining < 0 && { color: colors.danger },
+          isDark && daysRemaining < 14 && { color: colors.warning },
+          isDark && daysRemaining < 0 && { color: colors.danger },
         ]}>
           {daysRemaining > 0 ? `${daysRemaining}d left` : daysRemaining === 0 ? 'Today!' : 'Overdue'}
         </Text>
@@ -413,7 +417,7 @@ function GoalDetail({
   );
 }
 
-const createStyles = (colors: ThemeColors) => StyleSheet.create({
+const createStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -543,11 +547,11 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   goalTitle: {
     fontSize: FontSize.base,
     fontFamily: FontFamily.bold,
-    color: colors.foreground,
+    color: isDark ? colors.foreground : '#FFFFFF',
   },
   goalDesc: {
     fontSize: FontSize.sm,
-    color: colors.textSecondary,
+    color: isDark ? colors.textSecondary : 'rgba(255,255,255,0.80)',
     lineHeight: 18,
   },
   goalProgress: {
@@ -555,7 +559,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   goalMilestones: {
     fontSize: FontSize.xs,
-    color: colors.textMuted,
+    color: isDark ? colors.textMuted : 'rgba(255,255,255,0.70)',
   },
   goalFooter: {
     flexDirection: 'row',
@@ -566,7 +570,29 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   goalDays: {
     fontSize: FontSize.xs,
     fontFamily: FontFamily.semibold,
-    color: colors.textSecondary,
+    color: isDark ? colors.textSecondary : 'rgba(255,255,255,0.80)',
+  },
+  goalStatusBadge: {
+    backgroundColor: isDark ? `${colors.primary}18` : 'rgba(255,255,255,0.25)',
+    paddingHorizontal: Spacing.sm + 2,
+    paddingVertical: 3,
+    borderRadius: Radius.full,
+  },
+  goalStatusText: {
+    fontSize: FontSize.xs,
+    fontFamily: FontFamily.semibold,
+    color: isDark ? colors.primary : '#FFFFFF',
+  },
+  goalCategoryBadge: {
+    backgroundColor: isDark ? `${colors.primary}18` : 'rgba(255,255,255,0.25)',
+    paddingHorizontal: Spacing.sm + 2,
+    paddingVertical: 3,
+    borderRadius: Radius.full,
+  },
+  goalCategoryText: {
+    fontSize: FontSize.xs,
+    fontFamily: FontFamily.semibold,
+    color: isDark ? colors.primary : '#FFFFFF',
   },
   // Detail
   detailContainer: {

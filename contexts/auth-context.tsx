@@ -11,6 +11,8 @@ interface User {
   image?: string;
   avatarUrl?: string;
   hasCompletedOnboarding?: boolean;
+  privacyPolicyAccepted?: boolean;
+  aiProcessingEnabled?: boolean;
 }
 
 interface AuthContextValue {

@@ -18,6 +18,12 @@ export default defineSchema({
     // For anonymous users during migration
     isAnonymous: v.optional(v.boolean()),
     hasCompletedOnboarding: v.optional(v.boolean()),
+    // GDPR consent
+    privacyPolicyAccepted: v.optional(v.boolean()),
+    privacyPolicyAcceptedAt: v.optional(v.string()),
+    healthDataConsent: v.optional(v.boolean()),
+    aiProcessingEnabled: v.optional(v.boolean()), // defaults to true, user can opt out
+    consentVersion: v.optional(v.string()), // e.g. "1.0"
   })
     .index('by_external_id', ['externalId'])
     .index('email', ['email']),

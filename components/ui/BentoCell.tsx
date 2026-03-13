@@ -33,8 +33,8 @@ export function BentoCell({
   style,
   index = 0,
 }: BentoCellProps) {
-  const { colors } = useTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const { colors, isDark } = useTheme();
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const { columnWidth, gap } = useBentoContext();
   const width = span === 2 ? columnWidth * 2 + gap : columnWidth;
   const defaultHeight = span === 2 ? 100 : columnWidth;
@@ -102,19 +102,17 @@ export function BentoCell({
   );
 }
 
-const createStyles = (colors: ThemeColors) => StyleSheet.create({
+const createStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
   cell: {
-    backgroundColor: colors.surfaceRaised,
+    backgroundColor: colors.surface,
     borderRadius: BentoRadius,
-    borderWidth: 1,
-    borderColor: colors.border,
     padding: Spacing.md,
     overflow: 'hidden',
+    ...Shadows.card,
+    borderWidth: isDark ? 1 : 0,
+    borderColor: colors.borderStrong,
   },
-  gradient: {
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
+  gradient: {},
   pressed: {
     opacity: 0.88,
     transform: [{ scale: 0.98 }],

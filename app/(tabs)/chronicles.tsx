@@ -220,7 +220,7 @@ export default function ChroniclesScreen() {
           {/* ── Today's Featured Card ── */}
           {todayEntry && !isWriting && !isEditing ? (
             <GradientCard
-              gradient={[todayMoodColor + '15', 'transparent']}
+              gradient={[todayMoodColor + '40', todayMoodColor + '18']}
               elevated
               onPress={() => handleStartEditing(todayEntry)}
               style={styles.featuredCard}
@@ -476,7 +476,7 @@ function PastEntryCard({
   if (expanded) {
     return (
       <GradientCard
-        gradient={[moodColor + '15', 'transparent']}
+        gradient={[moodColor + '55', moodColor + '30']}
         onPress={() => {
           Haptics.selectionAsync();
           setExpanded(false);
@@ -525,7 +525,7 @@ function PastEntryCard({
 
   return (
     <GradientCard
-      gradient={[moodColor + '15', 'transparent']}
+      gradient={[moodColor + '55', moodColor + '30']}
       onPress={() => {
         Haptics.selectionAsync();
         setExpanded(true);
@@ -676,7 +676,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   gratitudeNumberText: {
     fontSize: FontSize.xs,
     fontFamily: FontFamily.bold,
-    color: colors.background,
+    color: colors.primaryButtonText,
   },
   gratitudeInput: {
     flex: 1,
@@ -756,7 +756,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   saveBtnText: {
     fontSize: FontSize.sm,
     fontFamily: FontFamily.bold,
-    color: colors.background,
+    color: colors.primaryButtonText,
   },
 
   /* ── Featured Today Card ── */

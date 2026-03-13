@@ -5,13 +5,13 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "scheme": "habitquest",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#060810"
+      "backgroundColor": "#F5D9C0"
     },
     "ios": {
       "supportsTablet": true,
@@ -24,7 +24,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#060810"
+        "backgroundColor": "#F5D9C0"
       },
       "edgeToEdgeEnabled": true,
       "package": "com.habitquest.app"
@@ -42,7 +42,7 @@
       [
         "expo-notifications",
         {
-          "color": "#FF6B2C"
+          "color": "#EB6D3A"
         }
       ]
     ],

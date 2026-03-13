@@ -32,12 +32,14 @@ import type { TodayMedicineScheduleItem, MedicineCompletionStatus } from '@/type
 import { formatMedicineTime } from '@/types';
 import type { Id } from '@/convex/_generated/dataModel';
 
-const TIME_SLOT_CONFIG: Record<string, { icon: keyof typeof Ionicons.glyphMap; label: string; color: string }> = {
-  morning: { icon: 'sunny-outline', label: 'Morning', color: '#F59E0B' },
-  afternoon: { icon: 'partly-sunny-outline', label: 'Afternoon', color: '#F97316' },
-  evening: { icon: 'cloudy-night-outline', label: 'Evening', color: '#8B5CF6' },
-  night: { icon: 'moon-outline', label: 'Night', color: '#6366F1' },
-};
+function getTimeSlotConfig(colors: ThemeColors): Record<string, { icon: keyof typeof Ionicons.glyphMap; label: string; color: string }> {
+  return {
+    morning: { icon: 'sunny-outline', label: 'Morning', color: colors.accent },
+    afternoon: { icon: 'partly-sunny-outline', label: 'Afternoon', color: colors.primary },
+    evening: { icon: 'cloudy-night-outline', label: 'Evening', color: colors.categoryMind },
+    night: { icon: 'moon-outline', label: 'Night', color: colors.categoryLife },
+  };
+}
 
 const TIME_SLOT_OPTIONS: { label: string; value: string; time: string }[] = [
   { label: 'Morning', value: 'morning', time: '08:00' },
@@ -58,11 +60,12 @@ export default function MedicinesScreen() {
   const insets = useSafeAreaInsets();
   const { userId } = useAuth();
   const { showToast } = useToast();
-  const { colors } = useTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const { colors, isDark } = useTheme();
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const [tab, setTab] = useState('today');
   const [showAddSheet, setShowAddSheet] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const timeSlotConfig = useMemo(() => getTimeSlotConfig(colors), [colors]);
 
   const todayDate = getTodayDateString();
 
@@ -222,6 +225,7 @@ export default function MedicinesScreen() {
         <ConcentricRings
           size={160}
           strokeWidth={8}
+          trackColor={colors.border}
           rings={[
             { progress: stats.percentage, color: colors.primary, label: 'Adherence' },
             { progress: takenProgress, color: colors.secondary, label: 'Taken' },
@@ -296,7 +300,7 @@ export default function MedicinesScreen() {
               <View style={styles.timelineContainer}>
                 {(() => {
                   return slotEntries.map(([slot, items]) => {
-                    const config = TIME_SLOT_CONFIG[slot] || { icon: 'medkit-outline' as keyof typeof Ionicons.glyphMap, label: slot, color: colors.textSecondary };
+                    const config = timeSlotConfig[slot] || { icon: 'medkit-outline' as keyof typeof Ionicons.glyphMap, label: slot, color: colors.textSecondary };
 
                     return (
                       <View key={slot} style={styles.slotSection}>
@@ -336,6 +340,7 @@ export default function MedicinesScreen() {
               medicines={allMedicines}
               colors={colors}
               styles={styles}
+              isDark={isDark}
             />
           )}
 
@@ -350,6 +355,7 @@ export default function MedicinesScreen() {
         onAdd={handleAddMedicine}
         colors={colors}
         styles={styles}
+        timeSlotConfig={timeSlotConfig}
       />
     </View>
   );
@@ -410,7 +416,7 @@ function MedicineCard({
                 onPress={handleTaken}
                 style={({ pressed }) => [styles.takeBtn, pressed && { opacity: 0.9, transform: [{ scale: 0.97 }] }]}
               >
-                <Ionicons name="checkmark" size={20} color={colors.background} />
+                <Ionicons name="checkmark" size={20} color="#FFFFFF" />
               </Pressable>
             </Animated.View>
             <Pressable
@@ -431,6 +437,7 @@ function MedicineHistoryView({
   medicines,
   colors,
   styles,
+  isDark,
 }: {
   history: Array<{
     medicineId: Id<'medicines'>;
@@ -442,6 +449,7 @@ function MedicineHistoryView({
   medicines: Array<{ _id: Id<'medicines'>; name: string }> | undefined;
   colors: ThemeColors;
   styles: ReturnType<typeof createStyles>;
+  isDark: boolean;
 }) {
   const grouped = useMemo(() => {
     if (!history) return null;
@@ -492,10 +500,20 @@ function MedicineHistoryView({
     );
   }
 
+  const HISTORY_CARD_COLORS = [
+    colors.categoryHealthCard,
+    colors.categoryCareerCard,
+    colors.categoryLifeCard,
+    colors.categoryMindCard,
+  ];
+
   return (
     <View style={{ gap: Spacing.md }}>
-      {grouped.map(([date, items]) => (
-        <GradientCard key={date}>
+      {grouped.map(([date, items], dateIndex) => (
+        <GradientCard
+          key={date}
+          style={!isDark ? { backgroundColor: HISTORY_CARD_COLORS[dateIndex % HISTORY_CARD_COLORS.length] } : undefined}
+        >
           <Text style={styles.historyDateTitle}>
             {format(parseISO(date), 'EEEE, MMM d')}
           </Text>
@@ -505,7 +523,10 @@ function MedicineHistoryView({
                 <Ionicons
                   name={item.status === 'taken' ? 'checkmark-circle' : 'close-circle'}
                   size={18}
-                  color={item.status === 'taken' ? colors.success : colors.danger}
+                  color={isDark
+                    ? (item.status === 'taken' ? colors.success : colors.danger)
+                    : (item.status === 'taken' ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.5)')
+                  }
                 />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.historyMedName}>{item.medicineName}</Text>
@@ -529,12 +550,14 @@ function AddMedicineSheet({
   onAdd,
   colors,
   styles,
+  timeSlotConfig,
 }: {
   visible: boolean;
   onClose: () => void;
   onAdd: (name: string, dosage: string, timeSlotLabel: string, timeSlotTime: string) => void;
   colors: ThemeColors;
   styles: ReturnType<typeof createStyles>;
+  timeSlotConfig: Record<string, { icon: keyof typeof Ionicons.glyphMap; label: string; color: string }>;
 }) {
   const [name, setName] = useState('');
   const [dosage, setDosage] = useState('');
@@ -584,7 +607,7 @@ function AddMedicineSheet({
         <View style={styles.timeSlotRow}>
           {TIME_SLOT_OPTIONS.map((option) => {
             const isSelected = selectedSlot.value === option.value;
-            const config = TIME_SLOT_CONFIG[option.value];
+            const config = timeSlotConfig[option.value];
             return (
               <Pressable
                 key={option.value}
@@ -624,7 +647,7 @@ function AddMedicineSheet({
   );
 }
 
-const createStyles = (colors: ThemeColors) => StyleSheet.create({
+const createStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -813,7 +836,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: colors.success,
+    backgroundColor: isDark ? '#059669' : colors.success,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -830,7 +853,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   historyDateTitle: {
     fontSize: FontSize.sm,
     fontFamily: FontFamily.bold,
-    color: colors.foreground,
+    color: isDark ? colors.foreground : '#FFFFFF',
     marginBottom: Spacing.sm,
   },
   historyRow: {
@@ -842,16 +865,16 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   historyMedName: {
     fontSize: FontSize.sm,
     fontFamily: FontFamily.semibold,
-    color: colors.foreground,
+    color: isDark ? colors.foreground : '#FFFFFF',
   },
   historyMedTime: {
     fontSize: FontSize.xs,
-    color: colors.textSecondary,
+    color: isDark ? colors.textSecondary : 'rgba(255,255,255,0.75)',
   },
   historyXp: {
     fontSize: FontSize.xs,
     fontFamily: FontFamily.bold,
-    color: colors.primary,
+    color: isDark ? colors.primary : '#FFFFFF',
   },
 
   // Add Medicine Sheet

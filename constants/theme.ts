@@ -82,93 +82,109 @@ export const DarkColors = {
   overlay: 'rgba(0, 0, 0, 0.75)',
   glass: 'rgba(13, 17, 23, 0.92)',
 
+  // Bold category card fills (dark mode = subtle tints)
+  categoryHealthCard: 'rgba(0, 230, 118, 0.15)',
+  categoryCareerCard: 'rgba(68, 138, 255, 0.15)',
+  categoryMindCard: 'rgba(179, 136, 255, 0.15)',
+  categoryLifeCard: 'rgba(255, 215, 64, 0.15)',
+  categoryCardText: '#E6EDF3',
+  categoryCardTextSub: '#8B949E',
+
   // Button text on primary bg
   primaryButtonText: '#FFFFFF',
 } as const;
 
 // ──────────────────────────────────────────────
-// Light Theme — "Daybreak"
-// Warm sand surfaces, deeper accents for
-// readability, real shadows for depth.
-// NOT a cheap inversion — a distinct personality.
+// Light Theme — "Warm & Fun"
+// Bold, colorful, playful. White cards floating on
+// warm cream with punchy orange primary, vivid
+// category colors, and real shadow depth.
 // ──────────────────────────────────────────────
 export const LightColors = {
-  // Backgrounds — warm sand
-  background: '#F5F2ED',
+  // Backgrounds — bright warm peach (Design 4 inspired)
+  background: '#F5D9C0',
   surface: '#FFFFFF',
-  surfaceLight: '#EDE9E3',
-  surfaceRaised: '#F8F5F0',
-  surfaceHover: '#E5E0D8',
+  surfaceLight: '#F9E8D6',
+  surfaceRaised: '#FFFFFF',
+  surfaceHover: '#ECDAC8',
 
-  // Primary — deeper orange for readability
-  primary: '#E85A1E',
-  primaryDim: '#C44D18',
-  primaryGlow: 'rgba(232, 90, 30, 0.15)',
-  primaryBg: 'rgba(232, 90, 30, 0.08)',
-  primaryBgHover: 'rgba(232, 90, 30, 0.14)',
+  // Primary — bold warm orange (the hero color)
+  primary: '#EB6D3A',
+  primaryDim: '#D45E30',
+  primaryGlow: 'rgba(235, 109, 58, 0.25)',
+  primaryBg: 'rgba(235, 109, 58, 0.12)',
+  primaryBgHover: 'rgba(235, 109, 58, 0.20)',
 
-  // Secondary — deeper cyan
-  secondary: '#0AA89A',
-  secondaryDim: '#089187',
-  secondaryGlow: 'rgba(10, 168, 154, 0.15)',
-  secondaryBg: 'rgba(10, 168, 154, 0.08)',
+  // Secondary — vivid emerald green
+  secondary: '#2EAA6E',
+  secondaryDim: '#25905C',
+  secondaryGlow: 'rgba(46, 170, 110, 0.20)',
+  secondaryBg: 'rgba(46, 170, 110, 0.12)',
 
-  // Gold — deeper
-  accent: '#D49A00',
-  accentDim: '#B58200',
-  accentGlow: 'rgba(212, 154, 0, 0.15)',
-  accentBg: 'rgba(212, 154, 0, 0.06)',
+  // Accent — rich golden amber
+  accent: '#E5A832',
+  accentDim: '#CC9428',
+  accentGlow: 'rgba(229, 168, 50, 0.20)',
+  accentBg: 'rgba(229, 168, 50, 0.12)',
 
   // Text — warm darks
-  foreground: '#1A1614',
-  textSecondary: '#5C5650',
-  textMuted: '#8A8480',
+  foreground: '#1C1816',
+  textSecondary: '#6B6058',
+  textMuted: '#A09890',
 
-  // Categories — deeper for light-bg readability
-  categoryHealth: '#00B862',
-  categoryCareer: '#3370E0',
-  categoryMind: '#8F68E5',
-  categoryLife: '#D4A600',
+  // Categories — vivid and fun, each clearly distinct
+  categoryHealth: '#2EAA6E',   // emerald green
+  categoryCareer: '#E5A832',   // golden amber
+  categoryMind: '#D95E8A',     // hot pink
+  categoryLife: '#2AAAA0',     // bold teal
 
-  // Category Backgrounds
-  categoryHealthBg: 'rgba(0, 184, 98, 0.08)',
-  categoryCareerBg: 'rgba(51, 112, 224, 0.08)',
-  categoryMindBg: 'rgba(143, 104, 229, 0.08)',
-  categoryLifeBg: 'rgba(212, 166, 0, 0.08)',
+  // Category Backgrounds — clearly visible tints
+  categoryHealthBg: 'rgba(46, 170, 110, 0.14)',
+  categoryCareerBg: 'rgba(229, 168, 50, 0.14)',
+  categoryMindBg: 'rgba(217, 94, 138, 0.14)',
+  categoryLifeBg: 'rgba(42, 170, 160, 0.14)',
 
   // Rarity
-  rarityCommon: '#A8A19A',
-  rarityUncommon: '#00B862',
-  rarityRare: '#3370E0',
-  rarityEpic: '#8F68E5',
-  rarityLegendary: '#D49A00',
+  rarityCommon: '#A09890',
+  rarityUncommon: '#2EAA6E',
+  rarityRare: '#2AAAA0',
+  rarityEpic: '#D95E8A',
+  rarityLegendary: '#E5A832',
 
-  // Status
-  success: '#00B862',
-  warning: '#D49A00',
-  danger: '#E04545',
-  info: '#3370E0',
+  // Status — bold and clear
+  success: '#2EAA6E',
+  warning: '#E5A832',
+  danger: '#E05545',
+  info: '#2AAAA0',
 
   // HP
-  hpHigh: '#00B862',
-  hpMedium: '#D49A00',
-  hpLow: '#E04545',
-  hpCritical: '#C23232',
+  hpHigh: '#2EAA6E',
+  hpMedium: '#E5A832',
+  hpLow: '#E05545',
+  hpCritical: '#C43A2E',
 
   // Mood
-  moodGreat: '#D49A00',
-  moodGood: '#00B862',
-  moodOkay: '#3370E0',
-  moodRough: '#A8A19A',
+  moodGreat: '#E5A832',
+  moodGood: '#2EAA6E',
+  moodOkay: '#2AAAA0',
+  moodRough: '#A09890',
 
-  // Borders — real opacity borders
-  border: 'rgba(0, 0, 0, 0.07)',
-  borderStrong: 'rgba(0, 0, 0, 0.14)',
-  glassBorder: 'rgba(0, 0, 0, 0.06)',
+  // Bold category card fills — PUNCHY Design 4 style (rich, saturated, deep)
+  categoryHealthCard: '#2AB872',   // deep rich emerald (not pastel!)
+  categoryCareerCard: '#E29628',   // deep warm golden amber
+  categoryMindCard: '#D44E82',     // vivid hot pink / magenta
+  categoryLifeCard: '#24A894',     // deep rich teal
+  categoryCardText: '#FFFFFF',     // white text on saturated colored cards
+  categoryCardTextSub: 'rgba(255, 255, 255, 0.80)',  // semi-transparent white
+
+  // Borders — subtle, shadows do the heavy lifting
+  border: 'rgba(0, 0, 0, 0.04)',
+  borderStrong: 'rgba(0, 0, 0, 0.08)',
+  glassBorder: 'rgba(0, 0, 0, 0.03)',
 
   // Misc
-  overlay: 'rgba(0, 0, 0, 0.3)',
-  glass: 'rgba(255, 255, 255, 0.95)',
+  overlay: 'rgba(0, 0, 0, 0.30)',
+  glass: 'rgba(255, 255, 255, 0.98)',
 
   // Button text on primary bg
   primaryButtonText: '#FFFFFF',
@@ -198,6 +214,9 @@ export function getCategoryGradients(c: ThemeColors): Record<string, [string, st
     mind: [c.categoryMind, c.rarityEpic],
     life: [c.categoryLife, c.accent],
   };
+}
+export function getCategoryCardColors(c: ThemeColors): Record<string, string> {
+  return { health: c.categoryHealthCard, career: c.categoryCareerCard, mind: c.categoryMindCard, life: c.categoryLifeCard };
 }
 export function getRarityColors(c: ThemeColors): Record<string, string> {
   return { common: c.rarityCommon, uncommon: c.rarityUncommon, rare: c.rarityRare, epic: c.rarityEpic, legendary: c.rarityLegendary };
@@ -265,34 +284,34 @@ export const Radius = {
 export const BentoGap = 14;
 export const BentoRadius = 20;
 
-// Shadow presets (theme-independent — shadows look good on both)
+// Shadow presets — visible depth like Design 5 mood tracker
 export const Shadows = {
   card: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
+    shadowColor: '#8B8178',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
     elevation: 3,
   },
   cardRaised: {
-    shadowColor: '#000',
+    shadowColor: '#8B8178',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.35,
+    shadowOpacity: 0.16,
     shadowRadius: 24,
-    elevation: 8,
+    elevation: 6,
   },
-  glow: (color: string, intensity = 0.35) => ({
+  glow: (color: string, intensity = 0.25) => ({
     shadowColor: color,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: intensity,
-    shadowRadius: 20,
-    elevation: 8,
+    shadowRadius: 16,
+    elevation: 5,
   }),
   neonGlow: (color: string) => ({
     shadowColor: color,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 24,
-    elevation: 10,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.30,
+    shadowRadius: 20,
+    elevation: 8,
   }),
 } as const;

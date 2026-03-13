@@ -2,11 +2,10 @@ import React, { useCallback, useState, useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import type { Id } from '@/convex/_generated/dataModel';
-import { FontSize, Spacing, Radius, FontFamily, type ThemeColors } from '@/constants/theme';
+import { FontSize, Spacing, Radius, FontFamily, Shadows, type ThemeColors } from '@/constants/theme';
 import { useTheme } from '@/contexts/theme-context';
 import { Button } from '@/components/ui/Button';
 import { useToast } from '@/contexts/toast-context';
@@ -16,8 +15,8 @@ interface OracleChallengeCardProps {
 }
 
 export function OracleChallengeCard({ userId }: OracleChallengeCardProps) {
-  const { colors } = useTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const { colors, isDark } = useTheme();
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const { showToast } = useToast();
   const challenge = useQuery(api.oracle.getChallenge, { userId });
   const generateMutation = useMutation(api.oracle.generateChallenge);
@@ -82,15 +81,9 @@ export function OracleChallengeCard({ userId }: OracleChallengeCardProps) {
   if (challenge === null) {
     return (
       <View style={styles.wrapper}>
-        <LinearGradient
-          colors={['rgba(179,102,255,0.08)', 'rgba(179,102,255,0.02)']}
-          style={StyleSheet.absoluteFill}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        />
         <View style={styles.content}>
           <View style={styles.headerRow}>
-            <Ionicons name="eye-outline" size={20} color={colors.categoryMind} />
+            <Ionicons name="eye-outline" size={20} color={isDark ? colors.categoryMind : '#fff'} />
             <Text style={styles.title}>Oracle Challenge</Text>
           </View>
           <Text style={styles.description}>Consult the Oracle for a daily challenge and earn bonus XP.</Text>
@@ -107,15 +100,9 @@ export function OracleChallengeCard({ userId }: OracleChallengeCardProps) {
 
   return (
     <View style={styles.wrapper}>
-      <LinearGradient
-        colors={['rgba(179,102,255,0.12)', 'rgba(179,102,255,0.03)']}
-        style={StyleSheet.absoluteFill}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      />
       <View style={styles.content}>
         <View style={styles.headerRow}>
-          <Ionicons name="eye" size={20} color={colors.categoryMind} />
+          <Ionicons name="eye" size={20} color={isDark ? colors.categoryMind : '#fff'} />
           <Text style={styles.title}>Oracle Challenge</Text>
           <Text style={styles.xpBadge}>+{challenge.xpReward} XP</Text>
         </View>
@@ -130,7 +117,7 @@ export function OracleChallengeCard({ userId }: OracleChallengeCardProps) {
             <Button title="Complete" onPress={handleComplete} size="sm" loading={actionLoading} disabled={actionLoading} />
           ) : challenge.completed ? (
             <View style={styles.completedBadge}>
-              <Ionicons name="checkmark-circle" size={18} color={colors.success} />
+              <Ionicons name="checkmark-circle" size={18} color={isDark ? colors.success : '#FFFFFF'} />
               <Text style={styles.completedText}>Completed</Text>
             </View>
           ) : null}
@@ -140,12 +127,14 @@ export function OracleChallengeCard({ userId }: OracleChallengeCardProps) {
   );
 }
 
-const createStyles = (colors: ThemeColors) => StyleSheet.create({
+const createStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
   wrapper: {
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: 'rgba(179,102,255,0.15)',
+    borderRadius: 20,
     overflow: 'hidden',
+    backgroundColor: isDark ? colors.surface : colors.categoryMindCard,
+    ...(isDark ? {} : Shadows.card),
+    borderWidth: isDark ? 1 : 0,
+    borderColor: colors.borderStrong,
   },
   content: {
     padding: Spacing.lg,
@@ -160,23 +149,24 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flex: 1,
     fontSize: FontSize.sm,
     fontFamily: FontFamily.bold,
-    color: colors.categoryMind,
+    color: isDark ? colors.categoryMind : '#FFFFFF',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   xpBadge: {
     fontSize: FontSize.xs,
     fontFamily: FontFamily.extrabold,
-    color: colors.primary,
+    color: isDark ? colors.primary : '#FFFFFF',
   },
   description: {
     fontSize: FontSize.sm,
-    color: colors.textSecondary,
+    color: isDark ? colors.textSecondary : 'rgba(255, 255, 255, 0.85)',
     lineHeight: 18,
   },
   challengeText: {
     fontSize: FontSize.sm,
-    color: colors.foreground,
+    fontFamily: FontFamily.medium,
+    color: isDark ? colors.foreground : '#FFFFFF',
     lineHeight: 20,
   },
   actions: {
@@ -191,7 +181,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   completedText: {
     fontSize: FontSize.sm,
-    fontFamily: FontFamily.semibold,
-    color: colors.success,
+    fontFamily: FontFamily.bold,
+    color: '#FFFFFF',
   },
 });

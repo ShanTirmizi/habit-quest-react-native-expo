@@ -12,7 +12,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Radius, Spacing, FontSize, FontFamily, type ThemeColors } from '@/constants/theme';
+import { Radius, Spacing, FontSize, FontFamily, Shadows, type ThemeColors } from '@/constants/theme';
 import { useTheme } from '@/contexts/theme-context';
 
 interface BottomSheetProps {
@@ -96,14 +96,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   sheet: {
     backgroundColor: colors.surface,
-    borderTopLeftRadius: Radius['2xl'],
-    borderTopRightRadius: Radius['2xl'],
-    borderWidth: 1,
-    borderBottomWidth: 0,
-    borderColor: colors.border,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     maxHeight: SCREEN_HEIGHT * 0.85,
     paddingTop: Spacing.sm,
     paddingHorizontal: Spacing.xl,
+    ...Shadows.cardRaised,
   },
   handle: {
     width: 36,

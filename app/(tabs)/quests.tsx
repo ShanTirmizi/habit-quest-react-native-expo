@@ -19,7 +19,6 @@ import { useAuth } from '@/contexts/auth-context';
 import { useTheme } from '@/contexts/theme-context';
 import { FontSize, Spacing, Radius, FontFamily, Shadows, type ThemeColors } from '@/constants/theme';
 import { GradientCard } from '@/components/ui/GradientCard';
-import { BadgePill } from '@/components/ui/BadgePill';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Input } from '@/components/ui/Input';
@@ -32,8 +31,8 @@ export default function QuestsScreen() {
   const insets = useSafeAreaInsets();
   const { userId } = useAuth();
   const { showToast } = useToast();
-  const { colors } = useTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const { colors, isDark } = useTheme();
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const [showAddSheet, setShowAddSheet] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [completedExpanded, setCompletedExpanded] = useState(false);
@@ -209,6 +208,7 @@ export default function QuestsScreen() {
                           onDelete={handleDelete}
                           colors={colors}
                           styles={styles}
+                          isDark={isDark}
                         />
                     ))}
                   </View>
@@ -272,21 +272,30 @@ export default function QuestsScreen() {
 
 /* ─── Active Quest Card ──────────────────────────────────────────────────── */
 
+const PRIORITY_CARD_COLORS_LIGHT: Record<string, string> = {
+  low: '#24A894',     // teal
+  medium: '#E29628',  // golden amber
+  high: '#D44E82',    // hot pink
+};
+
 function ActiveQuestCard({
   quest,
   onComplete,
   onDelete,
   colors,
   styles,
+  isDark,
 }: {
   quest: SideQuest;
   onComplete: (id: string) => void;
   onDelete: (id: string) => void;
   colors: ThemeColors;
   styles: ReturnType<typeof createStyles>;
+  isDark: boolean;
 }) {
   const priorityConfig = QUEST_PRIORITY_CONFIG[quest.priority];
   const btnScale = useRef(new Animated.Value(1)).current;
+  const cardBg = !isDark ? PRIORITY_CARD_COLORS_LIGHT[quest.priority] : undefined;
 
   const handleComplete = useCallback(() => {
     Animated.sequence([
@@ -298,7 +307,7 @@ function ActiveQuestCard({
   }, [quest.id, onComplete, btnScale]);
 
   return (
-    <GradientCard style={styles.activeCard}>
+    <GradientCard style={{ ...styles.activeCard, ...(cardBg ? { backgroundColor: cardBg } : {}) }}>
       {/* Top Row: Title + Delete */}
       <View style={styles.activeCardTopRow}>
         <Text style={styles.activeCardTitle} numberOfLines={2}>
@@ -309,7 +318,7 @@ function ActiveQuestCard({
           hitSlop={10}
           style={({ pressed }) => [styles.deleteBtn, pressed && { opacity: 0.5 }]}
         >
-          <Ionicons name="trash-outline" size={17} color={colors.textMuted} />
+          <Ionicons name="trash-outline" size={17} color={isDark ? colors.textMuted : 'rgba(255,255,255,0.6)'} />
         </Pressable>
       </View>
 
@@ -322,11 +331,9 @@ function ActiveQuestCard({
 
       {/* Bottom Row: Priority + XP */}
       <View style={styles.activeCardBottomRow}>
-        <BadgePill
-          label={priorityConfig.label}
-          color={priorityConfig.color}
-          size="sm"
-        />
+        <View style={styles.priorityBadgeInline}>
+          <Text style={styles.priorityBadgeInlineText}>{priorityConfig.label}</Text>
+        </View>
         <View style={styles.xpBadge}>
           <Text style={styles.xpBadgeText}>+{quest.xpReward} XP</Text>
         </View>
@@ -480,7 +487,7 @@ function AddQuestSheet({
 
 /* ─── Styles ─────────────────────────────────────────────────────────────── */
 
-const createStyles = (colors: ThemeColors) => StyleSheet.create({
+const createStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -574,7 +581,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   activeCardTitle: {
     fontSize: FontSize.lg,
     fontFamily: FontFamily.bold,
-    color: colors.foreground,
+    color: isDark ? colors.foreground : '#FFFFFF',
     flex: 1,
     marginRight: Spacing.sm,
   },
@@ -584,7 +591,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   activeCardDesc: {
     fontSize: FontSize.sm,
     fontFamily: FontFamily.regular,
-    color: colors.textSecondary,
+    color: isDark ? colors.textSecondary : 'rgba(255,255,255,0.80)',
     lineHeight: 19,
   },
   activeCardBottomRow: {
@@ -593,8 +600,19 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     gap: Spacing.sm,
     marginTop: 2,
   },
+  priorityBadgeInline: {
+    backgroundColor: isDark ? colors.primaryBg : 'rgba(255,255,255,0.25)',
+    paddingHorizontal: Spacing.sm + 2,
+    paddingVertical: 3,
+    borderRadius: Radius.full,
+  },
+  priorityBadgeInlineText: {
+    fontSize: FontSize.xs,
+    fontFamily: FontFamily.bold,
+    color: isDark ? colors.primary : '#FFFFFF',
+  },
   xpBadge: {
-    backgroundColor: colors.primaryBg,
+    backgroundColor: isDark ? colors.primaryBg : 'rgba(255,255,255,0.25)',
     paddingHorizontal: Spacing.sm + 2,
     paddingVertical: 3,
     borderRadius: Radius.full,
@@ -602,13 +620,13 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   xpBadgeText: {
     fontSize: FontSize.xs,
     fontFamily: FontFamily.bold,
-    color: colors.primary,
+    color: isDark ? colors.primary : '#FFFFFF',
   },
   completeButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.success,
+    backgroundColor: isDark ? '#059669' : 'rgba(255,255,255,0.25)',
     paddingVertical: Spacing.sm + 4,
     borderRadius: Radius.lg,
     marginTop: Spacing.sm,

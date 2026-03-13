@@ -20,8 +20,7 @@ import {
   FontFamily,
   Shadows,
   getCategoryColors,
-  getCategoryBgColors,
-  getCategoryGradients,
+  getCategoryCardColors,
   type ThemeColors,
 } from '@/constants/theme';
 import { useTheme } from '@/contexts/theme-context';
@@ -51,15 +50,21 @@ const TIME_ICON_NAMES: Record<TimeOfDay, keyof typeof Ionicons.glyphMap | null> 
 const SWIPE_THRESHOLD = 70;
 
 export function HabitCard({ habit, isCompleted, onToggle, onPress, drag, isDragging, chainedToName, weeklyProgress, automaticityScore, isKeystone }: HabitCardProps) {
-  const { colors } = useTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const { colors, isDark } = useTheme();
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const categoryColors = useMemo(() => getCategoryColors(colors), [colors]);
-  const categoryBgColors = useMemo(() => getCategoryBgColors(colors), [colors]);
-  const categoryGradients = useMemo(() => getCategoryGradients(colors), [colors]);
+  const categoryCardColors = useMemo(() => getCategoryCardColors(colors), [colors]);
 
   const categoryColor = categoryColors[habit.category] || colors.textSecondary;
-  const categoryBg = categoryBgColors[habit.category] || colors.surfaceLight;
-  const categoryGradient = categoryGradients[habit.category] || [colors.textMuted, colors.textMuted];
+  const cardBg = categoryCardColors[habit.category] || colors.surface;
+
+  // Text/icon colors for contrast on colored cards
+  const cardText = colors.categoryCardText;
+  const cardTextSub = colors.categoryCardTextSub;
+  // Badges: white semi-transparent on colored cards (light), themed on dark
+  const badgeBg = isDark ? `${categoryColor}15` : 'rgba(255, 255, 255, 0.35)';
+  const badgeTextColor = isDark ? categoryColor : cardText;
+
   const checkboxScale = useRef(new Animated.Value(1)).current;
 
   // Card-level celebration pulse (reanimated)
@@ -140,6 +145,7 @@ export function HabitCard({ habit, isCompleted, onToggle, onPress, drag, isDragg
       delayLongPress={200}
       style={({ pressed }) => [
         styles.card,
+        { backgroundColor: cardBg },
         isCompleted && styles.cardCompleted,
         pressed && styles.cardPressed,
         isDragging && styles.cardDragging,
@@ -148,19 +154,7 @@ export function HabitCard({ habit, isCompleted, onToggle, onPress, drag, isDragg
       accessibilityState={{ checked: isCompleted }}
       accessibilityLabel={`${habit.name}, ${habit.category}, ${habit.xpReward} XP${isCompleted ? ', completed' : ''}`}
     >
-      {/* Category gradient left strip */}
-      {isCompleted ? (
-        <View style={[styles.gradientStrip, { backgroundColor: colors.textMuted }]} />
-      ) : (
-        <LinearGradient
-          colors={categoryGradient}
-          start={{ x: 0.5, y: 0 }}
-          end={{ x: 0.5, y: 1 }}
-          style={styles.gradientStrip}
-        />
-      )}
-
-      {/* Main content row — padded left to clear the strip */}
+      {/* Main content row */}
       <View style={styles.contentRow}>
         {/* Circular animated checkbox */}
         <Animated.View style={{ transform: [{ scale: checkboxScale }] }}>
@@ -169,13 +163,16 @@ export function HabitCard({ habit, isCompleted, onToggle, onPress, drag, isDragg
             hitSlop={8}
             style={({ pressed }) => [
               styles.checkbox,
-              isCompleted && { backgroundColor: categoryColor, borderColor: categoryColor },
-              !isCompleted && { borderColor: colors.borderStrong },
+              isCompleted
+                ? isDark
+                  ? { backgroundColor: categoryColor, borderColor: categoryColor }
+                  : { backgroundColor: '#fff', borderColor: '#fff' }
+                : { borderColor: isDark ? colors.borderStrong : 'rgba(255, 255, 255, 0.60)' },
               pressed && { transform: [{ scale: 0.9 }] },
             ]}
           >
             {isCompleted ? (
-              <Ionicons name="checkmark" size={15} color="#fff" />
+              <Ionicons name="checkmark" size={15} color={isDark ? '#fff' : cardBg} />
             ) : null}
           </Pressable>
         </Animated.View>
@@ -183,7 +180,7 @@ export function HabitCard({ habit, isCompleted, onToggle, onPress, drag, isDragg
         {/* Text content */}
         <View style={styles.content}>
           <Text
-            style={[styles.name, isCompleted && styles.nameCompleted]}
+            style={[styles.name, { color: cardText }, isCompleted && styles.nameCompleted]}
             numberOfLines={1}
           >
             {habit.name}
@@ -192,33 +189,33 @@ export function HabitCard({ habit, isCompleted, onToggle, onPress, drag, isDragg
           <View style={styles.metaRow}>
             <BadgePill
               label={habit.category.charAt(0).toUpperCase() + habit.category.slice(1)}
-              color={categoryColor}
-              bgColor={categoryBg}
+              color={badgeTextColor}
+              bgColor={badgeBg}
               size="sm"
             />
             {habit.timeOfDay && TIME_ICON_NAMES[habit.timeOfDay] ? (
               <Ionicons
                 name={TIME_ICON_NAMES[habit.timeOfDay]!}
                 size={13}
-                color={colors.textSecondary}
+                color={cardTextSub}
               />
             ) : null}
             {habit.notes && habit.notes.length > 0 ? (
-              <Ionicons name="chatbubble-outline" size={12} color={colors.textSecondary} />
+              <Ionicons name="chatbubble-outline" size={12} color={cardTextSub} />
             ) : null}
             {(habit.trigger || habit.location) ? (
-              <Ionicons name="navigate-outline" size={11} color={colors.info} />
+              <Ionicons name="navigate-outline" size={11} color={cardTextSub} />
             ) : null}
             {habit.rewardBundle ? (
-              <Ionicons name="gift-outline" size={11} color={colors.accent} />
+              <Ionicons name="gift-outline" size={11} color={isDark ? colors.accent : cardText} />
             ) : null}
             {isKeystone ? (
-              <Ionicons name="diamond" size={11} color={colors.accent} />
+              <Ionicons name="diamond" size={11} color={isDark ? colors.accent : cardText} />
             ) : null}
             {chainedToName ? (
-              <View style={styles.chainBadge}>
-                <Ionicons name="link" size={10} color={colors.primary} />
-                <Text style={styles.chainBadgeText} numberOfLines={1}>
+              <View style={[styles.chainBadge, { backgroundColor: badgeBg }]}>
+                <Ionicons name="link" size={10} color={badgeTextColor} />
+                <Text style={[styles.chainBadgeText, { color: badgeTextColor }]} numberOfLines={1}>
                   After {chainedToName}
                 </Text>
               </View>
@@ -226,16 +223,21 @@ export function HabitCard({ habit, isCompleted, onToggle, onPress, drag, isDragg
             {weeklyProgress && weeklyProgress.target > 0 ? (
               <View style={[
                 styles.weeklyBadge,
-                weeklyProgress.completed >= weeklyProgress.target && styles.weeklyBadgeDone,
+                { backgroundColor: badgeBg },
+                isDark && weeklyProgress.completed >= weeklyProgress.target && styles.weeklyBadgeDone,
               ]}>
                 <Ionicons
                   name="calendar-outline"
                   size={10}
-                  color={weeklyProgress.completed >= weeklyProgress.target ? colors.success : colors.secondary}
+                  color={isDark
+                    ? (weeklyProgress.completed >= weeklyProgress.target ? colors.success : colors.secondary)
+                    : cardText
+                  }
                 />
                 <Text style={[
                   styles.weeklyBadgeText,
-                  weeklyProgress.completed >= weeklyProgress.target && { color: colors.success },
+                  { color: isDark ? colors.secondary : cardText },
+                  isDark && weeklyProgress.completed >= weeklyProgress.target && { color: colors.success },
                 ]}>
                   {weeklyProgress.completed}/{weeklyProgress.target}
                 </Text>
@@ -246,8 +248,10 @@ export function HabitCard({ habit, isCompleted, onToggle, onPress, drag, isDragg
       </View>
 
       {/* XP pill — top-right corner */}
-      <View style={styles.xpPill}>
-        <Text style={styles.xpPillText}>+{habit.xpReward} XP</Text>
+      <View style={[styles.xpPill, { backgroundColor: isDark ? colors.primaryBg : 'rgba(255, 255, 255, 0.35)' }]}>
+        <Text style={[styles.xpPillText, { color: isDark ? colors.primary : cardText }]}>
+          +{habit.xpReward} XP
+        </Text>
       </View>
     </Pressable>
   );
@@ -255,17 +259,19 @@ export function HabitCard({ habit, isCompleted, onToggle, onPress, drag, isDragg
   const streakBadge = habit.streak > 0 ? (
     <View style={[
       styles.streakFloat,
+      { backgroundColor: isDark ? colors.accentBg : 'rgba(255, 255, 255, 0.40)' },
       automaticityScore != null && automaticityScore >= 95 && styles.streakFloatLocked,
-      automaticityScore != null && automaticityScore >= 60 && automaticityScore < 95 && styles.streakFloatStrong,
-      automaticityScore != null && automaticityScore >= 25 && automaticityScore < 60 && styles.streakFloatBuilding,
+      isDark && automaticityScore != null && automaticityScore >= 60 && automaticityScore < 95 && styles.streakFloatStrong,
+      isDark && automaticityScore != null && automaticityScore >= 25 && automaticityScore < 60 && styles.streakFloatBuilding,
     ]}>
       <Ionicons
         name="flame"
         size={11}
-        color={automaticityScore != null && automaticityScore >= 95 ? '#FFD700' : colors.accent}
+        color={automaticityScore != null && automaticityScore >= 95 ? '#FFD700' : (isDark ? colors.accent : cardText)}
       />
       <Text style={[
         styles.streakFloatText,
+        { color: isDark ? colors.accent : cardText },
         automaticityScore != null && automaticityScore >= 95 && { color: '#FFD700' },
       ]}>
         {habit.streak}
@@ -279,7 +285,7 @@ export function HabitCard({ habit, isCompleted, onToggle, onPress, drag, isDragg
       {enableSwipe ? (
         <ReAnimated.View style={[styles.revealBgWrapper, revealStyle]}>
           <LinearGradient
-            colors={['#00E676', '#00A152']}
+            colors={[colors.success, colors.secondaryDim]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.revealBg}
@@ -306,16 +312,16 @@ export function HabitCard({ habit, isCompleted, onToggle, onPress, drag, isDragg
   );
 }
 
-const createStyles = (colors: ThemeColors) => StyleSheet.create({
+const createStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
   swipeContainer: {
     position: 'relative',
     overflow: 'visible',
-    borderRadius: Radius.xl,
-    marginBottom: 6,
+    borderRadius: 18,
+    marginBottom: 10,
   },
   revealBgWrapper: {
     ...StyleSheet.absoluteFillObject,
-    borderRadius: Radius.xl,
+    borderRadius: 18,
     overflow: 'hidden',
   },
   revealBg: {
@@ -326,36 +332,26 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   card: {
     position: 'relative',
-    backgroundColor: colors.surface,
-    borderRadius: Radius.xl,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: Spacing.md,
+    borderRadius: 18,
+    padding: Spacing.md + 2,
     overflow: 'hidden',
     ...Shadows.card,
+    borderWidth: isDark ? 1 : 0,
+    borderColor: colors.borderStrong,
   },
   cardCompleted: {
     opacity: 0.5,
   },
   cardPressed: {
-    backgroundColor: colors.surfaceHover,
+    opacity: 0.88,
   },
   cardDragging: {
-    backgroundColor: colors.surfaceLight,
-  },
-  gradientStrip: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: 4,
-    borderTopLeftRadius: Radius.xl,
-    borderBottomLeftRadius: Radius.xl,
+    opacity: 0.9,
+    transform: [{ scale: 1.02 }],
   },
   contentRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingLeft: 12,
     gap: Spacing.md,
   },
   checkbox: {
@@ -374,11 +370,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   name: {
     fontSize: FontSize.base,
     fontFamily: FontFamily.semibold,
-    color: colors.foreground,
   },
   nameCompleted: {
-    color: colors.textMuted,
     textDecorationLine: 'line-through',
+    opacity: 0.7,
   },
   metaRow: {
     flexDirection: 'row',
@@ -389,7 +384,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     position: 'absolute',
     top: Spacing.md,
     right: Spacing.md,
-    backgroundColor: colors.primaryBg,
     borderRadius: Radius.full,
     paddingHorizontal: 10,
     paddingVertical: 3,
@@ -397,13 +391,11 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   xpPillText: {
     fontSize: FontSize.xs,
     fontFamily: FontFamily.bold,
-    color: colors.primary,
   },
   chainBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    backgroundColor: `${colors.primary}15`,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: Radius.full,
@@ -411,14 +403,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   chainBadgeText: {
     fontSize: 10,
     fontFamily: FontFamily.medium,
-    color: colors.primary,
     maxWidth: 100,
   },
   weeklyBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    backgroundColor: `${colors.secondary}15`,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: Radius.full,
@@ -429,7 +419,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   weeklyBadgeText: {
     fontSize: 10,
     fontFamily: FontFamily.semibold,
-    color: colors.secondary,
   },
   streakFloat: {
     position: 'absolute',
@@ -438,26 +427,25 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    backgroundColor: colors.accentBg,
     borderRadius: Radius.full,
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderWidth: 1,
-    borderColor: colors.border,
   },
   streakFloatLocked: {
+    borderWidth: 1,
     borderColor: '#FFD700',
-    backgroundColor: 'rgba(255, 215, 0, 0.1)',
+    backgroundColor: 'rgba(255, 215, 0, 0.15)',
   },
   streakFloatStrong: {
+    borderWidth: 1,
     borderColor: colors.success,
   },
   streakFloatBuilding: {
+    borderWidth: 1,
     borderColor: `${colors.primary}60`,
   },
   streakFloatText: {
     fontSize: FontSize.xs,
     fontFamily: FontFamily.bold,
-    color: colors.accent,
   },
 });

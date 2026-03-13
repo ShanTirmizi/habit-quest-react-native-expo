@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import ReAnimated, { FadeIn, FadeOut, SlideInDown } from 'react-native-reanimated';
-import { FontSize, Spacing, Radius, FontFamily, type ThemeColors } from '@/constants/theme';
+import { FontSize, Spacing, Radius, FontFamily, Shadows, type ThemeColors } from '@/constants/theme';
 import { useTheme } from '@/contexts/theme-context';
 import type { ReflectionMood } from '@/types';
 import { REFLECTION_MOOD_CONFIG } from '@/types';
@@ -58,11 +58,10 @@ export function MicroReflectionPrompt({ habitName, onSelect, onDismiss }: MicroR
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     backgroundColor: colors.surface,
-    borderRadius: Radius.xl,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderRadius: 20,
     padding: Spacing.md,
     gap: Spacing.sm,
+    ...Shadows.card,
   },
   header: {
     flexDirection: 'row',

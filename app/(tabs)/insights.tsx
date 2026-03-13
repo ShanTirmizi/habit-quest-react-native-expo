@@ -142,7 +142,7 @@ function computeWeeklyStats(habits: Array<{ category: HabitCategory; xpReward: n
 }
 
 // ─── Animated Vertical Bar ────────────────────────────────────────────────────
-function AnimatedBar({ percentage, color, label, delay, colors, styles }: { percentage: number; color: string; label: string; delay: number; colors: ThemeColors; styles: ReturnType<typeof createStyles> }) {
+function AnimatedBar({ percentage, color, label, delay, colors, styles, isDark }: { percentage: number; color: string; label: string; delay: number; colors: ThemeColors; styles: ReturnType<typeof createStyles>; isDark: boolean }) {
   const MAX_HEIGHT = 100;
   const barHeight = useSharedValue(0);
 
@@ -159,9 +159,9 @@ function AnimatedBar({ percentage, color, label, delay, colors, styles }: { perc
 
   return (
     <View style={styles.barColumn}>
-      <Text style={[styles.barPercent, { color }]}>{percentage}%</Text>
+      <Text style={[styles.barPercent, { color: isDark ? color : '#FFFFFF' }]}>{percentage}%</Text>
       <View style={styles.barTrack}>
-        <Animated.View style={[styles.barFill, { backgroundColor: color }, animatedBarStyle]} />
+        <Animated.View style={[styles.barFill, { backgroundColor: isDark ? color : '#FFFFFF' }, animatedBarStyle]} />
       </View>
       <Text style={styles.barLabel}>{label}</Text>
     </View>
@@ -176,8 +176,8 @@ export default function InsightsScreen() {
   const insets = useSafeAreaInsets();
   const [tab, setTab] = useState<InsightsTab>('overview');
   const { userId } = useAuth();
-  const { colors } = useTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const { colors, isDark } = useTheme();
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
 
   const progress = useQuery(
     api.progress.getProgress,
@@ -259,10 +259,10 @@ export default function InsightsScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-          {tab === 'overview' ? <OverviewTab userId={userId} progress={progress} habits={habits ?? []} colors={colors} styles={styles} /> : null}
-          {tab === 'history' ? <HistoryTab userId={userId} habits={habits ?? []} colors={colors} styles={styles} /> : null}
-          {tab === 'achievements' ? <AchievementsTab userId={userId} progress={progress} colors={colors} styles={styles} /> : null}
-          {tab === 'gamification' ? <GamificationTab userId={userId} progress={progress} colors={colors} styles={styles} /> : null}
+          {tab === 'overview' ? <OverviewTab userId={userId} progress={progress} habits={habits ?? []} colors={colors} styles={styles} isDark={isDark} /> : null}
+          {tab === 'history' ? <HistoryTab userId={userId} habits={habits ?? []} colors={colors} styles={styles} isDark={isDark} /> : null}
+          {tab === 'achievements' ? <AchievementsTab userId={userId} progress={progress} colors={colors} styles={styles} isDark={isDark} /> : null}
+          {tab === 'gamification' ? <GamificationTab userId={userId} progress={progress} colors={colors} styles={styles} isDark={isDark} /> : null}
         <View style={{ height: 100 }} />
       </ScrollView>
     </View>
@@ -290,9 +290,10 @@ interface OverviewTabProps {
   habits: Array<{ category: HabitCategory; xpReward: number; completedDates: string[] }>;
   colors: ThemeColors;
   styles: ReturnType<typeof createStyles>;
+  isDark: boolean;
 }
 
-function OverviewTab({ userId, progress, habits, colors, styles }: OverviewTabProps) {
+function OverviewTab({ userId, progress, habits, colors, styles, isDark }: OverviewTabProps) {
   const stats = useMemo(() => computeWeeklyStats(habits), [habits]);
   const CATEGORY_COLORS = useMemo(() => getCategoryColors(colors), [colors]);
 
@@ -342,84 +343,90 @@ function OverviewTab({ userId, progress, habits, colors, styles }: OverviewTabPr
 
       {/* ── Weekly Boss Card (dramatic) ── */}
       <GradientCard
-        gradient={bossData.defeated ? ['rgba(0,230,118,0.12)', 'transparent'] : ['rgba(255,107,107,0.12)', 'transparent']}
+        gradient={isDark ? (bossData.defeated ? [`${colors.success}20`, 'transparent'] : [`${colors.danger}20`, 'transparent']) : undefined}
         glowColor={bossData.defeated ? colors.success : undefined}
+        style={!isDark ? { backgroundColor: bossData.defeated ? colors.categoryHealthCard : colors.categoryMindCard } : undefined}
       >
         <View style={styles.bossRow}>
           <Animated.View style={bossIconPulseStyle}>
-            <Ionicons name={bossData.icon} size={36} color={bossData.defeated ? colors.success : colors.danger} />
+            <Ionicons name={bossData.icon} size={36} color={isDark ? (bossData.defeated ? colors.success : colors.danger) : '#FFFFFF'} />
           </Animated.View>
           <View style={{ flex: 1, marginLeft: Spacing.md }}>
             <View style={styles.bossNameRow}>
-              <Text style={[styles.bossName, bossData.defeated && { color: colors.success }]}>
+              <Text style={[styles.bossName, { color: isDark ? (bossData.defeated ? colors.success : colors.danger) : '#FFFFFF' }]}>
                 {bossData.name}
               </Text>
               {bossData.defeated ? (
-                <BadgePill label="DEFEATED" color={colors.success} />
+                <BadgePill label="DEFEATED" color={isDark ? colors.success : '#FFFFFF'} />
               ) : null}
             </View>
             <ProgressBar
               progress={bossData.progress}
-              color={bossData.defeated ? colors.success : colors.danger}
+              color={isDark ? (bossData.defeated ? colors.success : colors.danger) : '#FFFFFF'}
               height={14}
-              glowColor={bossData.defeated ? colors.success : colors.danger}
+              glowColor={isDark ? (bossData.defeated ? colors.success : colors.danger) : undefined}
               style={{ marginTop: Spacing.sm }}
             />
           </View>
         </View>
         <View style={styles.bossDamageRow}>
-          <Text style={[styles.bossDamageNumber, { color: bossData.defeated ? colors.success : colors.danger }]}>
+          <Text style={[styles.bossDamageNumber, { color: isDark ? (bossData.defeated ? colors.success : colors.danger) : '#FFFFFF' }]}>
             {bossData.completions}
           </Text>
-          <Text style={styles.bossDamageSlash}>/</Text>
-          <Text style={[styles.bossDamageNumber, { color: colors.textSecondary }]}>
+          <Text style={[styles.bossDamageSlash, !isDark && { color: 'rgba(255,255,255,0.5)' }]}>/</Text>
+          <Text style={[styles.bossDamageNumber, { color: isDark ? colors.textSecondary : 'rgba(255,255,255,0.70)' }]}>
             {bossData.required}
           </Text>
-          <Text style={styles.bossDamageLabel}>hits</Text>
+          <Text style={[styles.bossDamageLabel, !isDark && { color: 'rgba(255,255,255,0.70)' }]}>hits</Text>
         </View>
       </GradientCard>
 
       {/* ── Weekly Summary: 2x2 Bento Grid ── */}
       <Text style={styles.sectionTitle}>Weekly Summary</Text>
       <BentoGrid>
-        <BentoCell index={0} height={100}>
+        <BentoCell index={0} height={100} style={!isDark ? { backgroundColor: colors.secondary } : undefined}>
           <OversizedMetric
             value={stats.rate}
             label="Completion"
-            color={colors.secondary}
+            color={isDark ? colors.secondary : '#FFFFFF'}
+            labelColor={isDark ? undefined : 'rgba(255,255,255,0.75)'}
             suffix="%"
             size="md"
           />
         </BentoCell>
-        <BentoCell index={1} height={100}>
+        <BentoCell index={1} height={100} style={!isDark ? { backgroundColor: colors.primary } : undefined}>
           <OversizedMetric
             value={stats.xpEarned}
             label="XP Earned"
-            color={colors.primary}
+            color={isDark ? colors.primary : '#FFFFFF'}
+            labelColor={isDark ? undefined : 'rgba(255,255,255,0.75)'}
             suffix="XP"
             size="md"
           />
         </BentoCell>
-        <BentoCell index={2} height={100}>
+        <BentoCell index={2} height={100} style={!isDark ? { backgroundColor: colors.accent } : undefined}>
           <OversizedMetric
             value={stats.completions}
             label="Completions"
-            color={colors.accent}
+            color={isDark ? colors.accent : '#FFFFFF'}
+            labelColor={isDark ? undefined : 'rgba(255,255,255,0.75)'}
             size="md"
           />
         </BentoCell>
-        <BentoCell index={3} height={100}>
+        <BentoCell index={3} height={100} style={!isDark ? { backgroundColor: colors.categoryLife } : undefined}>
           <OversizedMetric
             value={stats.bestDay}
             label="Best Day"
+            color={isDark ? undefined : '#FFFFFF'}
+            labelColor={isDark ? undefined : 'rgba(255,255,255,0.75)'}
             size="md"
           />
         </BentoCell>
       </BentoGrid>
 
       {/* ── Category Breakdown: Vertical Bar Chart ── */}
-      <GradientCard>
-        <Text style={styles.cardTitle}>Categories</Text>
+      <GradientCard style={!isDark ? { backgroundColor: colors.categoryCareerCard } : undefined}>
+        <Text style={[styles.cardTitle, !isDark && { color: '#FFFFFF' }]}>Categories</Text>
         <View style={styles.barChart}>
           {(Object.entries(stats.categories) as [HabitCategory, number][]).map(([cat, rate], idx) => (
             <AnimatedBar
@@ -430,6 +437,7 @@ function OverviewTab({ userId, progress, habits, colors, styles }: OverviewTabPr
               delay={idx * 100}
               colors={colors}
               styles={styles}
+              isDark={isDark}
             />
           ))}
         </View>
@@ -447,6 +455,7 @@ interface HistoryTabProps {
   habits: Array<{ completedDates: string[] }>;
   colors: ThemeColors;
   styles: ReturnType<typeof createStyles>;
+  isDark: boolean;
 }
 
 function computeStreakStats(habits: Array<{ completedDates: string[] }>) {
@@ -494,7 +503,7 @@ function computeStreakStats(habits: Array<{ completedDates: string[] }>) {
   return { bestCurrentStreak, longestEverStreak, activeStreaksCount, totalHabits: habits.length };
 }
 
-function HistoryTab({ userId, habits, colors, styles }: HistoryTabProps) {
+function HistoryTab({ userId, habits, colors, styles, isDark }: HistoryTabProps) {
   const weeks = 8;
   const days = 7;
 
@@ -550,8 +559,8 @@ function HistoryTab({ userId, habits, colors, styles }: HistoryTabProps) {
   return (
     <View style={styles.tabContent}>
       {/* ── Heatmap Calendar ── */}
-      <GradientCard>
-        <Text style={styles.cardTitle}>Completion Calendar</Text>
+      <GradientCard style={!isDark ? { backgroundColor: colors.categoryHealthCard } : undefined}>
+        <Text style={[styles.cardTitle, !isDark && { color: '#FFFFFF' }]}>Completion Calendar</Text>
         {/* Month labels */}
         <View style={styles.heatMonthRow}>
           <View style={{ width: 22 }} />
@@ -589,7 +598,7 @@ function HistoryTab({ userId, habits, colors, styles }: HistoryTabProps) {
                       key={dayIdx}
                       style={[
                         styles.heatCell,
-                        { backgroundColor: colors.primary, opacity },
+                        { backgroundColor: isDark ? colors.primary : '#FFFFFF', opacity },
                         isToday && styles.heatCellToday,
                       ]}
                     />
@@ -605,7 +614,7 @@ function HistoryTab({ userId, habits, colors, styles }: HistoryTabProps) {
           {[0.08, 0.3, 0.6, 1].map((op) => (
             <View
               key={op}
-              style={[styles.heatLegendDot, { backgroundColor: colors.primary, opacity: op }]}
+              style={[styles.heatLegendDot, { backgroundColor: isDark ? colors.primary : '#FFFFFF', opacity: op }]}
             />
           ))}
           <Text style={styles.heatLegendText}>More</Text>
@@ -614,33 +623,39 @@ function HistoryTab({ userId, habits, colors, styles }: HistoryTabProps) {
 
       {/* ── Streak Summary ── */}
       <BentoGrid>
-        <BentoCell index={0} height={100}>
+        <BentoCell index={0} height={100} style={!isDark ? { backgroundColor: colors.primary } : undefined}>
           <OversizedMetric
             value={streakStats.bestCurrentStreak}
             label="Current Best"
+            color={isDark ? undefined : '#FFFFFF'}
+            labelColor={isDark ? undefined : 'rgba(255,255,255,0.75)'}
             size="md"
           />
         </BentoCell>
-        <BentoCell index={1} height={100}>
+        <BentoCell index={1} height={100} style={!isDark ? { backgroundColor: colors.accent } : undefined}>
           <OversizedMetric
             value={streakStats.longestEverStreak}
             label="Longest Ever"
-            color={colors.accent}
+            color={isDark ? colors.accent : '#FFFFFF'}
+            labelColor={isDark ? undefined : 'rgba(255,255,255,0.75)'}
             size="md"
           />
         </BentoCell>
-        <BentoCell index={2} height={100}>
+        <BentoCell index={2} height={100} style={!isDark ? { backgroundColor: colors.categoryMind } : undefined}>
           <OversizedMetric
             value={streakStats.activeStreaksCount}
             label="Active Streaks"
-            color={colors.primary}
+            color={isDark ? colors.primary : '#FFFFFF'}
+            labelColor={isDark ? undefined : 'rgba(255,255,255,0.75)'}
             size="md"
           />
         </BentoCell>
-        <BentoCell index={3} height={100}>
+        <BentoCell index={3} height={100} style={!isDark ? { backgroundColor: colors.categoryLife } : undefined}>
           <OversizedMetric
             value={streakStats.totalHabits}
             label="Total Habits"
+            color={isDark ? undefined : '#FFFFFF'}
+            labelColor={isDark ? undefined : 'rgba(255,255,255,0.75)'}
             size="md"
           />
         </BentoCell>
@@ -660,9 +675,10 @@ interface AchievementsTabProps {
   } | null;
   colors: ThemeColors;
   styles: ReturnType<typeof createStyles>;
+  isDark: boolean;
 }
 
-function AchievementsTab({ userId, progress, colors, styles }: AchievementsTabProps) {
+function AchievementsTab({ userId, progress, colors, styles, isDark }: AchievementsTabProps) {
   const unlockedAchievementIds = new Set(progress?.achievements ?? []);
 
   const achievements = ACHIEVEMENT_DEFINITIONS.map((a) => ({
@@ -676,11 +692,15 @@ function AchievementsTab({ userId, progress, colors, styles }: AchievementsTabPr
   return (
     <View style={styles.tabContent}>
       {/* Progress counter */}
-      <GradientCard gradient={['rgba(255,184,0,0.12)', 'transparent']}>
+      <GradientCard
+        gradient={isDark ? [`${colors.accent}20`, 'transparent'] : undefined}
+        style={!isDark ? { backgroundColor: colors.accent } : undefined}
+      >
         <OversizedMetric
           value={unlocked}
           label="Unlocked"
-          color={colors.accent}
+          color={isDark ? colors.accent : '#FFFFFF'}
+          labelColor={isDark ? undefined : 'rgba(255,255,255,0.75)'}
           suffix={`/${total}`}
           size="lg"
         />
@@ -703,7 +723,7 @@ function AchievementsTab({ userId, progress, colors, styles }: AchievementsTabPr
                 <Ionicons
                   name={achievement.icon}
                   size={28}
-                  color={achievement.unlocked ? colors.accent : colors.textMuted}
+                  color={achievement.unlocked ? (isDark ? colors.accent : '#FFFFFF') : colors.textMuted}
                   style={!achievement.unlocked ? { opacity: 0.4 } : undefined}
                 />
                 {!achievement.unlocked ? (
@@ -739,9 +759,10 @@ interface GamificationTabProps {
   } | null;
   colors: ThemeColors;
   styles: ReturnType<typeof createStyles>;
+  isDark: boolean;
 }
 
-function GamificationTab({ userId, progress, colors, styles }: GamificationTabProps) {
+function GamificationTab({ userId, progress, colors, styles, isDark }: GamificationTabProps) {
   const unlockedSkillIds = new Set(
     (progress?.unlockedSkills ?? []).map((s) => s.skillId)
   );
@@ -759,6 +780,13 @@ function GamificationTab({ userId, progress, colors, styles }: GamificationTabPr
     balance: colors.categoryLife,
   };
 
+  const categoryCardBgs: Record<string, string> = {
+    discipline: colors.categoryMindCard,
+    wellness: colors.categoryHealthCard,
+    growth: colors.categoryCareerCard,
+    balance: colors.categoryLifeCard,
+  };
+
   return (
     <View style={styles.tabContent}>
       <Text style={styles.sectionTitle}>Skill Tree</Text>
@@ -766,11 +794,11 @@ function GamificationTab({ userId, progress, colors, styles }: GamificationTabPr
         const catSkills = skills.filter((s) => s.category === cat);
         const catColor = categoryColors[cat];
         return (
-          <GradientCard key={cat}>
+          <GradientCard key={cat} style={!isDark ? { backgroundColor: categoryCardBgs[cat] } : undefined}>
             {/* Category header with color bar */}
             <View style={styles.skillCatHeader}>
-              <View style={[styles.skillCatBar, { backgroundColor: catColor }]} />
-              <Text style={[styles.skillCatTitle, { color: catColor }]}>
+              <View style={[styles.skillCatBar, { backgroundColor: isDark ? catColor : 'rgba(255,255,255,0.5)' }]} />
+              <Text style={[styles.skillCatTitle, { color: isDark ? catColor : '#FFFFFF' }]}>
                 {cat.charAt(0).toUpperCase() + cat.slice(1)}
               </Text>
             </View>
@@ -784,18 +812,19 @@ function GamificationTab({ userId, progress, colors, styles }: GamificationTabPr
                       skill.unlocked ? styles.skillCardUnlocked : styles.skillCardLocked,
                     ]}
                   >
-                    <View style={[styles.skillIconWrap, { backgroundColor: skill.unlocked ? `${catColor}20` : colors.surfaceLight }]}>
+                    <View style={[styles.skillIconWrap, { backgroundColor: isDark ? (skill.unlocked ? `${catColor}20` : colors.surfaceLight) : 'rgba(255,255,255,0.25)' }]}>
                       <Ionicons
                         name={skill.icon}
                         size={20}
-                        color={skill.unlocked ? catColor : colors.textMuted}
+                        color={isDark ? (skill.unlocked ? catColor : colors.textMuted) : '#FFFFFF'}
                       />
                     </View>
                     <View style={styles.skillInfo}>
                       <Text
                         style={[
                           styles.skillName,
-                          !skill.unlocked && { color: colors.textSecondary },
+                          !skill.unlocked && !isDark && { color: 'rgba(255,255,255,0.6)' },
+                          !skill.unlocked && isDark && { color: colors.textSecondary },
                         ]}
                       >
                         {skill.name}
@@ -803,7 +832,7 @@ function GamificationTab({ userId, progress, colors, styles }: GamificationTabPr
                       <Text style={styles.skillDesc}>{skill.description}</Text>
                     </View>
                     {skill.unlocked ? (
-                      <Ionicons name="checkmark-circle" size={22} color={colors.success} />
+                      <Ionicons name="checkmark-circle" size={22} color={isDark ? colors.success : '#FFFFFF'} />
                     ) : (
                       <View style={styles.skillCostBadge}>
                         <Text style={styles.skillCostText}>{skill.xpCost} XP</Text>
@@ -823,7 +852,7 @@ function GamificationTab({ userId, progress, colors, styles }: GamificationTabPr
 // STYLES
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const createStyles = (colors: ThemeColors) => StyleSheet.create({
+const createStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
   // ── Layout ──
   container: {
     flex: 1,
@@ -962,7 +991,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   barTrack: {
     width: 50,
     height: 100,
-    backgroundColor: colors.surfaceRaised,
+    backgroundColor: isDark ? colors.surfaceRaised : 'rgba(255,255,255,0.25)',
     borderRadius: Radius.sm,
     justifyContent: 'flex-end',
     overflow: 'hidden',
@@ -974,7 +1003,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   barLabel: {
     fontSize: FontSize.xs,
     fontFamily: FontFamily.semibold,
-    color: colors.textSecondary,
+    color: isDark ? colors.textSecondary : 'rgba(255,255,255,0.80)',
   },
 
   // ── Heatmap ──
@@ -993,7 +1022,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   heatCellToday: {
     borderWidth: 2,
-    borderColor: colors.primary,
+    borderColor: isDark ? colors.primary : '#FFFFFF',
   },
   heatLegend: {
     flexDirection: 'row',
@@ -1004,7 +1033,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   heatLegendText: {
     fontSize: 10,
-    color: colors.textMuted,
+    color: isDark ? colors.textMuted : 'rgba(255,255,255,0.70)',
     fontFamily: FontFamily.medium,
   },
   heatLegendDot: {
@@ -1019,7 +1048,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   heatMonthLabel: {
     position: 'absolute',
     fontSize: 10,
-    color: colors.textMuted,
+    color: isDark ? colors.textMuted : 'rgba(255,255,255,0.70)',
     fontFamily: FontFamily.medium,
   },
   heatDayLabels: {
@@ -1030,7 +1059,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   heatDayLabel: {
     height: 18,
     fontSize: 10,
-    color: colors.textMuted,
+    color: isDark ? colors.textMuted : 'rgba(255,255,255,0.70)',
     lineHeight: 18,
     textAlign: 'right',
     width: 18,
@@ -1057,15 +1086,15 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginBottom: 6,
   },
   medalUnlocked: {
-    backgroundColor: colors.surfaceRaised,
+    backgroundColor: isDark ? colors.surfaceRaised : colors.accent,
     borderWidth: 2,
-    borderColor: colors.accent,
+    borderColor: isDark ? colors.accent : colors.accent,
     ...Shadows.glow(colors.accentGlow, 0.5),
   },
   medalLocked: {
-    backgroundColor: colors.surfaceLight,
+    backgroundColor: isDark ? colors.surfaceLight : 'rgba(0,0,0,0.06)',
     borderWidth: 2,
-    borderColor: colors.textMuted,
+    borderColor: isDark ? colors.textMuted : 'rgba(0,0,0,0.12)',
     borderStyle: 'dashed',
   },
   medalLockOverlay: {
@@ -1075,7 +1104,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     width: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: colors.surfaceLight,
+    backgroundColor: isDark ? colors.surfaceLight : '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
@@ -1117,12 +1146,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderRadius: Radius.lg,
   },
   skillCardUnlocked: {
-    backgroundColor: colors.surfaceRaised,
-    borderWidth: 1,
+    backgroundColor: isDark ? colors.surfaceRaised : 'rgba(255,255,255,0.25)',
+    borderWidth: isDark ? 1 : 0,
     borderColor: colors.borderStrong,
   },
   skillCardLocked: {
-    backgroundColor: colors.surfaceLight,
+    backgroundColor: isDark ? colors.surfaceLight : 'rgba(255,255,255,0.12)',
   },
   skillIconWrap: {
     width: 36,
@@ -1137,15 +1166,15 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   skillName: {
     fontSize: FontSize.sm,
     fontFamily: FontFamily.semibold,
-    color: colors.foreground,
+    color: isDark ? colors.foreground : '#FFFFFF',
   },
   skillDesc: {
     fontSize: FontSize.xs,
-    color: colors.textSecondary,
+    color: isDark ? colors.textSecondary : 'rgba(255,255,255,0.70)',
     marginTop: 2,
   },
   skillCostBadge: {
-    backgroundColor: colors.accentBg,
+    backgroundColor: isDark ? colors.accentBg : 'rgba(255,255,255,0.25)',
     paddingHorizontal: Spacing.sm,
     paddingVertical: 3,
     borderRadius: Radius.full,
@@ -1153,6 +1182,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   skillCostText: {
     fontSize: FontSize.xs,
     fontFamily: FontFamily.bold,
-    color: colors.accent,
+    color: isDark ? colors.accent : '#FFFFFF',
   },
 });

@@ -6,7 +6,7 @@ import Animated, {
   withTiming,
   Easing,
 } from 'react-native-reanimated';
-import { Radius, FontSize, Spacing, FontFamily, type ThemeColors } from '@/constants/theme';
+import { Radius, FontSize, Spacing, FontFamily, Shadows, type ThemeColors } from '@/constants/theme';
 import { useTheme } from '@/contexts/theme-context';
 
 interface Segment {
@@ -112,8 +112,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     bottom: 3,
     backgroundColor: colors.surface,
     borderRadius: Radius.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
+    ...Shadows.card,
   },
   segment: {
     flex: 1,

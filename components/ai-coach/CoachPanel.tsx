@@ -367,7 +367,7 @@ export function CoachPanel({ userId }: CoachPanelProps) {
 
   return (
     <GradientCard
-      gradient={['#0D1117', '#131A24']}
+      gradient={[colors.surfaceLight, colors.surface]}
       glowColor={colors.primaryGlow}
       style={styles.container}
     >

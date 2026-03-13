@@ -21,7 +21,8 @@ async function deleteAllByUser(
     | 'medicineGroups'
     | 'medicines'
     | 'medicineCompletions'
-    | 'aiMemories',
+    | 'aiMemories'
+    | 'microReflections',
   userId: Id<'users'>,
 ) {
   const docs = await ctx.db
@@ -59,6 +60,7 @@ export const deleteAccount = mutation({
       'medicines',
       'medicineCompletions',
       'aiMemories',
+      'microReflections',
     ] as const;
 
     let totalDeleted = 0;

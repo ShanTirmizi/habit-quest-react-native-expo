@@ -12,11 +12,11 @@ interface FreshStartBannerProps {
 }
 
 const TYPE_CONFIG: Record<FreshStart['type'], { icon: keyof typeof Ionicons.glyphMap; gradient: [string, string] }> = {
-  new_week: { icon: 'calendar-outline', gradient: ['#8B5CF6', '#6366F1'] },
-  new_month: { icon: 'rocket-outline', gradient: ['#F97316', '#EF4444'] },
-  new_year: { icon: 'sparkles', gradient: ['#FBBF24', '#F97316'] },
-  new_season: { icon: 'leaf-outline', gradient: ['#10B981', '#059669'] },
-  milestone_day: { icon: 'trophy-outline', gradient: ['#FBBF24', '#F59E0B'] },
+  new_week: { icon: 'calendar-outline', gradient: ['#D95E8A', '#C44D77'] },
+  new_month: { icon: 'rocket-outline', gradient: ['#EB6D3A', '#D45E30'] },
+  new_year: { icon: 'sparkles', gradient: ['#E5A832', '#CC9428'] },
+  new_season: { icon: 'leaf-outline', gradient: ['#2EAA6E', '#25905C'] },
+  milestone_day: { icon: 'trophy-outline', gradient: ['#E5A832', '#EB6D3A'] },
 };
 
 export function FreshStartBanner({ freshStart, onDismiss }: FreshStartBannerProps) {

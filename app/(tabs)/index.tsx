@@ -19,7 +19,6 @@ import { FontSize, Spacing, Radius, FontFamily, Shadows, type ThemeColors } from
 import { useTheme } from '@/contexts/theme-context';
 import { CircularProgress } from '@/components/ui/CircularProgress';
 import { ProgressBar } from '@/components/ui/ProgressBar';
-import { GradientCard } from '@/components/ui/GradientCard';
 import { HabitCard } from '@/components/habits/HabitCard';
 import { DraggableHabitList } from '@/components/habits/DraggableHabitList';
 import { HabitDetailSheet } from '@/components/habits/HabitDetailSheet';
@@ -112,8 +111,8 @@ export default function DashboardScreen() {
   const router = useRouter();
   const { userId, user } = useAuth();
   const { showToast } = useToast();
-  const { colors } = useTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const { colors, isDark } = useTheme();
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const [showAddSheet, setShowAddSheet] = useState(false);
 
   const [showCompanionSheet, setShowCompanionSheet] = useState(false);
@@ -793,18 +792,15 @@ export default function DashboardScreen() {
             <View style={styles.habitSection}>
               {/* All Done Banner */}
               {allDone ? (
-                <GradientCard
-                  gradient={['rgba(0, 230, 118, 0.15)', 'rgba(255, 184, 0, 0.10)']}
-                  glowColor={colors.success}
-                >
+                <View style={styles.allDoneCard}>
                   <View style={styles.allDoneBanner}>
-                    <Ionicons name="trophy" size={40} color={colors.accent} />
+                    <Ionicons name="trophy" size={40} color="#fff" />
                     <Text style={styles.allDoneTitle}>All Done!</Text>
                     <Text style={styles.allDoneText}>
                       You&apos;ve completed all habits for today. Amazing work!
                     </Text>
                   </View>
-                </GradientCard>
+                </View>
               ) : null}
 
               {/* Time-of-day grouped habits (active, non-hibernated) */}
@@ -1087,7 +1083,7 @@ export default function DashboardScreen() {
   );
 }
 
-const createStyles = (colors: ThemeColors) => StyleSheet.create({
+const createStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -1181,12 +1177,13 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'stretch',
     justifyContent: 'space-between',
-    backgroundColor: colors.surfaceLight,
+    backgroundColor: colors.surface,
     borderRadius: Radius.xl,
-    borderWidth: 1,
-    borderColor: colors.border,
     paddingVertical: Spacing.sm + 2,
     paddingHorizontal: Spacing.md,
+    ...Shadows.card,
+    borderWidth: isDark ? 1 : 0,
+    borderColor: colors.borderStrong,
   },
   statsItem: {
     flex: 1,
@@ -1275,14 +1272,15 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,
-    backgroundColor: colors.surfaceLight,
-    borderWidth: 1,
-    borderColor: colors.border,
+    backgroundColor: colors.surface,
     borderRadius: Radius.lg,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm + 2,
     minWidth: 150,
     maxWidth: 200,
+    ...Shadows.card,
+    borderWidth: isDark ? 1 : 0,
+    borderColor: colors.borderStrong,
   },
   goalPillIcon: {
     width: 28,
@@ -1320,10 +1318,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     height: '100%' as any,
     minHeight: 48,
     borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderWidth: 1.5,
+    borderColor: colors.borderStrong,
     borderStyle: 'dashed',
-    backgroundColor: colors.surfaceLight,
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1342,13 +1340,13 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm + 2,
     borderRadius: Radius.lg,
-    backgroundColor: colors.surfaceLight,
-    borderWidth: 1,
-    borderColor: 'transparent',
+    backgroundColor: colors.surface,
+    ...Shadows.card,
+    borderWidth: isDark ? 1 : 0,
+    borderColor: colors.borderStrong,
   },
   timeHeaderCurrent: {
-    borderColor: `${colors.primary}40`,
-    backgroundColor: `${colors.primary}08`,
+    backgroundColor: `${colors.primary}12`,
   },
   timeHeaderPast: {
     opacity: 0.6,
@@ -1411,14 +1409,19 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     borderRadius: Radius.lg,
-    backgroundColor: colors.surfaceLight,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderStyle: 'dashed',
+    backgroundColor: colors.surface,
     opacity: 0.6,
+    ...Shadows.card,
+    borderWidth: isDark ? 1 : 0,
+    borderColor: colors.borderStrong,
   },
 
   // ── All Done Banner ──
+  allDoneCard: {
+    backgroundColor: colors.success,
+    borderRadius: 20,
+    ...Shadows.glow(colors.success, 0.3),
+  },
   allDoneBanner: {
     alignItems: 'center',
     paddingVertical: Spacing.xl,
@@ -1427,11 +1430,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   allDoneTitle: {
     fontSize: FontSize['3xl'],
     fontFamily: FontFamily.extrabold,
-    color: colors.success,
+    color: '#FFFFFF',
   },
   allDoneText: {
     fontSize: FontSize.sm,
-    color: colors.textSecondary,
+    fontFamily: FontFamily.medium,
+    color: 'rgba(255, 255, 255, 0.85)',
     textAlign: 'center',
   },
 

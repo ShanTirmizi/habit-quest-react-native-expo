@@ -185,6 +185,20 @@ export default function LoginScreen() {
             containerStyle={{ marginTop: Spacing.md }}
           />
 
+          {mode === 'signup' && (
+            <Text style={styles.consentNote}>
+              By creating an account, you agree to our{' '}
+              <Text style={styles.consentLink} onPress={() => router.push('/privacy-policy')}>
+                Privacy Policy
+              </Text>
+              {' '}and{' '}
+              <Text style={styles.consentLink} onPress={() => router.push('/terms-of-service')}>
+                Terms of Service
+              </Text>
+              .
+            </Text>
+          )}
+
           <View style={styles.mainButtonWrap}>
             <Button
               title={mode === 'login' ? 'Sign In' : 'Create Account'}
@@ -380,5 +394,17 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: FontSize.sm,
     fontFamily: FontFamily.medium,
     color: colors.textSecondary,
+  },
+  consentNote: {
+    fontSize: FontSize.xs,
+    fontFamily: FontFamily.regular,
+    color: colors.textMuted,
+    textAlign: 'center',
+    marginTop: Spacing.md,
+    lineHeight: FontSize.xs * 1.5,
+  },
+  consentLink: {
+    color: colors.primary,
+    fontFamily: FontFamily.semibold,
   },
 });

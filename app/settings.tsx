@@ -7,6 +7,7 @@ import {
   Pressable,
   Switch,
   Alert,
+  Share,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -39,6 +40,12 @@ export default function SettingsScreen() {
   const morningReminder = preferences?.morningReminder ?? true;
   const afternoonReminder = preferences?.afternoonReminder ?? true;
   const eveningReminder = preferences?.eveningReminder ?? true;
+
+  // Privacy controls
+  const updateAiProcessing = useMutation(api.users.updateAiProcessing);
+  const deleteAiMemories = useMutation(api.users.deleteAllAiMemories);
+  const exportData = useQuery(api.users.exportUserData);
+  const aiEnabled = user?.aiProcessingEnabled !== false; // defaults to true
 
   // Account deletion
   const deleteAccount = useMutation(api.accountDeletion.deleteAccount);
@@ -185,6 +192,71 @@ export default function SettingsScreen() {
             colors={colors}
             styles={styles}
           />
+        </View>
+
+        {/* Section: Privacy & Data */}
+        <Text style={styles.sectionTitle}>PRIVACY & DATA</Text>
+        <View style={styles.sectionCard}>
+          <ToggleRow
+            icon="sparkles-outline"
+            label="AI Learning"
+            value={aiEnabled}
+            onValueChange={(v) => updateAiProcessing({ enabled: v })}
+            colors={colors}
+            styles={styles}
+          />
+          <View style={styles.divider} />
+          <Pressable
+            style={styles.row}
+            onPress={() => {
+              Alert.alert(
+                'Delete AI Memories',
+                'This will permanently delete all AI-extracted insights about you. AI features will start fresh.',
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: async () => {
+                      const result = await deleteAiMemories();
+                      Alert.alert('Done', `Deleted ${result.deleted} AI memories.`);
+                    },
+                  },
+                ]
+              );
+            }}
+          >
+            <View style={styles.rowLeft}>
+              <Ionicons name="trash-outline" size={20} color={colors.textSecondary} />
+              <Text style={styles.rowLabel}>Delete AI Memories</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+          </Pressable>
+          <View style={styles.divider} />
+          <Pressable
+            style={styles.row}
+            onPress={async () => {
+              if (!exportData) {
+                Alert.alert('Loading', 'Your data is still loading. Please try again.');
+                return;
+              }
+              try {
+                const json = JSON.stringify(exportData, null, 2);
+                await Share.share({
+                  message: json,
+                  title: 'HabitQuest Data Export',
+                });
+              } catch {
+                Alert.alert('Error', 'Failed to export data. Please try again.');
+              }
+            }}
+          >
+            <View style={styles.rowLeft}>
+              <Ionicons name="download-outline" size={20} color={colors.textSecondary} />
+              <Text style={styles.rowLabel}>Export My Data</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+          </Pressable>
         </View>
 
         {/* Section 3: Legal */}

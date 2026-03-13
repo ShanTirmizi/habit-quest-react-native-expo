@@ -25,8 +25,8 @@ export function GradientCard({
   padding,
   elevated,
 }: GradientCardProps) {
-  const { colors } = useTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const { colors, isDark } = useTheme();
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
 
   const cardStyles: ViewStyle[] = [
     styles.card,
@@ -67,13 +67,13 @@ export function GradientCard({
   return inner;
 }
 
-const createStyles = (colors: ThemeColors) => StyleSheet.create({
+const createStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
   card: {
-    backgroundColor: colors.surfaceLight,
-    borderRadius: Radius.xl,
-    borderWidth: 1,
-    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    borderRadius: 20,
     padding: Spacing.lg,
+    borderWidth: isDark ? 1 : 0,
+    borderColor: colors.borderStrong,
   },
   pressed: {
     opacity: 0.88,

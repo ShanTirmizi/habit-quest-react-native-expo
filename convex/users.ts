@@ -79,6 +79,114 @@ export const completeOnboarding = mutation({
   },
 });
 
+// Accept GDPR consent
+export const acceptConsent = mutation({
+  args: {
+    healthDataConsent: v.boolean(),
+    aiProcessingEnabled: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error('Not authenticated');
+    await ctx.db.patch(userId as Id<'users'>, {
+      privacyPolicyAccepted: true,
+      privacyPolicyAcceptedAt: new Date().toISOString(),
+      healthDataConsent: args.healthDataConsent,
+      aiProcessingEnabled: args.aiProcessingEnabled,
+      consentVersion: '1.0',
+    });
+  },
+});
+
+// Toggle AI processing preference
+export const updateAiProcessing = mutation({
+  args: { enabled: v.boolean() },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error('Not authenticated');
+    await ctx.db.patch(userId as Id<'users'>, {
+      aiProcessingEnabled: args.enabled,
+    });
+  },
+});
+
+// Export all user data (GDPR Article 20 - right to data portability)
+export const exportUserData = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return null;
+
+    const uid = userId as Id<'users'>;
+    const user = await ctx.db.get(uid);
+    if (!user) return null;
+
+    const queryAll = async (table: 'userProgress' | 'companions' | 'oracleChallenges' | 'timeCapsules' | 'goals' | 'habits' | 'habitCompletions' | 'sideQuests' | 'journalEntries' | 'chatMessages' | 'pushSubscriptions' | 'medicineGroups' | 'medicines' | 'medicineCompletions' | 'aiMemories' | 'microReflections') =>
+      ctx.db.query(table).withIndex('by_user', (q) => q.eq('userId', uid)).collect();
+
+    const [
+      progress, companions, challenges, capsules, goals, habits,
+      completions, quests, journal, chat, subscriptions,
+      medGroups, medicines, medCompletions, memories, reflections,
+    ] = await Promise.all([
+      queryAll('userProgress'),
+      queryAll('companions'),
+      queryAll('oracleChallenges'),
+      queryAll('timeCapsules'),
+      queryAll('goals'),
+      queryAll('habits'),
+      queryAll('habitCompletions'),
+      queryAll('sideQuests'),
+      queryAll('journalEntries'),
+      queryAll('chatMessages'),
+      queryAll('pushSubscriptions'),
+      queryAll('medicineGroups'),
+      queryAll('medicines'),
+      queryAll('medicineCompletions'),
+      queryAll('aiMemories'),
+      queryAll('microReflections'),
+    ]);
+
+    return {
+      exportedAt: new Date().toISOString(),
+      profile: { email: user.email, name: user.name, createdAt: user._creationTime },
+      progress,
+      companions,
+      oracleChallenges: challenges,
+      timeCapsules: capsules,
+      goals,
+      habits,
+      habitCompletions: completions,
+      sideQuests: quests,
+      journalEntries: journal,
+      chatMessages: chat,
+      pushSubscriptions: subscriptions,
+      medicineGroups: medGroups,
+      medicines,
+      medicineCompletions: medCompletions,
+      aiMemories: memories,
+      microReflections: reflections,
+    };
+  },
+});
+
+// Delete all AI memories (right to erasure for AI-extracted data)
+export const deleteAllAiMemories = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error('Not authenticated');
+    const memories = await ctx.db
+      .query('aiMemories')
+      .withIndex('by_user', (q) => q.eq('userId', userId as Id<'users'>))
+      .collect();
+    for (const m of memories) {
+      await ctx.db.delete(m._id);
+    }
+    return { deleted: memories.length };
+  },
+});
+
 // Legacy: Get or create user by external ID (for migration from localStorage)
 export const getOrCreateUser = mutation({
   args: {

@@ -44,16 +44,21 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
     const inAuthGroup = segments[0] === '(auth)';
     const inOnboarding = segments[0] === 'onboarding';
+    const inConsent = segments[0] === 'consent';
 
     if (!isAuthenticated && !inAuthGroup) {
       router.replace('/(auth)/login');
     } else if (isAuthenticated && inAuthGroup) {
-      if (user && !user.hasCompletedOnboarding) {
+      if (user && !user.privacyPolicyAccepted) {
+        router.replace('/consent');
+      } else if (user && !user.hasCompletedOnboarding) {
         router.replace('/onboarding');
       } else {
         router.replace('/(tabs)');
       }
-    } else if (isAuthenticated && !inOnboarding && user && !user.hasCompletedOnboarding) {
+    } else if (isAuthenticated && !inConsent && segments[0] !== 'privacy-policy' && segments[0] !== 'terms-of-service' && user && !user.privacyPolicyAccepted) {
+      router.replace('/consent');
+    } else if (isAuthenticated && !inOnboarding && !inConsent && user && user.privacyPolicyAccepted && !user.hasCompletedOnboarding) {
       router.replace('/onboarding');
     }
   }, [isLoading, isAuthenticated, user, segments]);
@@ -88,6 +93,10 @@ function ThemedApp() {
           <Stack.Screen
             name="(auth)/login"
             options={{ presentation: 'modal' }}
+          />
+          <Stack.Screen
+            name="consent"
+            options={{ animation: 'fade', gestureEnabled: false }}
           />
           <Stack.Screen
             name="onboarding"

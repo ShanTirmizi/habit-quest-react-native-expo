@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { FontSize, Spacing, Radius, FontFamily, type ThemeColors } from '@/constants/theme';
+import { FontSize, Spacing, Radius, FontFamily, Shadows, type ThemeColors } from '@/constants/theme';
 import { useTheme } from '@/contexts/theme-context';
 import type { CompassionMessage } from '@/lib/compassion-engine';
 
@@ -12,23 +12,23 @@ interface CompassionCardProps {
 }
 
 export function CompassionCard({ message, onAction, onDismiss }: CompassionCardProps) {
-  const { colors } = useTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const { colors, isDark } = useTheme();
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
 
   const iconName = message.tone === 'gentle' ? 'heart-outline' : 'sunny-outline';
   const accentColor = message.tone === 'gentle' ? colors.info : colors.success;
 
   return (
-    <View style={[styles.card, { borderColor: `${accentColor}30` }]}>
+    <View style={styles.card}>
       {onDismiss ? (
         <Pressable onPress={onDismiss} style={styles.dismiss} hitSlop={8}>
-          <Ionicons name="close" size={16} color={colors.textMuted} />
+          <Ionicons name="close" size={16} color={isDark ? colors.textMuted : 'rgba(255,255,255,0.6)'} />
         </Pressable>
       ) : null}
 
       <View style={styles.header}>
-        <View style={[styles.iconCircle, { backgroundColor: `${accentColor}15` }]}>
-          <Ionicons name={iconName} size={18} color={accentColor} />
+        <View style={[styles.iconCircle, { backgroundColor: isDark ? `${accentColor}15` : 'rgba(255,255,255,0.25)' }]}>
+          <Ionicons name={iconName} size={18} color={isDark ? accentColor : '#fff'} />
         </View>
         <Text style={styles.headline}>{message.headline}</Text>
       </View>
@@ -40,27 +40,28 @@ export function CompassionCard({ message, onAction, onDismiss }: CompassionCardP
           onPress={onAction}
           style={({ pressed }) => [
             styles.actionButton,
-            { backgroundColor: `${accentColor}15`, borderColor: `${accentColor}40` },
             pressed && { opacity: 0.7 },
           ]}
         >
-          <Text style={[styles.actionText, { color: accentColor }]} numberOfLines={1}>
+          <Text style={styles.actionText} numberOfLines={1}>
             {message.actionLabel}
           </Text>
-          <Ionicons name="arrow-forward" size={14} color={accentColor} style={{ flexShrink: 0 }} />
+          <Ionicons name="arrow-forward" size={14} color={isDark ? accentColor : '#fff'} style={{ flexShrink: 0 }} />
         </Pressable>
       ) : null}
     </View>
   );
 }
 
-const createStyles = (colors: ThemeColors) => StyleSheet.create({
+const createStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
   card: {
-    backgroundColor: colors.surface,
-    borderRadius: Radius.xl,
-    borderWidth: 1,
+    backgroundColor: isDark ? colors.surface : '#D86850',
+    borderRadius: 20,
     padding: Spacing.lg,
     gap: Spacing.md,
+    ...Shadows.card,
+    borderWidth: isDark ? 1 : 0,
+    borderColor: colors.borderStrong,
   },
   dismiss: {
     position: 'absolute',
@@ -84,13 +85,13 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   headline: {
     fontSize: FontSize.base,
     fontFamily: FontFamily.bold,
-    color: colors.foreground,
+    color: isDark ? colors.foreground : '#FFFFFF',
     flex: 1,
   },
   body: {
     fontSize: FontSize.sm,
     fontFamily: FontFamily.regular,
-    color: colors.textSecondary,
+    color: isDark ? colors.textSecondary : 'rgba(255, 255, 255, 0.85)',
     lineHeight: 20,
   },
   actionButton: {
@@ -100,11 +101,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     gap: Spacing.xs,
     paddingVertical: Spacing.sm + 2,
     borderRadius: Radius.md,
-    borderWidth: 1,
+    backgroundColor: isDark ? `${colors.info}15` : 'rgba(255, 255, 255, 0.25)',
   },
   actionText: {
     fontSize: FontSize.sm,
     fontFamily: FontFamily.semibold,
+    color: isDark ? colors.info : '#FFFFFF',
     flexShrink: 1,
   },
 });

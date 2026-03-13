@@ -210,6 +210,10 @@ async function triggerMemoryExtractionCheck(
   userId: Id<'users'>,
   isWeeklyEntry: boolean
 ) {
+  // Check if user has opted out of AI processing
+  const user = await ctx.db.get(userId);
+  if (user?.aiProcessingEnabled === false) return;
+
   const progress = await ctx.db
     .query('userProgress')
     .withIndex('by_user', (q) => q.eq('userId', userId))

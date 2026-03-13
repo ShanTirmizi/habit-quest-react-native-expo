@@ -706,7 +706,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderWidth: 3,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.2)',
+    backgroundColor: colors.surfaceLight,
   },
   detailStats: {
     flexDirection: 'row',
@@ -831,7 +831,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.2)',
+    backgroundColor: colors.surfaceLight,
   },
   messageBubble: {
     maxWidth: '75%',
@@ -898,7 +898,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.2)',
+    backgroundColor: colors.surfaceLight,
     marginBottom: Spacing.sm,
   },
   chatEmptyTitle: {

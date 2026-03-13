@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { FontSize, Spacing, Radius, FontFamily, type ThemeColors } from '@/constants/theme';
+import { FontSize, Spacing, Radius, FontFamily, Shadows, type ThemeColors } from '@/constants/theme';
 import { useTheme } from '@/contexts/theme-context';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { ProgressBar } from '@/components/ui/ProgressBar';
@@ -108,19 +108,18 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     gap: Spacing.md,
   },
   levelCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.primaryBg,
-    borderWidth: 2,
-    borderColor: colors.primary,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    ...Shadows.glow(colors.primary, 0.3),
   },
   levelNumber: {
     fontSize: FontSize.lg,
     fontFamily: FontFamily.extrabold,
-    color: colors.primary,
+    color: '#FFFFFF',
   },
   levelLabel: {
     fontSize: FontSize.sm,

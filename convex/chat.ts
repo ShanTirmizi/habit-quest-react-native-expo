@@ -364,6 +364,10 @@ export const triggerChatMemoryExtraction = internalMutation({
     sessionId: v.string(),
   },
   handler: async (ctx, args) => {
+    // Check if user has opted out of AI processing
+    const user = await ctx.db.get(args.userId);
+    if (user?.aiProcessingEnabled === false) return;
+
     const CHAT_EXTRACTION_THRESHOLD = 5; // Every 5th message pair in a session
 
     // Count messages in this session
