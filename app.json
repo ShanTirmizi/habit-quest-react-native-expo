@@ -15,7 +15,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.habitquest.app",
+      "bundleIdentifier": "com.tirmazilabs.habitquest",
       "usesAppleSignIn": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
@@ -27,7 +27,7 @@
         "backgroundColor": "#F5D9C0"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.habitquest.app"
+      "package": "com.tirmazilabs.habitquest"
     },
     "web": {
       "favicon": "./assets/favicon.png",

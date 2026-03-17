@@ -12,7 +12,10 @@
       "distribution": "internal"
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_CONVEX_URL": "https://efficient-walrus-793.eu-west-1.convex.cloud"
+      }
     }
   },
   "submit": {
