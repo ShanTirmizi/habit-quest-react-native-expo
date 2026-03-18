@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   Pressable,
   RefreshControl,
   Animated,
+  Alert,
 } from 'react-native';
 import { useToast } from '@/contexts/toast-context';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -104,6 +105,11 @@ export default function MedicinesScreen() {
   const markTakenMutation = useMutation(api.medicines.markMedicineTaken);
   const markSkippedMutation = useMutation(api.medicines.markMedicineSkipped);
   const addMedicineMutation = useMutation(api.medicines.addMedicine);
+  const updateMedicineMutation = useMutation(api.medicines.updateMedicine);
+  const deleteMedicineMutation = useMutation(api.medicines.deleteMedicine);
+
+  // Edit state
+  const [editingMedicine, setEditingMedicine] = useState<{ id: string; name: string; dosage: string } | null>(null);
 
   const isLoading = schedule === undefined || medicineStats === undefined;
   const scheduleData = schedule ?? [];
@@ -186,6 +192,62 @@ export default function MedicinesScreen() {
       }
     },
     [userId, addMedicineMutation]
+  );
+
+  const handleDeleteMedicine = useCallback(
+    (medicineId: string, medicineName: string) => {
+      if (!userId) return;
+      Alert.alert(
+        'Delete Medicine',
+        `Are you sure you want to delete "${medicineName}"? This will also delete all its history.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await deleteMedicineMutation({ medicineId: medicineId as any, userId });
+                showToast('Medicine deleted');
+              } catch {
+                showToast('Failed to delete medicine', undefined, 'error');
+              }
+            },
+          },
+        ]
+      );
+    },
+    [userId, deleteMedicineMutation, showToast]
+  );
+
+  const handleEditMedicine = useCallback(
+    async (medicineId: string, name: string, dosage: string) => {
+      if (!userId) return;
+      try {
+        await updateMedicineMutation({ medicineId: medicineId as any, userId, name, dosage });
+        setEditingMedicine(null);
+        showToast('Medicine updated');
+      } catch {
+        showToast('Failed to update medicine', undefined, 'error');
+      }
+    },
+    [userId, updateMedicineMutation, showToast]
+  );
+
+  const handleLongPressMedicine = useCallback(
+    (medicineId: string, medicineName: string, dosage: string) => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      Alert.alert(
+        medicineName,
+        undefined,
+        [
+          { text: 'Edit', onPress: () => setEditingMedicine({ id: medicineId, name: medicineName, dosage }) },
+          { text: 'Delete', style: 'destructive', onPress: () => handleDeleteMedicine(medicineId, medicineName) },
+          { text: 'Cancel', style: 'cancel' },
+        ]
+      );
+    },
+    [handleDeleteMedicine]
   );
 
   if (!userId) {
@@ -322,6 +384,7 @@ export default function MedicinesScreen() {
                                   item={item}
                                   onMarkTaken={handleMarkTaken}
                                   onMarkSkipped={handleMarkSkipped}
+                                  onLongPress={handleLongPressMedicine}
                                   colors={colors}
                                   styles={styles}
                                 />
@@ -357,6 +420,16 @@ export default function MedicinesScreen() {
         styles={styles}
         timeSlotConfig={timeSlotConfig}
       />
+
+      {/* Edit Medicine Sheet */}
+      <EditMedicineSheet
+        visible={!!editingMedicine}
+        onClose={() => setEditingMedicine(null)}
+        onSave={handleEditMedicine}
+        medicine={editingMedicine}
+        colors={colors}
+        styles={styles}
+      />
     </View>
   );
 }
@@ -365,12 +438,14 @@ function MedicineCard({
   item,
   onMarkTaken,
   onMarkSkipped,
+  onLongPress,
   colors,
   styles,
 }: {
   item: TodayMedicineScheduleItem;
   onMarkTaken: (id: string) => void;
   onMarkSkipped: (id: string) => void;
+  onLongPress: (id: string, name: string, dosage: string) => void;
   colors: ThemeColors;
   styles: ReturnType<typeof createStyles>;
 }) {
@@ -389,7 +464,10 @@ function MedicineCard({
   }, [item.medicineId, onMarkTaken, btnScale]);
 
   return (
-    <View style={[styles.medCard, isTaken && styles.medCardTaken]}>
+    <Pressable
+      onLongPress={() => onLongPress(item.medicineId, item.medicineName, item.dosage)}
+      style={[styles.medCard, isTaken && styles.medCardTaken]}
+    >
       <View style={styles.medInfo}>
         <Text style={[styles.medName, isTaken && styles.medNameTaken]}>
           {item.medicineName}
@@ -428,7 +506,7 @@ function MedicineCard({
           </View>
         )}
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -640,6 +718,65 @@ function AddMedicineSheet({
             title={isSubmitting ? 'Adding...' : 'Add Medicine'}
             onPress={handleSubmit}
             disabled={!name.trim() || !dosage.trim() || isSubmitting}
+          />
+        </View>
+      </View>
+    </BottomSheet>
+  );
+}
+
+function EditMedicineSheet({
+  visible,
+  onClose,
+  onSave,
+  medicine,
+  colors,
+  styles,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  onSave: (id: string, name: string, dosage: string) => void;
+  medicine: { id: string; name: string; dosage: string } | null;
+  colors: ThemeColors;
+  styles: ReturnType<typeof createStyles>;
+}) {
+  const [name, setName] = useState('');
+  const [dosage, setDosage] = useState('');
+
+  useEffect(() => {
+    if (medicine) {
+      setName(medicine.name);
+      setDosage(medicine.dosage);
+    }
+  }, [medicine]);
+
+  const handleSave = () => {
+    if (!medicine || !name.trim() || !dosage.trim()) return;
+    onSave(medicine.id, name.trim(), dosage.trim());
+  };
+
+  return (
+    <BottomSheet visible={visible} onClose={onClose} title="Edit Medicine">
+      <View style={styles.addForm}>
+        <Input
+          label="Medicine Name"
+          value={name}
+          onChangeText={setName}
+          placeholder="e.g., Metformin"
+        />
+        <Input
+          label="Dosage"
+          value={dosage}
+          onChangeText={setDosage}
+          placeholder="e.g., 500mg"
+          containerStyle={{ marginTop: Spacing.md }}
+        />
+        <View style={styles.addFormFooter}>
+          <Button title="Cancel" variant="ghost" onPress={onClose} />
+          <Button
+            title="Save"
+            onPress={handleSave}
+            disabled={!name.trim() || !dosage.trim()}
           />
         </View>
       </View>
