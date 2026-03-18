@@ -959,15 +959,15 @@ export default function DashboardScreen() {
           )}
 
           {/* ── Active Goals Strip ── */}
-          {activeGoals.length > 0 ? (
+          {true ? (
             <View style={styles.goalsSection}>
               <View style={styles.goalsSectionHeader}>
-                <Text style={styles.goalsSectionTitle}>Active Goals</Text>
+                <Text style={styles.goalsSectionTitle}>Goals</Text>
                 <Pressable
                   onPress={() => router.push('/goals')}
                   style={({ pressed }) => [pressed && { opacity: 0.9, transform: [{ scale: 0.97 }] }]}
                 >
-                  <Text style={styles.goalsSeeAll}>See all</Text>
+                  <Text style={styles.goalsSeeAll}>{activeGoals.length > 0 ? 'See all' : 'Set a Goal'}</Text>
                 </Pressable>
               </View>
               <ScrollView
