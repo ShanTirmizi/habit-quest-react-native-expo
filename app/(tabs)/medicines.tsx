@@ -94,12 +94,12 @@ export default function MedicinesScreen() {
 
   const medicineHistory = useQuery(
     api.medicines.getMedicineHistory,
-    userId && tab === 'history' ? { userId, startDate: fourteenDaysAgo, endDate: todayDate } : 'skip'
+    userId ? { userId, startDate: fourteenDaysAgo, endDate: todayDate } : 'skip'
   );
 
   const allMedicines = useQuery(
     api.medicines.getMedicines,
-    userId && tab === 'history' ? { userId } : 'skip'
+    userId ? { userId } : 'skip'
   );
 
   // Convex mutations
