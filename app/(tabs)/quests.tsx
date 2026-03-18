@@ -435,7 +435,6 @@ function AddQuestSheet({
           value={title}
           onChangeText={setTitle}
           placeholder="What's your side quest?"
-          autoFocus
         />
         <Input
           label="Description (optional)"

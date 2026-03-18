@@ -128,7 +128,6 @@ export function AddHabitSheet({ visible, onClose, onAdd, existingHabits }: AddHa
           value={name}
           onChangeText={setName}
           placeholder="e.g., Morning run, Read 30 minutes..."
-          autoFocus
         />
 
         {/* Category */}
