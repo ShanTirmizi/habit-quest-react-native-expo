@@ -111,7 +111,7 @@ export function OracleChallengeCard({ userId }: OracleChallengeCardProps) {
           {isPending ? (
             <>
               <Button title="Accept" onPress={handleAccept} size="sm" loading={actionLoading} disabled={actionLoading} />
-              <Button title="Dismiss" onPress={handleDismiss} size="sm" variant="ghost" disabled={actionLoading} />
+              <Button title="Dismiss" onPress={handleDismiss} size="sm" variant="ghost" disabled={actionLoading} textColor={isDark ? undefined : 'rgba(255,255,255,0.85)'} />
             </>
           ) : isAccepted ? (
             <Button title="Complete" onPress={handleComplete} size="sm" loading={actionLoading} disabled={actionLoading} />

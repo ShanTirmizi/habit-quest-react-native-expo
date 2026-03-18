@@ -13,6 +13,7 @@ interface ButtonProps {
   icon?: React.ReactNode;
   style?: ViewStyle;
   fullWidth?: boolean;
+  textColor?: string;
 }
 
 function getVariantStyles(colors: ThemeColors) {
@@ -88,6 +89,7 @@ export function Button({
   icon,
   style,
   fullWidth,
+  textColor: textColorOverride,
 }: ButtonProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -95,6 +97,7 @@ export function Button({
 
   const currentVariant = variantStyles[variant];
   const sizeStyles = SIZE_STYLES[size];
+  const finalTextColor = textColorOverride ?? currentVariant.textColor;
 
   return (
     <Pressable
@@ -114,11 +117,11 @@ export function Button({
       ]}
     >
       {loading ? (
-        <ActivityIndicator size="small" color={currentVariant.textColor} />
+        <ActivityIndicator size="small" color={finalTextColor} />
       ) : (
         <>
           {icon}
-          <Text style={[styles.text, { color: currentVariant.textColor }, sizeStyles.text]}>
+          <Text style={[styles.text, { color: finalTextColor }, sizeStyles.text]}>
             {title}
           </Text>
         </>
