@@ -8,6 +8,7 @@ import {
   RefreshControl,
   Animated,
   Alert,
+  TextInput,
 } from 'react-native';
 import { useToast } from '@/contexts/toast-context';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -640,16 +641,24 @@ function AddMedicineSheet({
   const [name, setName] = useState('');
   const [dosage, setDosage] = useState('');
   const [selectedSlot, setSelectedSlot] = useState(TIME_SLOT_OPTIONS[0]);
+  const [isCustomTime, setIsCustomTime] = useState(false);
+  const [customHour, setCustomHour] = useState('09');
+  const [customMinute, setCustomMinute] = useState('00');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async () => {
     if (!name.trim() || !dosage.trim() || isSubmitting) return;
     setIsSubmitting(true);
+    const timeLabel = isCustomTime ? 'custom' : selectedSlot.value;
+    const timeValue = isCustomTime ? `${customHour.padStart(2, '0')}:${customMinute.padStart(2, '0')}` : selectedSlot.time;
     try {
-      await onAdd(name, dosage, selectedSlot.value, selectedSlot.time);
+      await onAdd(name, dosage, timeLabel, timeValue);
       setName('');
       setDosage('');
       setSelectedSlot(TIME_SLOT_OPTIONS[0]);
+      setIsCustomTime(false);
+      setCustomHour('09');
+      setCustomMinute('00');
     } finally {
       setIsSubmitting(false);
     }
@@ -659,6 +668,9 @@ function AddMedicineSheet({
     setName('');
     setDosage('');
     setSelectedSlot(TIME_SLOT_OPTIONS[0]);
+    setIsCustomTime(false);
+    setCustomHour('09');
+    setCustomMinute('00');
     setIsSubmitting(false);
     onClose();
   };
@@ -684,12 +696,12 @@ function AddMedicineSheet({
         <Text style={styles.timeSlotLabelText}>Schedule</Text>
         <View style={styles.timeSlotRow}>
           {TIME_SLOT_OPTIONS.map((option) => {
-            const isSelected = selectedSlot.value === option.value;
+            const isSelected = !isCustomTime && selectedSlot.value === option.value;
             const config = timeSlotConfig[option.value];
             return (
               <Pressable
                 key={option.value}
-                onPress={() => setSelectedSlot(option)}
+                onPress={() => { setIsCustomTime(false); setSelectedSlot(option); }}
                 style={[
                   styles.timeSlotChip,
                   isSelected && { borderColor: config?.color ?? colors.primary, backgroundColor: `${config?.color ?? colors.primary}15` },
@@ -710,7 +722,52 @@ function AddMedicineSheet({
               </Pressable>
             );
           })}
+          <Pressable
+            onPress={() => setIsCustomTime(true)}
+            style={[
+              styles.timeSlotChip,
+              isCustomTime && { borderColor: colors.primary, backgroundColor: `${colors.primary}15` },
+            ]}
+          >
+            <Ionicons name="time-outline" size={14} color={isCustomTime ? colors.primary : colors.textMuted} />
+            <Text style={[styles.timeSlotChipText, isCustomTime && { color: colors.primary, fontFamily: FontFamily.semibold }]}>
+              Custom
+            </Text>
+          </Pressable>
         </View>
+
+        {isCustomTime && (
+          <View style={styles.customTimeRow}>
+            <View style={styles.customTimeInputWrap}>
+              <TextInput
+                style={styles.customTimeInput}
+                value={customHour}
+                onChangeText={(t) => {
+                  const num = t.replace(/[^0-9]/g, '').slice(0, 2);
+                  if (num === '' || (parseInt(num) >= 0 && parseInt(num) <= 23)) setCustomHour(num);
+                }}
+                keyboardType="number-pad"
+                maxLength={2}
+                placeholder="HH"
+                placeholderTextColor={colors.textMuted}
+              />
+              <Text style={styles.customTimeSeparator}>:</Text>
+              <TextInput
+                style={styles.customTimeInput}
+                value={customMinute}
+                onChangeText={(t) => {
+                  const num = t.replace(/[^0-9]/g, '').slice(0, 2);
+                  if (num === '' || (parseInt(num) >= 0 && parseInt(num) <= 59)) setCustomMinute(num);
+                }}
+                keyboardType="number-pad"
+                maxLength={2}
+                placeholder="MM"
+                placeholderTextColor={colors.textMuted}
+              />
+            </View>
+            <Text style={styles.customTimeHint}>24-hour format</Text>
+          </View>
+        )}
 
         <View style={styles.addFormFooter}>
           <Button title="Cancel" variant="ghost" onPress={handleClose} />
@@ -1053,6 +1110,39 @@ const createStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create
   },
   timeSlotChipTime: {
     fontSize: FontSize.xs,
+    color: colors.textMuted,
+  },
+  customTimeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    marginTop: Spacing.sm,
+  },
+  customTimeInputWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+  },
+  customTimeInput: {
+    width: 48,
+    height: 44,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    textAlign: 'center',
+    fontSize: FontSize.lg,
+    fontFamily: FontFamily.semibold,
+    color: colors.foreground,
+  },
+  customTimeSeparator: {
+    fontSize: FontSize.lg,
+    fontFamily: FontFamily.bold,
+    color: colors.textSecondary,
+  },
+  customTimeHint: {
+    fontSize: FontSize.xs,
+    fontFamily: FontFamily.regular,
     color: colors.textMuted,
   },
 });
