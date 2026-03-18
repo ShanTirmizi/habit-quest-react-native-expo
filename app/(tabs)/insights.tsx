@@ -263,7 +263,7 @@ export default function InsightsScreen() {
           {tab === 'history' ? <HistoryTab userId={userId} habits={habits ?? []} colors={colors} styles={styles} isDark={isDark} /> : null}
           {tab === 'achievements' ? <AchievementsTab userId={userId} progress={progress} colors={colors} styles={styles} isDark={isDark} /> : null}
           {tab === 'gamification' ? <GamificationTab userId={userId} progress={progress} colors={colors} styles={styles} isDark={isDark} /> : null}
-        <View style={{ height: 100 }} />
+        <View style={{ height: 140 }} />
       </ScrollView>
     </View>
   );
