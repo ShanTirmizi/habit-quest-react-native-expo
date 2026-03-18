@@ -35,7 +35,12 @@ export function OversizedMetric({
   return (
     <View style={styles.container}>
       <View style={styles.valueRow}>
-        <Text style={[styles.value, { fontSize: SIZE_MAP[size], color: effectiveColor }]}>
+        <Text
+          style={[styles.value, { fontSize: SIZE_MAP[size], color: effectiveColor }]}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.5}
+        >
           {value}
         </Text>
         {suffix ? (
