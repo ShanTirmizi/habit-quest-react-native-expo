@@ -8,6 +8,7 @@ import {
   Animated,
   Dimensions,
   Keyboard,
+  KeyboardAvoidingView,
   Platform,
   ScrollView,
 } from 'react-native';
@@ -24,54 +25,12 @@ interface BottomSheetProps {
 }
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
-const MAX_SHEET_HEIGHT = SCREEN_HEIGHT * 0.85;
 
 export function BottomSheet({ visible, onClose, title, children }: BottomSheetProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const insets = useSafeAreaInsets();
   const translateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
-  const keyboardOffset = useRef(new Animated.Value(0)).current;
-  const sheetMaxHeight = useRef(new Animated.Value(MAX_SHEET_HEIGHT)).current;
-
-  useEffect(() => {
-    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-    const duration = Platform.OS === 'ios' ? 250 : 0;
-
-    const showSub = Keyboard.addListener(showEvent, (e) => {
-      const kbHeight = e.endCoordinates.height;
-      Animated.parallel([
-        Animated.timing(keyboardOffset, {
-          toValue: kbHeight,
-          duration,
-          useNativeDriver: false,
-        }),
-        Animated.timing(sheetMaxHeight, {
-          toValue: SCREEN_HEIGHT - kbHeight - insets.top - 20,
-          duration,
-          useNativeDriver: false,
-        }),
-      ]).start();
-    });
-
-    const hideSub = Keyboard.addListener(hideEvent, () => {
-      Animated.parallel([
-        Animated.timing(keyboardOffset, {
-          toValue: 0,
-          duration,
-          useNativeDriver: false,
-        }),
-        Animated.timing(sheetMaxHeight, {
-          toValue: MAX_SHEET_HEIGHT,
-          duration,
-          useNativeDriver: false,
-        }),
-      ]).start();
-    });
-
-    return () => { showSub.remove(); hideSub.remove(); };
-  }, [insets.top]);
 
   useEffect(() => {
     if (visible) {
@@ -101,16 +60,15 @@ export function BottomSheet({ visible, onClose, title, children }: BottomSheetPr
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={handleClose}>
-      <View style={styles.overlay}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'height' : undefined}
+        style={styles.overlay}
+      >
         <Pressable style={styles.backdrop} onPress={handleClose} />
         <Animated.View
           style={[
             styles.sheet,
-            {
-              maxHeight: sheetMaxHeight,
-              marginBottom: keyboardOffset,
-              paddingBottom: insets.bottom + Spacing.lg,
-            },
+            { paddingBottom: insets.bottom + Spacing.lg },
             { transform: [{ translateY }] },
           ]}
         >
@@ -124,7 +82,7 @@ export function BottomSheet({ visible, onClose, title, children }: BottomSheetPr
             {children}
           </ScrollView>
         </Animated.View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -142,6 +100,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.surface,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
+    maxHeight: SCREEN_HEIGHT * 0.85,
     paddingTop: Spacing.sm,
     paddingHorizontal: Spacing.xl,
     ...Shadows.cardRaised,
@@ -162,5 +121,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   content: {
     flexGrow: 0,
+    flexShrink: 1,
   },
 });
