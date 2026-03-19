@@ -31,6 +31,7 @@ import { UnderworldOverlay } from '@/components/overlays/UnderworldOverlay';
 import { LevelUpCelebration } from '@/components/overlays/LevelUpCelebration';
 import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/contexts/toast-context';
+import { usePushNotifications } from '@/hooks/use-push-notifications';
 import type { Habit, HabitCategory, Goal, TimeOfDay, ReflectionMood, MicroReflection } from '@/types';
 import { GOAL_CATEGORY_CONFIG } from '@/types';
 import { buildScheduleMap, type HabitScheduleInfo } from '@/lib/habit-scheduling';
@@ -111,6 +112,7 @@ export default function DashboardScreen() {
   const router = useRouter();
   const { userId, user } = useAuth();
   const { showToast } = useToast();
+  usePushNotifications(userId);
   const { colors, isDark } = useTheme();
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const [showAddSheet, setShowAddSheet] = useState(false);

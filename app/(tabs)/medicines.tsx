@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useQuery, useMutation } from 'convex/react';
+import { scheduleMedicineReminder } from '@/hooks/use-push-notifications';
 import { api } from '@/convex/_generated/api';
 import { useAuth } from '@/contexts/auth-context';
 import { useTheme } from '@/contexts/theme-context';
@@ -187,6 +188,13 @@ export default function MedicinesScreen() {
             },
           ],
         });
+        // Schedule local notification for this medicine
+        const [hour, minute] = timeSlotTime.split(':').map(Number);
+        try {
+          await scheduleMedicineReminder(name.trim(), dosage.trim(), hour, minute);
+        } catch {
+          // Non-critical — don't block the add flow
+        }
         setShowAddSheet(false);
       } catch (error) {
         showToast('Failed to add medicine', undefined, 'error');
