@@ -41,6 +41,7 @@ function getTimeSlotConfig(colors: ThemeColors): Record<string, { icon: keyof ty
     afternoon: { icon: 'partly-sunny-outline', label: 'Afternoon', color: colors.primary },
     evening: { icon: 'cloudy-night-outline', label: 'Evening', color: colors.categoryMind },
     night: { icon: 'moon-outline', label: 'Night', color: colors.categoryLife },
+    custom: { icon: 'time-outline', label: 'Custom', color: colors.textSecondary },
   };
 }
 
@@ -120,7 +121,10 @@ export default function MedicinesScreen() {
   const groupedSchedule = useMemo(() => {
     const groups: Record<string, TodayMedicineScheduleItem[]> = {};
     for (const item of scheduleData) {
-      const slot = item.label || 'other';
+      // For custom times, group by actual time so each unique time gets its own header
+      const slot = (item.label === 'custom' || !item.label)
+        ? `custom_${item.scheduledTime}`
+        : item.label;
       if (!groups[slot]) groups[slot] = [];
       groups[slot].push(item);
     }
@@ -371,7 +375,9 @@ export default function MedicinesScreen() {
               <View style={styles.timelineContainer}>
                 {(() => {
                   return slotEntries.map(([slot, items]) => {
-                    const config = timeSlotConfig[slot] || { icon: 'medkit-outline' as keyof typeof Ionicons.glyphMap, label: slot, color: colors.textSecondary };
+                    const isCustom = slot.startsWith('custom_');
+                    const baseSlot = isCustom ? 'custom' : slot;
+                    const config = timeSlotConfig[baseSlot] || { icon: 'time-outline' as keyof typeof Ionicons.glyphMap, label: 'Custom', color: colors.textSecondary };
 
                     return (
                       <View key={slot} style={styles.slotSection}>
