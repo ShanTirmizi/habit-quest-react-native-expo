@@ -38,10 +38,8 @@ import { buildScheduleMap, type HabitScheduleInfo } from '@/lib/habit-scheduling
 import { buildAutomaticityMap, type AutomaticityInfo } from '@/lib/automaticity';
 import { detectKeystones, type KeystoneInfo } from '@/lib/keystone-detection';
 import { analyzeDifficulty, type DifficultySuggestion } from '@/lib/adaptive-difficulty';
-import { detectFreshStarts, type FreshStart } from '@/lib/fresh-starts';
 import { generateCompassionMessage, type CompassionMessage } from '@/lib/compassion-engine';
 import { CompassionCard } from '@/components/widgets/CompassionCard';
-import { FreshStartBanner } from '@/components/widgets/FreshStartBanner';
 import { MicroReflectionPrompt } from '@/components/habits/MicroReflectionPrompt';
 
 const TIME_SECTION_META: Record<TimeOfDay, { label: string; icon: keyof typeof Ionicons.glyphMap; order: number }> = {
@@ -251,17 +249,8 @@ export default function DashboardScreen() {
     return analyzeDifficulty(activeHabits);
   }, [activeHabits]);
 
-  // Phase 2: Fresh start detection
-  const freshStarts = useMemo(() => {
-    const earliestDate = habits.length > 0
-      ? habits.reduce((min, h) => h.createdAt < min ? h.createdAt : min, habits[0].createdAt)
-      : undefined;
-    return detectFreshStarts(new Date(), earliestDate);
-  }, [habits]);
-
   // Phase 2: Compassion engine state
   const [compassionDismissed, setCompassionDismissed] = useState(false);
-  const [freshStartDismissed, setFreshStartDismissed] = useState(false);
 
   // Phase 2: Micro-reflection state
   const [reflectionHabit, setReflectionHabit] = useState<Habit | null>(null);
@@ -761,11 +750,6 @@ export default function DashboardScreen() {
                 }
               }}
               onDismiss={() => setCompassionDismissed(true)}
-            />
-          ) : freshStarts.length > 0 && !freshStartDismissed ? (
-            <FreshStartBanner
-              freshStart={freshStarts[0]}
-              onDismiss={() => setFreshStartDismissed(true)}
             />
           ) : null}
 
