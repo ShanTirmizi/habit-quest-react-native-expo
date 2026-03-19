@@ -749,15 +749,7 @@ export default function DashboardScreen() {
           {/* Underworld Overlay */}
           {userId ? <UnderworldOverlay userId={userId} /> : null}
 
-          {/* ── Phase 2: Fresh Start Banner ── */}
-          {freshStarts.length > 0 && !freshStartDismissed ? (
-            <FreshStartBanner
-              freshStart={freshStarts[0]}
-              onDismiss={() => setFreshStartDismissed(true)}
-            />
-          ) : null}
-
-          {/* ── Phase 2: Compassion Card ── */}
+          {/* ── Phase 2: Compassion Card (takes priority) or Fresh Start Banner ── */}
           {compassionMessage && !compassionDismissed ? (
             <CompassionCard
               message={compassionMessage}
@@ -769,6 +761,11 @@ export default function DashboardScreen() {
                 }
               }}
               onDismiss={() => setCompassionDismissed(true)}
+            />
+          ) : freshStarts.length > 0 && !freshStartDismissed ? (
+            <FreshStartBanner
+              freshStart={freshStarts[0]}
+              onDismiss={() => setFreshStartDismissed(true)}
             />
           ) : null}
 
