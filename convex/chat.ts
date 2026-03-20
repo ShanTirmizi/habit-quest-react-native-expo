@@ -63,6 +63,10 @@ export const saveMessage = mutation({
     role: v.union(v.literal('user'), v.literal('assistant')),
     content: v.string(),
     sessionId: v.string(),
+    toolCalls: v.optional(v.array(v.object({
+      tool: v.string(),
+      items: v.array(v.string()),
+    }))),
   },
   handler: async (ctx, args) => {
     await verifyAuth(ctx, args.userId);
@@ -72,6 +76,7 @@ export const saveMessage = mutation({
       role: args.role,
       content: args.content,
       sessionId: args.sessionId,
+      ...(args.toolCalls ? { toolCalls: args.toolCalls } : {}),
     });
   },
 });

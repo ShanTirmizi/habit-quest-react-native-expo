@@ -397,6 +397,22 @@ async function executeToolCall(
   }
 }
 
+/** Extract human-readable item names from tool input for UI badges */
+function extractItemNames(toolName: string, input: any): string[] {
+  switch (toolName) {
+    case "create_habits":
+      return (input.habits ?? []).map((h: any) => h.name);
+    case "create_medicines":
+      return (input.medicines ?? []).map((m: any) =>
+        m.dosage ? `${m.name} ${m.dosage}` : m.name
+      );
+    case "create_quests":
+      return (input.quests ?? []).map((q: any) => q.title);
+    default:
+      return [];
+  }
+}
+
 // ──────────────────────────────────────────────
 // Main action
 // ──────────────────────────────────────────────
@@ -521,6 +537,7 @@ ${userContext}`;
     try {
       let messages = [...conversationHistory];
       let finalReply = "";
+      const executedToolCalls: Array<{ tool: string; items: string[] }> = [];
 
       // Tool-use loop: keep calling Claude until we get a text-only response
       for (let iteration = 0; iteration < 5; iteration++) {
@@ -598,6 +615,10 @@ ${userContext}`;
             tool_use_id: toolBlock.id,
             content: result,
           });
+
+          // Collect tool call info for UI badges
+          const itemNames = extractItemNames(toolBlock.name, toolBlock.input);
+          executedToolCalls.push({ tool: toolBlock.name, items: itemNames });
         }
 
         // Add tool results as a user message (Claude API convention)
@@ -625,12 +646,13 @@ ${userContext}`;
           "I've processed your request! Check your habits, meds, or quests tabs to see the updates.";
       }
 
-      // 6. Save assistant response
+      // 6. Save assistant response (with tool call metadata if any)
       await ctx.runMutation(api.chat.saveMessage, {
         userId: args.userId,
         role: "assistant",
         content: finalReply,
         sessionId: args.sessionId,
+        ...(executedToolCalls.length > 0 ? { toolCalls: executedToolCalls } : {}),
       });
 
       // 7. Trigger memory extraction check

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { View, Text, StyleSheet, Pressable, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAction } from 'convex/react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api } from '@/convex/_generated/api';
 import type { Id } from '@/convex/_generated/dataModel';
 import { FontSize, Spacing, Radius, FontFamily, Shadows, type ThemeColors } from '@/constants/theme';
@@ -64,19 +65,25 @@ function getCategoryColorValue(category: string, colors: ThemeColors): string {
 }
 
 // ---------------------------------------------------------------------------
-// Module-level cache — survives tab navigation, resets on app restart
+// Module-level + persistent cache — survives tab navigation AND app restarts
+// Only re-fetches once per calendar day (or on manual refresh).
 // ---------------------------------------------------------------------------
 
+const STORAGE_KEY = 'coach_insights_cache';
+
 let _cachedInsights: CoachingInsights | null = null;
-let _cachedAt = 0;
+let _cachedDate: string | null = null; // YYYY-MM-DD
 let _cachedUserId: string | null = null;
-const CACHE_MAX_AGE = 24 * 60 * 60 * 1000; // 24 hours
+
+function getTodayDate(): string {
+  return new Date().toISOString().split('T')[0];
+}
 
 function getCachedInsights(userId: string): CoachingInsights | null {
   if (
     _cachedInsights &&
     _cachedUserId === userId &&
-    Date.now() - _cachedAt < CACHE_MAX_AGE
+    _cachedDate === getTodayDate()
   ) {
     return _cachedInsights;
   }
@@ -85,8 +92,32 @@ function getCachedInsights(userId: string): CoachingInsights | null {
 
 function setCachedInsights(userId: string, insights: CoachingInsights) {
   _cachedInsights = insights;
-  _cachedAt = Date.now();
+  _cachedDate = getTodayDate();
   _cachedUserId = userId;
+
+  // Persist to AsyncStorage
+  AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({
+    insights,
+    date: _cachedDate,
+    userId,
+  })).catch(() => {});
+}
+
+/** Load cache from AsyncStorage into memory (call once on mount) */
+async function loadPersistedCache(userId: string): Promise<CoachingInsights | null> {
+  try {
+    const raw = await AsyncStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed.userId === userId && parsed.date === getTodayDate() && parsed.insights) {
+      // Hydrate module-level cache
+      _cachedInsights = parsed.insights;
+      _cachedDate = parsed.date;
+      _cachedUserId = parsed.userId;
+      return parsed.insights;
+    }
+  } catch {}
+  return null;
 }
 
 // ---------------------------------------------------------------------------
@@ -166,19 +197,27 @@ export function CoachPanel({ userId }: CoachPanelProps) {
     }
   }, [generateInsights, userId, startSpin, stopSpin]);
 
-  // Auto-fetch on mount — only if no valid cache
+  // Auto-fetch on mount — check memory cache, then persistent cache, then fetch
   useEffect(() => {
     if (hasFetched.current) return;
     hasFetched.current = true;
 
-    const cachedResult = getCachedInsights(userId);
-    if (cachedResult) {
-      // Cache is fresh — use it, don't hit the API
-      setInsights(cachedResult);
+    // 1. Check in-memory cache
+    const memCached = getCachedInsights(userId);
+    if (memCached) {
+      setInsights(memCached);
       return;
     }
 
-    fetchInsights();
+    // 2. Check persistent cache (AsyncStorage)
+    loadPersistedCache(userId).then((persisted) => {
+      if (persisted) {
+        setInsights(persisted);
+      } else {
+        // 3. No valid cache — fetch from API
+        fetchInsights();
+      }
+    });
   }, [fetchInsights, userId]);
 
   // Refresh handler — always re-fetches (manual override)

@@ -376,6 +376,11 @@ export default defineSchema({
     content: v.string(),
     // For grouping messages into conversations
     sessionId: v.string(),
+    // Tool calls executed during this message (e.g. habits/meds/quests created)
+    toolCalls: v.optional(v.array(v.object({
+      tool: v.string(),
+      items: v.array(v.string()),
+    }))),
   })
     .index('by_user', ['userId'])
     .index('by_session', ['sessionId']),

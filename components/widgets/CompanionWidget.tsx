@@ -6,7 +6,6 @@ import {
   Pressable,
   ScrollView,
   ActivityIndicator,
-  Keyboard,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -83,12 +82,24 @@ function ChatBubble({ children }: { children: React.ReactNode }) {
 
 type TabType = 'info' | 'chat';
 
+interface ToolCallInfo {
+  tool: string;
+  items: string[];
+}
+
 interface ChatMessage {
   _id?: string;
   role: 'user' | 'assistant';
   content: string;
   _creationTime?: number;
+  toolCalls?: ToolCallInfo[];
 }
+
+const TOOL_BADGE_CONFIG: Record<string, { icon: keyof typeof Ionicons.glyphMap; label: string; color: string }> = {
+  create_habits: { icon: 'checkmark-circle', label: 'Habit', color: '#4CAF50' },
+  create_medicines: { icon: 'medkit', label: 'Medication', color: '#2196F3' },
+  create_quests: { icon: 'flag', label: 'Quest', color: '#FF9800' },
+};
 
 interface CompanionWidgetProps {
   userId: Id<'users'>;
@@ -361,7 +372,6 @@ export function CompanionWidget({
     const text = chatInput.trim();
     if (!text || isSending) return;
 
-    Keyboard.dismiss();
     setChatInput('');
     setIsSending(true);
 
@@ -563,18 +573,38 @@ export function CompanionWidget({
   // ---- Chat Message Bubble ----
   const renderMessage = ({ item }: { item: ChatMessage }) => {
     const isUser = item.role === 'user';
+    const hasToolCalls = !isUser && item.toolCalls && item.toolCalls.length > 0;
     return (
-      <View style={[styles.messageBubbleRow, isUser ? styles.messageBubbleRowUser : styles.messageBubbleRowAssistant]}>
-        {!isUser && (
-          <View style={[styles.chatAvatar, { borderColor: speciesColor }]}>
-            <Ionicons name={speciesIcon} size={14} color={speciesColor} />
+      <View>
+        <View style={[styles.messageBubbleRow, isUser ? styles.messageBubbleRowUser : styles.messageBubbleRowAssistant]}>
+          {!isUser && (
+            <View style={[styles.chatAvatar, { borderColor: speciesColor }]}>
+              <Ionicons name={speciesIcon} size={14} color={speciesColor} />
+            </View>
+          )}
+          <View style={[styles.messageBubble, isUser ? styles.messageBubbleUser : styles.messageBubbleAssistant]}>
+            <Text style={[styles.messageText, isUser ? styles.messageTextUser : styles.messageTextAssistant]}>
+              {item.content}
+            </Text>
+          </View>
+        </View>
+        {/* Tool call badges — below the message row */}
+        {hasToolCalls && (
+          <View style={styles.toolBadgeContainer}>
+            {item.toolCalls!.map((tc, idx) => {
+              const config = TOOL_BADGE_CONFIG[tc.tool];
+              if (!config) return null;
+              return tc.items.map((itemName, i) => (
+                <View key={`${idx}-${i}`} style={[styles.toolBadge, { backgroundColor: `${config.color}15`, borderColor: `${config.color}30` }]}>
+                  <Ionicons name={config.icon} size={12} color={config.color} />
+                  <Text style={[styles.toolBadgeText, { color: config.color }]}>
+                    {config.label} added: {itemName}
+                  </Text>
+                </View>
+              ));
+            })}
           </View>
         )}
-        <View style={[styles.messageBubble, isUser ? styles.messageBubbleUser : styles.messageBubbleAssistant]}>
-          <Text style={[styles.messageText, isUser ? styles.messageTextUser : styles.messageTextAssistant]}>
-            {item.content}
-          </Text>
-        </View>
       </View>
     );
   };
@@ -588,20 +618,18 @@ export function CompanionWidget({
         style={styles.chatMessageList}
         contentContainerStyle={styles.chatMessageListContent}
         showsVerticalScrollIndicator={false}
+        nestedScrollEnabled
         onContentSizeChange={() => {
-          const currentCount = allMessages.length;
+          const currentCount = allMessages.length + (isSending ? 1 : 0);
           if (!chatReadyRef.current) {
-            // First render — jump to bottom instantly, no animation
             chatListRef.current?.scrollToEnd({ animated: false });
             chatReadyRef.current = true;
             prevMessageCountRef.current = currentCount;
           } else if (currentCount > prevMessageCountRef.current) {
-            // New message added — smooth scroll
             chatListRef.current?.scrollToEnd({ animated: true });
             prevMessageCountRef.current = currentCount;
           }
         }}
-        nestedScrollEnabled
       >
         {allMessages.length === 0 ? (
           <View style={styles.chatEmptyState}>
@@ -620,20 +648,19 @@ export function CompanionWidget({
             </ChatBubble>
           ))
         )}
+        {/* Thinking indicator — inside ScrollView so it doesn't push input below keyboard */}
+        {isSending && (
+          <View style={styles.thinkingRow}>
+            <View style={[styles.chatAvatar, { borderColor: speciesColor }]}>
+              <Ionicons name={speciesIcon} size={14} color={speciesColor} />
+            </View>
+            <View style={styles.thinkingBubble}>
+              <ActivityIndicator size="small" color={colors.textSecondary} />
+              <Text style={styles.thinkingText}>{companion.name} is thinking...</Text>
+            </View>
+          </View>
+        )}
       </ScrollView>
-
-      {/* Thinking indicator */}
-      {isSending && (
-        <View style={styles.thinkingRow}>
-          <View style={[styles.chatAvatar, { borderColor: speciesColor }]}>
-            <Ionicons name={speciesIcon} size={14} color={speciesColor} />
-          </View>
-          <View style={styles.thinkingBubble}>
-            <ActivityIndicator size="small" color={colors.textSecondary} />
-            <Text style={styles.thinkingText}>{companion.name} is thinking...</Text>
-          </View>
-        </View>
-      )}
 
       {/* Voice status indicator */}
       {(voiceController.voiceState === 'listening' || voiceController.voiceState === 'thinking' || voiceController.voiceState === 'speaking') && (
@@ -1105,5 +1132,25 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: FontSize.xs,
     fontFamily: FontFamily.medium,
     color: colors.textSecondary,
+  },
+  toolBadgeContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 4,
+    paddingLeft: 40,  // align with assistant bubble (avatar 28 + gap 8 + small pad)
+  },
+  toolBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: Radius.full,
+    borderWidth: 1,
+  },
+  toolBadgeText: {
+    fontSize: FontSize.xs - 1,
+    fontFamily: FontFamily.semibold,
   },
 });
