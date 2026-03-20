@@ -20,7 +20,8 @@
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSMicrophoneUsageDescription": "HabitQuest needs microphone access for voice conversations with Dr. Sage.",
-        "NSSpeechRecognitionUsageDescription": "HabitQuest needs speech recognition to transcribe your voice."
+        "NSSpeechRecognitionUsageDescription": "HabitQuest needs speech recognition to transcribe your voice.",
+        "NSPhotoLibraryUsageDescription": "HabitQuest may need access to your photo library to set a profile picture."
       }
     },
     "android": {
