@@ -4,7 +4,202 @@ import { v } from "convex/values";
 import { action } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 
-// Dr. Sage chat system prompt — conversational version (not JSON output)
+// ──────────────────────────────────────────────
+// Tool definitions for Claude tool_use
+// ──────────────────────────────────────────────
+
+const TOOLS = [
+  {
+    name: "create_habits",
+    description:
+      "Create one or more habits for the user. Use when the user asks to add, create, or set up habits. You can batch-create multiple habits in one call.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        habits: {
+          type: "array" as const,
+          description: "Array of habits to create",
+          items: {
+            type: "object" as const,
+            properties: {
+              name: {
+                type: "string" as const,
+                description: "Name of the habit (e.g., 'Morning meditation')",
+              },
+              category: {
+                type: "string" as const,
+                enum: ["health", "career", "mind", "life"],
+                description:
+                  "Category: health (exercise, nutrition, sleep), career (work, skills), mind (learning, mindfulness), life (social, hobbies, chores)",
+              },
+              xpReward: {
+                type: "number" as const,
+                description:
+                  "XP reward for completing (10=tiny, 15=small, 20=medium, 25=challenging, 30=hard). Default 15.",
+              },
+              frequency: {
+                type: "object" as const,
+                description: "How often the habit should be done",
+                properties: {
+                  type: {
+                    type: "string" as const,
+                    enum: [
+                      "daily",
+                      "weekdays",
+                      "weekends",
+                      "custom",
+                      "timesPerWeek",
+                    ],
+                  },
+                  daysOfWeek: {
+                    type: "array" as const,
+                    description:
+                      "For 'custom' type: array of day numbers (0=Sun, 1=Mon, ..., 6=Sat)",
+                    items: { type: "number" as const },
+                  },
+                  timesPerWeek: {
+                    type: "number" as const,
+                    description: "For 'timesPerWeek' type: how many times per week",
+                  },
+                },
+                required: ["type"],
+              },
+              timeOfDay: {
+                type: "string" as const,
+                enum: ["morning", "afternoon", "evening", "anytime"],
+                description: "Best time of day for the habit. Default 'anytime'.",
+              },
+              location: {
+                type: "string" as const,
+                description:
+                  "Where the habit is done (e.g., 'gym', 'home office', 'kitchen')",
+              },
+              trigger: {
+                type: "string" as const,
+                description:
+                  "What triggers this habit — an existing routine or cue (e.g., 'After morning coffee', 'When I sit at my desk')",
+              },
+            },
+            required: ["name", "category", "xpReward"],
+          },
+        },
+      },
+      required: ["habits"],
+    },
+  },
+  {
+    name: "create_medicines",
+    description:
+      "Create one or more medications/supplements for the user to track. Use when the user asks to add medications, meds, supplements, or vitamins.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        medicines: {
+          type: "array" as const,
+          description: "Array of medications to create",
+          items: {
+            type: "object" as const,
+            properties: {
+              name: {
+                type: "string" as const,
+                description: "Medication name (e.g., 'Metformin')",
+              },
+              dosage: {
+                type: "string" as const,
+                description: "Dosage (e.g., '500mg', '10mg', '1000 IU')",
+              },
+              instructions: {
+                type: "string" as const,
+                description:
+                  "Special instructions (e.g., 'Take with food', 'Do not crush')",
+              },
+              prescriber: {
+                type: "string" as const,
+                description: "Name of prescribing doctor",
+              },
+              scheduledTimes: {
+                type: "array" as const,
+                description:
+                  "When to take the medication. Each entry has a label, time, and whether reminders are on.",
+                items: {
+                  type: "object" as const,
+                  properties: {
+                    label: {
+                      type: "string" as const,
+                      description:
+                        "Label for this time slot (e.g., 'Morning', 'Evening', 'Bedtime')",
+                    },
+                    time: {
+                      type: "string" as const,
+                      description: "Time in HH:MM format (24h), e.g., '08:00', '20:00'",
+                    },
+                    reminderEnabled: {
+                      type: "boolean" as const,
+                      description: "Whether to send a reminder. Default true.",
+                    },
+                  },
+                  required: ["label", "time", "reminderEnabled"],
+                },
+              },
+            },
+            required: ["name", "dosage", "scheduledTimes"],
+          },
+        },
+      },
+      required: ["medicines"],
+    },
+  },
+  {
+    name: "create_quests",
+    description:
+      "Create one or more side quests (one-off tasks or goals) for the user. Use when the user asks to add tasks, to-dos, quests, or goals.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        quests: {
+          type: "array" as const,
+          description: "Array of quests to create",
+          items: {
+            type: "object" as const,
+            properties: {
+              title: {
+                type: "string" as const,
+                description: "Quest title (e.g., 'Finish portfolio website')",
+              },
+              description: {
+                type: "string" as const,
+                description: "Optional description or details about the quest",
+              },
+              xpReward: {
+                type: "number" as const,
+                description:
+                  "XP reward (25=small task, 50=medium, 100=large project). Default 50.",
+              },
+              priority: {
+                type: "string" as const,
+                enum: ["low", "medium", "high"],
+                description: "Priority level. Default 'medium'.",
+              },
+              questType: {
+                type: "string" as const,
+                enum: ["daily", "weekly", "ongoing"],
+                description:
+                  "Quest type: daily (do today), weekly (this week), ongoing (no deadline). Default 'ongoing'.",
+              },
+            },
+            required: ["title", "xpReward", "priority"],
+          },
+        },
+      },
+      required: ["quests"],
+    },
+  },
+];
+
+// ──────────────────────────────────────────────
+// Dr. Sage system prompt
+// ──────────────────────────────────────────────
+
 const CHAT_SYSTEM_PROMPT = `You are Dr. Sage, an AI behavioral scientist and personal habit coach within HabitQuest.
 
 ## Your Personality
@@ -36,6 +231,19 @@ Look for correlations in user data:
 - Stress cascades (missing one habit → missing more?)
 - Time-of-day drift (evening habits consistently missed?)
 - Journal themes (recurring blockers, unmet desires)
+
+## Actions You Can Take
+You can create habits, medications, and quests for the user. Use your tools when the user asks you to add or create things.
+
+### Guidelines for Actions:
+- Ask clarifying questions if critical info is missing (e.g., medication dosage, habit category)
+- For medications: always confirm the name, dosage, and schedule before creating
+- For habits: pick sensible defaults for category, xpReward, frequency, timeOfDay based on context
+- You can batch-create multiple items in one tool call
+- After creating items, confirm what was created in a friendly summary
+- NEVER create items the user didn't ask for
+- If unsure about details, ASK rather than guess
+- When the user says "add my meds" or similar, infer schedule from context (e.g., "twice daily" = morning 08:00 + evening 20:00)
 
 ## Rules
 - NEVER give medical or mental health diagnoses
@@ -95,6 +303,103 @@ function buildMemoryContext(memories: any[]): string {
 
   return ctx;
 }
+
+// ──────────────────────────────────────────────
+// Tool execution
+// ──────────────────────────────────────────────
+
+async function executeToolCall(
+  ctx: any,
+  userId: any,
+  toolName: string,
+  toolInput: any
+): Promise<string> {
+  switch (toolName) {
+    case "create_habits": {
+      const results: string[] = [];
+      for (const habit of toolInput.habits) {
+        try {
+          await ctx.runMutation(api.habits.addHabit, {
+            userId,
+            name: habit.name,
+            category: habit.category,
+            xpReward: habit.xpReward ?? 15,
+            frequency: habit.frequency,
+            timeOfDay: habit.timeOfDay ?? "anytime",
+            location: habit.location,
+            trigger: habit.trigger,
+          });
+          results.push(`Created habit: "${habit.name}" [${habit.category}]`);
+        } catch (e: any) {
+          results.push(`Failed to create habit "${habit.name}": ${e.message}`);
+        }
+      }
+      return results.join("\n");
+    }
+
+    case "create_medicines": {
+      const results: string[] = [];
+      for (const med of toolInput.medicines) {
+        try {
+          await ctx.runMutation(api.medicines.addMedicine, {
+            userId,
+            name: med.name,
+            dosage: med.dosage,
+            instructions: med.instructions,
+            prescriber: med.prescriber,
+            scheduledTimes: med.scheduledTimes.map((t: any) => ({
+              label: t.label,
+              time: t.time,
+              reminderEnabled: t.reminderEnabled ?? true,
+            })),
+          });
+          const schedule = med.scheduledTimes
+            .map((t: any) => `${t.label} (${t.time})`)
+            .join(", ");
+          results.push(
+            `Created medication: "${med.name}" ${med.dosage} — ${schedule}`
+          );
+        } catch (e: any) {
+          results.push(
+            `Failed to create medication "${med.name}": ${e.message}`
+          );
+        }
+      }
+      return results.join("\n");
+    }
+
+    case "create_quests": {
+      const results: string[] = [];
+      for (const quest of toolInput.quests) {
+        try {
+          await ctx.runMutation(api.quests.addQuest, {
+            userId,
+            title: quest.title,
+            description: quest.description,
+            xpReward: quest.xpReward ?? 50,
+            priority: quest.priority ?? "medium",
+            questType: quest.questType ?? "ongoing",
+          });
+          results.push(
+            `Created quest: "${quest.title}" [${quest.priority ?? "medium"} priority, ${quest.xpReward ?? 50} XP]`
+          );
+        } catch (e: any) {
+          results.push(
+            `Failed to create quest "${quest.title}": ${e.message}`
+          );
+        }
+      }
+      return results.join("\n");
+    }
+
+    default:
+      return `Unknown tool: ${toolName}`;
+  }
+}
+
+// ──────────────────────────────────────────────
+// Main action
+// ──────────────────────────────────────────────
 
 export const sendMessage = action({
   args: {
@@ -184,7 +489,10 @@ export const sendMessage = action({
 ${userContext}`;
 
     // 4. Build conversation history (last 10 messages for context window)
-    const conversationHistory = (recentMessages ?? [])
+    const conversationHistory: Array<{
+      role: "user" | "assistant";
+      content: string | any[];
+    }> = (recentMessages ?? [])
       .slice(-10)
       .map((m: any) => ({
         role: m.role as "user" | "assistant",
@@ -197,7 +505,7 @@ ${userContext}`;
       content: args.userMessage,
     });
 
-    // 5. Call Claude API
+    // 5. Call Claude API with tool-use loop
     if (!process.env.ANTHROPIC_API_KEY) {
       const fallback =
         "I'm having trouble connecting right now. Try again in a moment!";
@@ -211,62 +519,131 @@ ${userContext}`;
     }
 
     try {
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": process.env.ANTHROPIC_API_KEY!,
-          "anthropic-version": "2023-06-01",
-        },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 400,
-          system: systemPrompt,
-          messages: conversationHistory,
-        }),
-      });
+      let messages = [...conversationHistory];
+      let finalReply = "";
 
-      if (!response.ok) {
-        console.error(
-          `Anthropic API error: ${response.status} ${response.statusText}`
-        );
-        const fallback =
-          "I'm having a moment — give me a second and try again!";
-        await ctx.runMutation(api.chat.saveMessage, {
-          userId: args.userId,
-          role: "assistant",
-          content: fallback,
-          sessionId: args.sessionId,
+      // Tool-use loop: keep calling Claude until we get a text-only response
+      for (let iteration = 0; iteration < 5; iteration++) {
+        const response = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": process.env.ANTHROPIC_API_KEY!,
+            "anthropic-version": "2023-06-01",
+          },
+          body: JSON.stringify({
+            model: "claude-sonnet-4-20250514",
+            max_tokens: 1024,
+            system: systemPrompt,
+            messages,
+            tools: TOOLS,
+          }),
         });
-        return fallback;
+
+        if (!response.ok) {
+          console.error(
+            `Anthropic API error: ${response.status} ${response.statusText}`
+          );
+          const fallback =
+            "I'm having a moment — give me a second and try again!";
+          await ctx.runMutation(api.chat.saveMessage, {
+            userId: args.userId,
+            role: "assistant",
+            content: fallback,
+            sessionId: args.sessionId,
+          });
+          return fallback;
+        }
+
+        const data = await response.json();
+
+        // Check if there are tool_use blocks
+        const toolUseBlocks = (data.content ?? []).filter(
+          (block: any) => block.type === "tool_use"
+        );
+
+        if (toolUseBlocks.length === 0) {
+          // No tool calls — extract text and we're done
+          const textBlock = data.content?.find(
+            (block: any) => block.type === "text"
+          );
+          finalReply =
+            textBlock?.text ??
+            "Hmm, I lost my train of thought. Could you say that again?";
+          break;
+        }
+
+        // There are tool calls — execute them and continue the loop
+        // First, add assistant's response (with tool_use blocks) to messages
+        messages.push({
+          role: "assistant" as const,
+          content: data.content,
+        });
+
+        // Execute each tool call and build tool_result messages
+        const toolResults: any[] = [];
+        for (const toolBlock of toolUseBlocks) {
+          console.log(
+            `[DR. SAGE] Executing tool: ${toolBlock.name}`,
+            JSON.stringify(toolBlock.input)
+          );
+          const result = await executeToolCall(
+            ctx,
+            args.userId,
+            toolBlock.name,
+            toolBlock.input
+          );
+          toolResults.push({
+            type: "tool_result",
+            tool_use_id: toolBlock.id,
+            content: result,
+          });
+        }
+
+        // Add tool results as a user message (Claude API convention)
+        messages.push({
+          role: "user" as const,
+          content: toolResults,
+        });
+
+        // Also extract any text the assistant sent alongside tool calls
+        const textAlongside = data.content?.find(
+          (block: any) => block.type === "text"
+        );
+        if (textAlongside?.text) {
+          // There might be text before/alongside tool calls — we'll let the
+          // next iteration generate the full confirmation text
+        }
+
+        // If stop_reason is "end_turn" with tool blocks, we still loop
+        // to get the final confirmation text from Claude
       }
 
-      const data = await response.json();
-      const textBlock = data.content?.find(
-        (block: any) => block.type === "text"
-      );
-      const reply = textBlock?.text ?? "Hmm, I lost my train of thought. Could you say that again?";
+      // If we fell through the loop without a reply (shouldn't happen)
+      if (!finalReply) {
+        finalReply =
+          "I've processed your request! Check your habits, meds, or quests tabs to see the updates.";
+      }
 
       // 6. Save assistant response
       await ctx.runMutation(api.chat.saveMessage, {
         userId: args.userId,
         role: "assistant",
-        content: reply,
+        content: finalReply,
         sessionId: args.sessionId,
       });
 
-      // 7. Trigger memory extraction check (runs async via scheduler in the mutation)
+      // 7. Trigger memory extraction check
       try {
         await ctx.runMutation(internal.chat.triggerChatMemoryExtraction, {
           userId: args.userId,
           sessionId: args.sessionId,
         });
       } catch (e) {
-        // Non-critical — log but don't fail the chat response
         console.warn("Failed to trigger chat memory extraction:", e);
       }
 
-      return reply;
+      return finalReply;
     } catch (error) {
       console.error("Error calling Anthropic API:", error);
       const fallback =
