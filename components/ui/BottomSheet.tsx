@@ -62,7 +62,7 @@ export function BottomSheet({ visible, onClose, title, children }: BottomSheetPr
     <BottomSheetModal
       ref={sheetRef}
       enableDynamicSizing
-      maxDynamicContentSize={SCREEN_HEIGHT * 0.85}
+      maxDynamicContentSize={SCREEN_HEIGHT * 0.92}
       enablePanDownToClose
       onDismiss={handleDismiss}
       backdropComponent={renderBackdrop}

@@ -29,7 +29,9 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { BottomSheet, BottomSheetTextInput as TextInput } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
 import { useToast } from '@/contexts/toast-context';
-import { VoiceModeOverlay } from '@/components/voice/VoiceModeOverlay';
+import { useVoiceModeController } from '@/components/voice/VoiceModeOverlay';
+import { VoiceBorderGlow } from '@/components/voice/VoiceBorderGlow';
+import type { VoiceState } from '@/hooks/use-voice-mode';
 
 const SPECIES_ICON: Record<string, keyof typeof Ionicons.glyphMap> = {
   treant: 'leaf',
@@ -108,7 +110,7 @@ export function CompanionWidget({
   externalVisible,
   onExternalClose,
 }: CompanionWidgetProps) {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const speciesColorMap = useMemo(() => getSpeciesColor(colors), [colors]);
   const { showToast } = useToast();
@@ -123,9 +125,12 @@ export function CompanionWidget({
   const [isSending, setIsSending] = useState(false);
   const [localMessages, setLocalMessages] = useState<ChatMessage[]>([]);
   const [voiceModeActive, setVoiceModeActive] = useState(false);
+  const [voiceState, setVoiceState] = useState<VoiceState>('idle');
 
   const sessionIdRef = useRef<string>(Date.now().toString());
   const chatListRef = useRef<ScrollView>(null);
+  const prevMessageCountRef = useRef(0);
+  const chatReadyRef = useRef(false);
 
   const companion = useQuery(api.companions.getCompanion, { userId });
   const unclaimedGifts = useQuery(api.companions.getUnclaimedGiftsCount, { userId });
@@ -137,6 +142,26 @@ export function CompanionWidget({
   const claimGiftMutation = useMutation(api.companions.claimGift);
   const saveMessageMutation = useMutation(api.chat.saveMessage);
   const sendMessageAction = useAction(api.chatAction.sendMessage);
+
+  // Voice mode controller (must be called before any conditional returns)
+  const voiceController = useVoiceModeController({
+    active: voiceModeActive,
+    onDeactivate: () => setVoiceModeActive(false),
+    userId,
+    sessionId: sessionIdRef.current,
+    sendMessage: sendMessageAction,
+    onMessageSent: (userMsg, aiMsg) => {
+      setLocalMessages((prev) => [...prev, userMsg, aiMsg]);
+    },
+    generateFallback: (msg: string) => {
+      const lower = msg.toLowerCase();
+      if (lower.includes('help') || lower.includes('struggle')) return "I hear you. What specifically feels challenging right now?";
+      if (lower.includes('happy') || lower.includes('great')) return "That's wonderful! What's been going well?";
+      if (lower.includes('tired') || lower.includes('exhausted')) return "Rest is part of the journey. Be gentle with yourself today.";
+      return "Thanks for sharing! How can I help you with your habits today?";
+    },
+    onStateChange: setVoiceState,
+  });
 
   // Breathing pulse for gift indicator (scale + subtle opacity)
   const giftScale = useSharedValue(1);
@@ -190,6 +215,9 @@ export function CompanionWidget({
   const switchTab = useCallback((tab: TabType) => {
     if (tab === activeTab) return;
     Haptics.selectionAsync();
+    // Reset chat scroll state so it jumps instantly when switching back to chat
+    chatReadyRef.current = false;
+    prevMessageCountRef.current = 0;
     // Animate indicator
     tabProgress.value = withTiming(tab === 'chat' ? 1 : 0, {
       duration: 300,
@@ -255,6 +283,13 @@ export function CompanionWidget({
     isFirstMeasure.current = true;
     setChatInput('');
     setLocalMessages([]);
+    chatReadyRef.current = false;
+    prevMessageCountRef.current = 0;
+    // Stop voice mode if active
+    if (voiceModeActive) {
+      voiceController.stop();
+      setVoiceModeActive(false);
+    }
     onExternalClose?.();
   };
 
@@ -548,7 +583,17 @@ export function CompanionWidget({
         contentContainerStyle={styles.chatMessageListContent}
         showsVerticalScrollIndicator={false}
         onContentSizeChange={() => {
-          chatListRef.current?.scrollToEnd({ animated: true });
+          const currentCount = allMessages.length;
+          if (!chatReadyRef.current) {
+            // First render — jump to bottom instantly, no animation
+            chatListRef.current?.scrollToEnd({ animated: false });
+            chatReadyRef.current = true;
+            prevMessageCountRef.current = currentCount;
+          } else if (currentCount > prevMessageCountRef.current) {
+            // New message added — smooth scroll
+            chatListRef.current?.scrollToEnd({ animated: true });
+            prevMessageCountRef.current = currentCount;
+          }
         }}
         nestedScrollEnabled
       >
@@ -584,7 +629,21 @@ export function CompanionWidget({
         </View>
       )}
 
-      {/* Input bar */}
+      {/* Input bar OR Voice wave */}
+      {voiceModeActive ? (
+        <VoiceBorderGlow
+          state={voiceState}
+          colors={colors}
+          isDark={isDark}
+          companionName={companion.name}
+          transcript={voiceController.transcript}
+          partialTranscript={voiceController.partialTranscript}
+          onStop={() => {
+            voiceController.stop();
+            setVoiceModeActive(false);
+          }}
+        />
+      ) : (
       <View style={styles.chatInputBar}>
         <TextInput
           style={styles.chatTextInput}
@@ -628,11 +687,11 @@ export function CompanionWidget({
           </Pressable>
         )}
       </View>
+      )}
     </View>
   );
 
   return (
-    <>
     <BottomSheet visible={isVisible} onClose={handleClose} title={companion.name}>
       {renderTabSwitcher()}
       <Animated.View style={heightWrapperStyle}>
@@ -641,22 +700,6 @@ export function CompanionWidget({
         </Animated.View>
       </Animated.View>
     </BottomSheet>
-
-      {/* Voice Mode Overlay */}
-      <VoiceModeOverlay
-        visible={voiceModeActive}
-        onClose={() => setVoiceModeActive(false)}
-        userId={userId}
-        sessionId={sessionIdRef.current}
-        companionName={companion.name}
-        speciesColor={speciesColor}
-        sendMessage={sendMessageAction}
-        onMessageSent={(userMsg, aiMsg) => {
-          setLocalMessages((prev) => [...prev, userMsg, aiMsg]);
-        }}
-        generateFallback={generateSageResponse}
-      />
-    </>
   );
 }
 
@@ -832,12 +875,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
 
   // ---- Chat tab ----
   chatContainer: {
-    minHeight: 320,
+    minHeight: 400,
     paddingBottom: Spacing.md,
   },
   chatMessageList: {
-    maxHeight: 280,
-    minHeight: 200,
+    maxHeight: 400,
+    minHeight: 280,
   },
   chatMessageListContent: {
     paddingVertical: Spacing.sm,
