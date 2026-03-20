@@ -35,6 +35,7 @@ import { usePushNotifications } from '@/hooks/use-push-notifications';
 import type { Habit, HabitCategory, Goal, TimeOfDay, ReflectionMood, MicroReflection } from '@/types';
 import { GOAL_CATEGORY_CONFIG } from '@/types';
 import { buildScheduleMap, type HabitScheduleInfo } from '@/lib/habit-scheduling';
+import { buildChainFollowersMap, resolveFullChain } from '@/lib/habit-chains';
 import { buildAutomaticityMap, type AutomaticityInfo } from '@/lib/automaticity';
 import { detectKeystones, type KeystoneInfo } from '@/lib/keystone-detection';
 import { analyzeDifficulty, type DifficultySuggestion } from '@/lib/adaptive-difficulty';
@@ -216,20 +217,50 @@ export default function DashboardScreen() {
     return map;
   }, [habits]);
 
+
+  // Reverse chain map: habit ID -> full list of downstream chained habits
+  const chainFollowersMap = useMemo(() => {
+    if (habits.length === 0) return new Map<string, Habit[]>();
+    const rawMap = buildChainFollowersMap(habits);
+    const fullMap = new Map<string, Habit[]>();
+    for (const [id] of rawMap) {
+      fullMap.set(id, resolveFullChain(id, rawMap));
+    }
+    return fullMap;
+  }, [habits]);
+
   // Smart scheduling: determine which habits should appear today
   const scheduleMap = useMemo(() => {
     if (activeHabits.length === 0) return new Map<string, HabitScheduleInfo>();
     return buildScheduleMap(activeHabits, new Date(), todayDate);
   }, [activeHabits, todayDate]);
 
+  // Pre-compute which habits are completed today (needed before visibility filtering)
+  const todayCompletedIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const h of activeHabits) {
+      if (h.completedDates.includes(todayDate)) ids.add(h.id);
+    }
+    return ids;
+  }, [activeHabits, todayDate]);
+
   // Only show habits the scheduler marks as visible
+  // Also hide chained habits whose parent hasn't been completed yet today
   const visibleHabits = useMemo(() => {
-    if (scheduleMap.size === 0) return activeHabits;
     return activeHabits.filter((h) => {
-      const info = scheduleMap.get(h.id);
-      return !info || info.visible;
+      // Schedule-based visibility
+      if (scheduleMap.size > 0) {
+        const info = scheduleMap.get(h.id);
+        if (info && !info.visible) return false;
+      }
+      // Chain-based visibility: hide if parent habit isn't completed today
+      if (h.chainedToHabitId) {
+        const parentCompleted = todayCompletedIds.has(h.chainedToHabitId);
+        if (!parentCompleted) return false;
+      }
+      return true;
     });
-  }, [activeHabits, scheduleMap]);
+  }, [activeHabits, scheduleMap, todayCompletedIds]);
 
   // Automaticity scores for all habits
   const automaticityMap = useMemo(() => {
@@ -870,6 +901,8 @@ export default function DashboardScreen() {
                             scheduleMap={scheduleMap}
                             automaticityMap={automaticityMap}
                             keystoneMap={keystoneMap}
+                            chainFollowersMap={chainFollowersMap}
+                            completedIds={completedIds}
                           />
                         ) : null}
                         {group.completed.map((habit) => {
@@ -878,6 +911,7 @@ export default function DashboardScreen() {
                             ? { completed: info.weeklyCompleted, target: info.weeklyTarget }
                             : undefined;
                           const autoInfo = automaticityMap.get(habit.id);
+                          const followers = chainFollowersMap.get(habit.id);
                           return (
                             <HabitCard
                               key={habit.id}
@@ -889,6 +923,8 @@ export default function DashboardScreen() {
                               weeklyProgress={weeklyProgress}
                               automaticityScore={autoInfo?.score}
                               isKeystone={keystoneMap.get(habit.id)?.isKeystone}
+                              hasChainFollowers={!!followers && followers.length > 0}
+                              chainFollowerCount={followers?.length}
                             />
                           );
                         })}

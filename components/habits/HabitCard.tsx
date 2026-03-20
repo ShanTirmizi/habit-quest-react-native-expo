@@ -38,6 +38,10 @@ interface HabitCardProps {
   weeklyProgress?: { completed: number; target: number };
   automaticityScore?: number;
   isKeystone?: boolean;
+  hasChainFollowers?: boolean;
+  chainFollowerCount?: number;
+  isChainExpanded?: boolean;
+  onToggleChainPreview?: () => void;
 }
 
 const TIME_ICON_NAMES: Record<TimeOfDay, keyof typeof Ionicons.glyphMap | null> = {
@@ -49,7 +53,7 @@ const TIME_ICON_NAMES: Record<TimeOfDay, keyof typeof Ionicons.glyphMap | null> 
 
 const SWIPE_THRESHOLD = 70;
 
-export function HabitCard({ habit, isCompleted, onToggle, onPress, drag, isDragging, chainedToName, weeklyProgress, automaticityScore, isKeystone }: HabitCardProps) {
+export function HabitCard({ habit, isCompleted, onToggle, onPress, drag, isDragging, chainedToName, weeklyProgress, automaticityScore, isKeystone, hasChainFollowers, chainFollowerCount, isChainExpanded, onToggleChainPreview }: HabitCardProps) {
   const { colors, isDark } = useTheme();
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const categoryColors = useMemo(() => getCategoryColors(colors), [colors]);
@@ -149,6 +153,7 @@ export function HabitCard({ habit, isCompleted, onToggle, onPress, drag, isDragg
         isCompleted && styles.cardCompleted,
         pressed && styles.cardPressed,
         isDragging && styles.cardDragging,
+        isChainExpanded && { borderBottomLeftRadius: 0, borderBottomRightRadius: 0 },
       ]}
       accessibilityRole="checkbox"
       accessibilityState={{ checked: isCompleted }}
@@ -220,6 +225,30 @@ export function HabitCard({ habit, isCompleted, onToggle, onPress, drag, isDragg
                 </Text>
               </View>
             ) : null}
+            {hasChainFollowers && chainFollowerCount && chainFollowerCount > 0 ? (
+              <Pressable
+                onPress={(e) => {
+                  e.stopPropagation?.();
+                  onToggleChainPreview?.();
+                }}
+                hitSlop={8}
+                style={({ pressed }) => [
+                  styles.chainForwardBadge,
+                  { backgroundColor: badgeBg },
+                  pressed && { opacity: 0.7 },
+                ]}
+              >
+                <Ionicons name="git-branch-outline" size={10} color={badgeTextColor} />
+                <Text style={[styles.chainForwardText, { color: badgeTextColor }]}>
+                  {chainFollowerCount} next
+                </Text>
+                <Ionicons
+                  name={isChainExpanded ? 'chevron-up' : 'chevron-down'}
+                  size={10}
+                  color={badgeTextColor}
+                />
+              </Pressable>
+            ) : null}
             {weeklyProgress && weeklyProgress.target > 0 ? (
               <View style={[
                 styles.weeklyBadge,
@@ -279,11 +308,17 @@ export function HabitCard({ habit, isCompleted, onToggle, onPress, drag, isDragg
     </View>
   ) : null;
 
+  const chainExpandedStyle = isChainExpanded ? {
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+    marginBottom: 0,
+  } : undefined;
+
   return (
-    <ReAnimated.View style={[styles.swipeContainer, cardScaleStyle]}>
+    <ReAnimated.View style={[styles.swipeContainer, cardScaleStyle, chainExpandedStyle]}>
       {/* Gradient reveal behind card on swipe */}
       {enableSwipe ? (
-        <ReAnimated.View style={[styles.revealBgWrapper, revealStyle]}>
+        <ReAnimated.View style={[styles.revealBgWrapper, revealStyle, isChainExpanded && { borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }]}>
           <LinearGradient
             colors={[colors.success, colors.secondaryDim]}
             start={{ x: 0, y: 0 }}
@@ -404,6 +439,18 @@ const createStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create
     fontSize: 10,
     fontFamily: FontFamily.medium,
     maxWidth: 100,
+  },
+  chainForwardBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: Radius.full,
+  },
+  chainForwardText: {
+    fontSize: 10,
+    fontFamily: FontFamily.semibold,
   },
   weeklyBadge: {
     flexDirection: 'row',

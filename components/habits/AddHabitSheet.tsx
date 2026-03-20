@@ -113,7 +113,7 @@ export function AddHabitSheet({ visible, onClose, onAdd, existingHabits }: AddHa
 
     resetForm();
     onClose();
-  }, [name, category, xpReward, frequencyType, selectedDays, timesPerWeek, timeOfDay, location, trigger, onAdd, onClose, resetForm]);
+  }, [name, category, xpReward, frequencyType, selectedDays, timesPerWeek, timeOfDay, location, trigger, chainedToHabitId, rewardBundle, onAdd, onClose, resetForm]);
 
   const toggleDay = (day: number) => {
     setSelectedDays((prev) =>
