@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet, Pressable, ScrollView, TextInput } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
+import { BottomSheetTextInput as TextInput } from '@gorhom/bottom-sheet';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { FontSize, Spacing, Radius, FontFamily, getCategoryColors, type ThemeColors } from '@/constants/theme';
@@ -128,6 +129,7 @@ export function AddHabitSheet({ visible, onClose, onAdd, existingHabits }: AddHa
           value={name}
           onChangeText={setName}
           placeholder="e.g., Morning run, Read 30 minutes..."
+          bottomSheet
         />
 
         {/* Category */}

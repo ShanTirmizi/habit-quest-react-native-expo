@@ -1,26 +1,24 @@
-import React, { useCallback, useRef, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useRef, useEffect, useMemo } from 'react';
+import { View, Text, StyleSheet, Dimensions } from 'react-native';
 import {
-  View,
-  Text,
-  StyleSheet,
-  Modal,
-  Pressable,
-  Animated,
-  Dimensions,
-  Keyboard,
-  Platform,
-  ScrollView,
-} from 'react-native';
+  BottomSheetModal,
+  BottomSheetScrollView,
+  BottomSheetBackdrop,
+  BottomSheetTextInput as GorhomTextInput,
+  type BottomSheetBackdropProps,
+} from '@gorhom/bottom-sheet';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Radius, Spacing, FontSize, FontFamily, Shadows, type ThemeColors } from '@/constants/theme';
+import { Spacing, FontSize, FontFamily, type ThemeColors } from '@/constants/theme';
 import { useTheme } from '@/contexts/theme-context';
+
+// Re-export for consumers that need keyboard-aware TextInput inside sheets
+export { GorhomTextInput as BottomSheetTextInput };
 
 interface BottomSheetProps {
   visible: boolean;
   onClose: () => void;
   title?: string;
   children: React.ReactNode;
-  snapPoints?: number[];
 }
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -29,105 +27,74 @@ export function BottomSheet({ visible, onClose, title, children }: BottomSheetPr
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const insets = useSafeAreaInsets();
-  const translateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const sheetRef = useRef<BottomSheetModal>(null);
+  const isPresented = useRef(false);
 
   useEffect(() => {
-    const showSub = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-      (e) => setKeyboardHeight(e.endCoordinates.height)
-    );
-    const hideSub = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
-      () => setKeyboardHeight(0)
-    );
-    return () => { showSub.remove(); hideSub.remove(); };
-  }, []);
-
-  useEffect(() => {
-    if (visible) {
-      Animated.spring(translateY, {
-        toValue: 0,
-        useNativeDriver: true,
-        damping: 25,
-        stiffness: 200,
-      }).start();
-    } else {
-      Animated.timing(translateY, {
-        toValue: SCREEN_HEIGHT,
-        duration: 200,
-        useNativeDriver: true,
-      }).start();
+    if (visible && !isPresented.current) {
+      sheetRef.current?.present();
+      isPresented.current = true;
+    } else if (!visible && isPresented.current) {
+      sheetRef.current?.dismiss();
+      isPresented.current = false;
     }
-  }, [visible, translateY]);
+  }, [visible]);
 
-  const handleClose = useCallback(() => {
-    Keyboard.dismiss();
-    Animated.timing(translateY, {
-      toValue: SCREEN_HEIGHT,
-      duration: 200,
-      useNativeDriver: true,
-    }).start(() => onClose());
-  }, [onClose, translateY]);
+  const handleDismiss = useCallback(() => {
+    isPresented.current = false;
+    onClose();
+  }, [onClose]);
 
-  const availableHeight = keyboardHeight > 0
-    ? SCREEN_HEIGHT - keyboardHeight - insets.top - 20
-    : SCREEN_HEIGHT * 0.85;
+  const renderBackdrop = useCallback(
+    (props: BottomSheetBackdropProps) => (
+      <BottomSheetBackdrop
+        {...props}
+        opacity={0.5}
+        appearsOnIndex={0}
+        disappearsOnIndex={-1}
+        pressBehavior="close"
+      />
+    ),
+    []
+  );
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={handleClose}>
-      <View style={styles.overlay}>
-        <Pressable style={styles.backdrop} onPress={handleClose} />
-        <Animated.View
-          style={[
-            styles.sheet,
-            {
-              maxHeight: availableHeight,
-              paddingBottom: keyboardHeight > 0 ? Spacing.md : insets.bottom + Spacing.lg,
-              marginBottom: keyboardHeight > 0 ? keyboardHeight : 0,
-            },
-            { transform: [{ translateY }] },
-          ]}
-        >
-          <View style={styles.handle} />
-          {title ? <Text style={styles.title}>{title}</Text> : null}
-          <ScrollView
-            style={styles.content}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-          >
-            {children}
-          </ScrollView>
-        </Animated.View>
-      </View>
-    </Modal>
+    <BottomSheetModal
+      ref={sheetRef}
+      enableDynamicSizing
+      maxDynamicContentSize={SCREEN_HEIGHT * 0.85}
+      enablePanDownToClose
+      onDismiss={handleDismiss}
+      backdropComponent={renderBackdrop}
+      keyboardBehavior="interactive"
+      keyboardBlurBehavior="restore"
+      handleIndicatorStyle={[styles.handle, { backgroundColor: colors.textMuted }]}
+      backgroundStyle={{ backgroundColor: colors.surface }}
+      style={styles.sheet}
+    >
+      <BottomSheetScrollView
+        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + Spacing.lg }]}
+        keyboardShouldPersistTaps="handled"
+      >
+        {title ? <Text style={styles.title}>{title}</Text> : null}
+        {children}
+      </BottomSheetScrollView>
+    </BottomSheetModal>
   );
 }
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
-  overlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: colors.overlay,
-  },
   sheet: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    paddingTop: Spacing.sm,
-    paddingHorizontal: Spacing.xl,
-    ...Shadows.cardRaised,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
   },
   handle: {
     width: 36,
     height: 4,
     borderRadius: 2,
-    backgroundColor: colors.textMuted,
-    alignSelf: 'center',
-    marginBottom: Spacing.lg,
   },
   title: {
     fontSize: FontSize.lg,
@@ -136,6 +103,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginBottom: Spacing.lg,
   },
   content: {
-    flexGrow: 0,
+    paddingHorizontal: Spacing.xl,
   },
 });

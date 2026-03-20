@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  TextInput,
   Pressable,
   ScrollView,
   ActivityIndicator,
@@ -27,7 +26,7 @@ import type { Id } from '@/convex/_generated/dataModel';
 import { FontSize, Spacing, Radius, FontFamily, Shadows, type ThemeColors } from '@/constants/theme';
 import { useTheme } from '@/contexts/theme-context';
 import { GlassCard } from '@/components/ui/GlassCard';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { BottomSheet, BottomSheetTextInput as TextInput } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
 import { useToast } from '@/contexts/toast-context';
 

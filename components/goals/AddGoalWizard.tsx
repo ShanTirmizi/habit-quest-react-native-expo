@@ -6,7 +6,6 @@ import {
   Pressable,
   ActivityIndicator,
   ScrollView,
-  TextInput,
   Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,7 +15,7 @@ import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { useTheme } from '@/contexts/theme-context';
 import { FontSize, Spacing, Radius, FontFamily, Shadows, type ThemeColors } from '@/constants/theme';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { BottomSheet, BottomSheetTextInput } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { BadgePill } from '@/components/ui/BadgePill';
@@ -680,7 +679,7 @@ export function AddGoalWizard({ visible, onClose, userId }: AddGoalWizardProps) 
               value={title}
               onChangeText={setTitle}
               placeholder="e.g., Run a 5K in under 30 minutes"
-              autoFocus
+              bottomSheet
             />
 
             <Input
@@ -691,6 +690,7 @@ export function AddGoalWizard({ visible, onClose, userId }: AddGoalWizardProps) 
               multiline
               numberOfLines={2}
               containerStyle={{ marginTop: Spacing.md }}
+              bottomSheet
             />
 
             {/* Category Selection */}
@@ -872,7 +872,7 @@ export function AddGoalWizard({ visible, onClose, userId }: AddGoalWizardProps) 
                       </View>
 
                       {q.type === 'text' && (
-                        <TextInput
+                        <BottomSheetTextInput
                           style={styles.textAnswer}
                           placeholder={q.placeholder || 'Your answer...'}
                           placeholderTextColor={colors.textMuted}

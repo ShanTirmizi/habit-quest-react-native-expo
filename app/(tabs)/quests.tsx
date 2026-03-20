@@ -435,6 +435,7 @@ function AddQuestSheet({
           value={title}
           onChangeText={setTitle}
           placeholder="What's your side quest?"
+          bottomSheet
         />
         <Input
           label="Description (optional)"
@@ -444,6 +445,7 @@ function AddQuestSheet({
           multiline
           numberOfLines={2}
           containerStyle={{ marginTop: Spacing.md }}
+          bottomSheet
         />
         <View style={styles.prioritySection}>
           <Text style={styles.priorityLabel}>Priority</Text>

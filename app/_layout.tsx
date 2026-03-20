@@ -5,6 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { View, StyleSheet, ActivityIndicator } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 
 // Suppress known warning from react-native-draggable-flatlist
 LogBox.ignoreLogs(['ref.measureLayout must be called']);
@@ -149,11 +150,13 @@ export default function RootLayout() {
       <ConvexProvider>
         <AuthProvider>
           <ThemeProvider>
-            <SafeAreaProvider>
-              <ToastProvider>
-                <ThemedApp />
-              </ToastProvider>
-            </SafeAreaProvider>
+            <BottomSheetModalProvider>
+              <SafeAreaProvider>
+                <ToastProvider>
+                  <ThemedApp />
+                </ToastProvider>
+              </SafeAreaProvider>
+            </BottomSheetModalProvider>
           </ThemeProvider>
         </AuthProvider>
       </ConvexProvider>

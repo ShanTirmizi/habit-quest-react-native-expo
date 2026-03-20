@@ -8,7 +8,6 @@ import {
   RefreshControl,
   Animated,
   Alert,
-  TextInput,
 } from 'react-native';
 import { useToast } from '@/contexts/toast-context';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -28,6 +27,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Input } from '@/components/ui/Input';
+import { BottomSheetTextInput as TextInput } from '@gorhom/bottom-sheet';
 import { Button } from '@/components/ui/Button';
 import { ConcentricRings } from '@/components/ui/ConcentricRings';
 import { format, parseISO } from 'date-fns';
@@ -697,6 +697,7 @@ function AddMedicineSheet({
           value={name}
           onChangeText={setName}
           placeholder="e.g., Metformin"
+          bottomSheet
         />
         <Input
           label="Dosage"
@@ -704,6 +705,7 @@ function AddMedicineSheet({
           onChangeText={setDosage}
           placeholder="e.g., 500mg"
           containerStyle={{ marginTop: Spacing.md }}
+          bottomSheet
         />
 
         {/* Time Slot Selector */}
@@ -834,6 +836,7 @@ function EditMedicineSheet({
           value={name}
           onChangeText={setName}
           placeholder="e.g., Metformin"
+          bottomSheet
         />
         <Input
           label="Dosage"
@@ -841,6 +844,7 @@ function EditMedicineSheet({
           onChangeText={setDosage}
           placeholder="e.g., 500mg"
           containerStyle={{ marginTop: Spacing.md }}
+          bottomSheet
         />
         <View style={styles.addFormFooter}>
           <Button title="Cancel" variant="ghost" onPress={onClose} />

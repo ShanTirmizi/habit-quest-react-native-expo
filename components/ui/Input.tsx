@@ -1,5 +1,6 @@
 import React, { forwardRef, useMemo } from 'react';
 import { TextInput, View, Text, StyleSheet, ViewStyle, TextInputProps } from 'react-native';
+import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
 import { Radius, FontSize, Spacing, FontFamily, type ThemeColors } from '@/constants/theme';
 import { useTheme } from '@/contexts/theme-context';
 
@@ -7,18 +8,22 @@ interface InputProps extends TextInputProps {
   label?: string;
   error?: string;
   containerStyle?: ViewStyle;
+  /** Use BottomSheetTextInput for proper keyboard handling inside gorhom sheets */
+  bottomSheet?: boolean;
 }
 
 export const Input = forwardRef<TextInput, InputProps>(
-  ({ label, error, containerStyle, style, ...props }, ref) => {
+  ({ label, error, containerStyle, style, bottomSheet, ...props }, ref) => {
     const { colors } = useTheme();
     const styles = useMemo(() => createStyles(colors), [colors]);
+
+    const InputComponent = bottomSheet ? BottomSheetTextInput : TextInput;
 
     return (
       <View style={containerStyle}>
         {label ? <Text style={styles.label}>{label}</Text> : null}
-        <TextInput
-          ref={ref}
+        <InputComponent
+          ref={ref as any}
           style={[styles.input, error && styles.inputError, style]}
           placeholderTextColor={colors.textMuted}
           selectionColor={colors.primary}
