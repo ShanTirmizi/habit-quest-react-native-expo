@@ -614,16 +614,13 @@ export default function DashboardScreen() {
               accessibilityLabel="Open Dr. Sage companion"
               accessibilityRole="button"
             >
-              <View style={[styles.sageAvatar, { borderColor: getSpeciesColor(companion.species, colors) }]}>
+              <View style={[styles.sageAvatar, { borderColor: colors.primary }]}>
                 <Ionicons
-                  name={SPECIES_ICON[companion.species] || 'paw'}
+                  name="chatbubble-ellipses"
                   size={18}
-                  color={getSpeciesColor(companion.species, colors)}
+                  color={colors.primary}
                 />
               </View>
-              <Text style={styles.sageMoodBadge}>
-                {MOOD_EMOJI[companion.mood] || '\u{1F60A}'}
-              </Text>
             </Pressable>
           ) : companion === null ? (
             <Pressable
@@ -633,7 +630,7 @@ export default function DashboardScreen() {
               accessibilityRole="button"
             >
               <View style={[styles.sageAvatar, { borderColor: colors.primary }]}>
-                <Ionicons name="paw" size={18} color={colors.primary} />
+                <Ionicons name="chatbubble-ellipses" size={18} color={colors.primary} />
               </View>
             </Pressable>
           ) : null}

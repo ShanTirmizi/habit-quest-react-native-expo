@@ -18,7 +18,9 @@
       "bundleIdentifier": "com.tirmazilabs.habitquest",
       "usesAppleSignIn": true,
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSMicrophoneUsageDescription": "HabitQuest needs microphone access for voice conversations with Dr. Sage.",
+        "NSSpeechRecognitionUsageDescription": "HabitQuest needs speech recognition to transcribe your voice."
       }
     },
     "android": {
@@ -44,7 +46,11 @@
         {
           "color": "#EB6D3A"
         }
-      ]
+      ],
+      ["expo-speech-recognition", {
+        "microphonePermission": "HabitQuest needs microphone access for voice conversations with Dr. Sage.",
+        "speechRecognitionPermission": "HabitQuest needs speech recognition to transcribe your voice."
+      }]
     ],
     "extra": {
       "router": {},

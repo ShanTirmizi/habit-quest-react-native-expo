@@ -29,6 +29,7 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { BottomSheet, BottomSheetTextInput as TextInput } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
 import { useToast } from '@/contexts/toast-context';
+import { VoiceModeOverlay } from '@/components/voice/VoiceModeOverlay';
 
 const SPECIES_ICON: Record<string, keyof typeof Ionicons.glyphMap> = {
   treant: 'leaf',
@@ -113,14 +114,15 @@ export function CompanionWidget({
   const { showToast } = useToast();
   const [editingName, setEditingName] = useState(false);
   const [newName, setNewName] = useState('');
-  const [activeTab, setActiveTab] = useState<TabType>('info');
-  const tabProgress = useSharedValue(0); // 0 = info, 1 = chat
+  const [activeTab, setActiveTab] = useState<TabType>('chat');
+  const tabProgress = useSharedValue(1); // 0 = info, 1 = chat
   const [switcherWidth, setSwitcherWidth] = useState(0);
   const contentHeight = useSharedValue(0);
   const isFirstMeasure = useRef(true);
   const [chatInput, setChatInput] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [localMessages, setLocalMessages] = useState<ChatMessage[]>([]);
+  const [voiceModeActive, setVoiceModeActive] = useState(false);
 
   const sessionIdRef = useRef<string>(Date.now().toString());
   const chatListRef = useRef<ScrollView>(null);
@@ -246,8 +248,8 @@ export function CompanionWidget({
   const handleClose = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setEditingName(false);
-    setActiveTab('info');
-    tabProgress.value = 0;
+    setActiveTab('chat');
+    tabProgress.value = 1;
     contentOpacity.value = 1;
     contentHeight.value = 0;
     isFirstMeasure.current = true;
@@ -595,26 +597,42 @@ export function CompanionWidget({
           returnKeyType="default"
           blurOnSubmit={false}
         />
-        <Pressable
-          onPress={handleSendMessage}
-          disabled={!chatInput.trim() || isSending}
-          style={({ pressed }) => [
-            styles.sendButton,
-            (!chatInput.trim() || isSending) && styles.sendButtonDisabled,
-            pressed && { opacity: 0.9, transform: [{ scale: 0.97 }] },
-          ]}
-        >
-          <Ionicons
-            name="send"
-            size={18}
-            color={!chatInput.trim() || isSending ? colors.textMuted : '#fff'}
-          />
-        </Pressable>
+        {chatInput.trim() ? (
+          <Pressable
+            onPress={handleSendMessage}
+            disabled={isSending}
+            style={({ pressed }) => [
+              styles.sendButton,
+              isSending && styles.sendButtonDisabled,
+              pressed && { opacity: 0.9, transform: [{ scale: 0.97 }] },
+            ]}
+          >
+            <Ionicons
+              name="send"
+              size={18}
+              color={isSending ? colors.textMuted : '#fff'}
+            />
+          </Pressable>
+        ) : (
+          <Pressable
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              setVoiceModeActive(true);
+            }}
+            style={({ pressed }) => [
+              styles.micButton,
+              pressed && { opacity: 0.9, transform: [{ scale: 0.97 }] },
+            ]}
+          >
+            <Ionicons name="mic" size={20} color="#fff" />
+          </Pressable>
+        )}
       </View>
     </View>
   );
 
   return (
+    <>
     <BottomSheet visible={isVisible} onClose={handleClose} title={companion.name}>
       {renderTabSwitcher()}
       <Animated.View style={heightWrapperStyle}>
@@ -623,6 +641,22 @@ export function CompanionWidget({
         </Animated.View>
       </Animated.View>
     </BottomSheet>
+
+      {/* Voice Mode Overlay */}
+      <VoiceModeOverlay
+        visible={voiceModeActive}
+        onClose={() => setVoiceModeActive(false)}
+        userId={userId}
+        sessionId={sessionIdRef.current}
+        companionName={companion.name}
+        speciesColor={speciesColor}
+        sendMessage={sendMessageAction}
+        onMessageSent={(userMsg, aiMsg) => {
+          setLocalMessages((prev) => [...prev, userMsg, aiMsg]);
+        }}
+        generateFallback={generateSageResponse}
+      />
+    </>
   );
 }
 
@@ -948,5 +982,13 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   sendButtonDisabled: {
     backgroundColor: colors.surfaceLight,
+  },
+  micButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
