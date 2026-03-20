@@ -28,6 +28,7 @@ import type * as oracle from "../oracle.js";
 import type * as progress from "../progress.js";
 import type * as quests from "../quests.js";
 import type * as timeCapsules from "../timeCapsules.js";
+import type * as tts from "../tts.js";
 import type * as users from "../users.js";
 
 import type {
@@ -57,6 +58,7 @@ declare const fullApi: ApiFromModules<{
   progress: typeof progress;
   quests: typeof quests;
   timeCapsules: typeof timeCapsules;
+  tts: typeof tts;
   users: typeof users;
 }>;
 

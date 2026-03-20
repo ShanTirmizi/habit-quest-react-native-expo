@@ -1,12 +1,10 @@
 /**
- * VoiceModeOverlay — no longer a full-screen modal.
- * This is a headless controller that manages the voice conversation loop.
- * The visual feedback (border glow + status pill) is rendered inline
- * by the CompanionWidget via VoiceBorderGlow.
+ * VoiceModeOverlay — headless controller for the voice conversation loop.
+ * Visual feedback is rendered inline by CompanionWidget via VoiceBorderGlow.
  */
 import { useEffect, useCallback, useRef } from 'react';
 import * as Haptics from 'expo-haptics';
-import { useVoiceMode, type VoiceState } from '@/hooks/use-voice-mode';
+import { useVoiceMode, type VoiceState, type CloudTTSFn } from '@/hooks/use-voice-mode';
 import type { Id } from '@/convex/_generated/dataModel';
 
 interface ChatMessage {
@@ -28,6 +26,8 @@ interface VoiceModeControllerProps {
   generateFallback: (msg: string) => string;
   /** Expose voice state to parent for animation */
   onStateChange?: (state: VoiceState) => void;
+  /** Cloud TTS function — returns base64 mp3 or null to fall back to system TTS */
+  cloudTTS?: CloudTTSFn;
 }
 
 const AUTO_LISTEN_DELAY = 600;
@@ -41,12 +41,18 @@ export function useVoiceModeController({
   onMessageSent,
   generateFallback,
   onStateChange,
+  cloudTTS,
 }: VoiceModeControllerProps) {
   const voice = useVoiceMode();
   const isProcessingRef = useRef(false);
   const isClosingRef = useRef(false);
   const voiceRef = useRef(voice);
   voiceRef.current = voice;
+
+  // Wire up cloud TTS when provided
+  useEffect(() => {
+    voice.setCloudTTS(cloudTTS ?? null);
+  }, [cloudTTS]);
 
   // Expose state changes to parent
   useEffect(() => {
@@ -111,7 +117,7 @@ export function useVoiceModeController({
         { role: 'assistant', content: reply },
       );
 
-      // Speak the response
+      // Speak the response (uses cloud TTS if available, falls back to system)
       await voiceRef.current.speak(reply);
 
       if (isClosingRef.current) {

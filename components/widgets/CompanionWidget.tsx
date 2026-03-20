@@ -142,6 +142,17 @@ export function CompanionWidget({
   const claimGiftMutation = useMutation(api.companions.claimGift);
   const saveMessageMutation = useMutation(api.chat.saveMessage);
   const sendMessageAction = useAction(api.chatAction.sendMessage);
+  const ttsSynthesize = useAction(api.tts.synthesize);
+
+  // Cloud TTS function — calls Convex action which hits OpenAI TTS API
+  const cloudTTS = useCallback(async (text: string): Promise<string | null> => {
+    try {
+      return await ttsSynthesize({ text, voice: 'nova' });
+    } catch (err) {
+      console.warn('[CompanionWidget] Cloud TTS error:', err);
+      return null;
+    }
+  }, [ttsSynthesize]);
 
   // Voice mode controller (must be called before any conditional returns)
   const voiceController = useVoiceModeController({
@@ -161,6 +172,7 @@ export function CompanionWidget({
       return "Thanks for sharing! How can I help you with your habits today?";
     },
     onStateChange: setVoiceState,
+    cloudTTS,
   });
 
   // Breathing pulse for gift indicator (scale + subtle opacity)
