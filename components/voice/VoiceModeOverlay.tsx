@@ -1,6 +1,7 @@
 /**
- * VoiceModeOverlay — headless controller for the voice conversation loop.
- * Visual feedback is rendered inline by CompanionWidget via VoiceBorderGlow.
+ * VoiceModeOverlay — headless controller for voice conversation.
+ * Push-to-talk: hold mic to speak, release to send.
+ * If AI is speaking when you hold mic, TTS stops and listening begins.
  */
 import { useEffect, useCallback, useRef } from 'react';
 import * as Haptics from 'expo-haptics';
@@ -24,13 +25,9 @@ interface VoiceModeControllerProps {
   }) => Promise<string>;
   onMessageSent: (userMsg: ChatMessage, aiMsg: ChatMessage) => void;
   generateFallback: (msg: string) => string;
-  /** Expose voice state to parent for animation */
   onStateChange?: (state: VoiceState) => void;
-  /** Cloud TTS function — returns base64 mp3 or null to fall back to system TTS */
   cloudTTS?: CloudTTSFn;
 }
-
-const AUTO_LISTEN_DELAY = 600;
 
 export function useVoiceModeController({
   active,
@@ -49,29 +46,21 @@ export function useVoiceModeController({
   const voiceRef = useRef(voice);
   voiceRef.current = voice;
 
-  // Wire up cloud TTS when provided
+  // Wire up cloud TTS
   useEffect(() => {
     voice.setCloudTTS(cloudTTS ?? null);
   }, [cloudTTS]);
 
-  // Expose state changes to parent
+  // Expose state changes
   useEffect(() => {
     onStateChange?.(voice.voiceState);
   }, [voice.voiceState]);
 
-  // Start/stop listening based on active state
+  // Activate/deactivate
   useEffect(() => {
     if (active) {
       isClosingRef.current = false;
       isProcessingRef.current = false;
-      const timer = setTimeout(() => {
-        if (!isClosingRef.current) {
-          console.log('[VoiceController] Starting initial listening');
-          voiceRef.current.startListening();
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        }
-      }, 300);
-      return () => clearTimeout(timer);
     } else {
       isClosingRef.current = true;
       voiceRef.current.cleanup();
@@ -89,9 +78,6 @@ export function useVoiceModeController({
   const processTranscript = async (text: string) => {
     if (!text.trim() || isClosingRef.current) {
       isProcessingRef.current = false;
-      if (!isClosingRef.current) {
-        voiceRef.current.startListening();
-      }
       return;
     }
 
@@ -117,22 +103,10 @@ export function useVoiceModeController({
         { role: 'assistant', content: reply },
       );
 
-      // Speak the response (uses cloud TTS if available, falls back to system)
+      // Speak the response — user can interrupt by holding mic again
       await voiceRef.current.speak(reply);
+      isProcessingRef.current = false;
 
-      if (isClosingRef.current) {
-        isProcessingRef.current = false;
-        return;
-      }
-
-      // Auto-listen again
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      setTimeout(() => {
-        isProcessingRef.current = false;
-        if (!isClosingRef.current) {
-          voiceRef.current.startListening();
-        }
-      }, AUTO_LISTEN_DELAY);
     } catch (error) {
       console.error('[VoiceController] Error:', error);
 
@@ -148,15 +122,22 @@ export function useVoiceModeController({
       );
 
       await voiceRef.current.speak(fallback);
-
-      setTimeout(() => {
-        isProcessingRef.current = false;
-        if (!isClosingRef.current) {
-          voiceRef.current.startListening();
-        }
-      }, AUTO_LISTEN_DELAY);
+      isProcessingRef.current = false;
     }
   };
+
+  // Hold mic → stop TTS + start listening
+  const holdMic = useCallback(() => {
+    if (isClosingRef.current) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    voiceRef.current.holdToSpeak();
+  }, []);
+
+  // Release mic → stop listening, process
+  const releaseMic = useCallback(() => {
+    if (isClosingRef.current) return;
+    voiceRef.current.releaseToSend();
+  }, []);
 
   const stop = useCallback(() => {
     isClosingRef.current = true;
@@ -166,22 +147,13 @@ export function useVoiceModeController({
     onDeactivate();
   }, [onDeactivate]);
 
-  const tapAction = useCallback(() => {
-    const s = voiceRef.current.voiceState;
-    if (s === 'idle' && !isProcessingRef.current) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      voiceRef.current.startListening();
-    } else if (s === 'speaking') {
-      voiceRef.current.stopSpeaking();
-    }
-  }, []);
-
   return {
     voiceState: voice.voiceState,
     transcript: voice.transcript,
     partialTranscript: voice.partialTranscript,
     responseText: voice.responseText,
+    holdMic,
+    releaseMic,
     stop,
-    tapAction,
   };
 }

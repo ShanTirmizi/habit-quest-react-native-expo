@@ -43,6 +43,9 @@ interface VoiceBorderGlowProps {
   transcript?: string;
   partialTranscript?: string;
   onStop: () => void;
+  /** Hold-to-speak callbacks */
+  onMicPressIn?: () => void;
+  onMicPressOut?: () => void;
 }
 
 const WAVE_HEIGHT = 70;
@@ -105,6 +108,8 @@ export function VoiceBorderGlow({
   transcript,
   partialTranscript,
   onStop,
+  onMicPressIn,
+  onMicPressOut,
 }: VoiceBorderGlowProps) {
   const { width: screenWidth } = useWindowDimensions();
   const containerWidth = screenWidth - Spacing.xl * 2 - 4;
@@ -228,9 +233,11 @@ export function VoiceBorderGlow({
       case 'listening': return 'Listening...';
       case 'thinking': return `${companionName} is thinking...`;
       case 'speaking': return companionName;
-      default: return 'Tap mic to speak';
+      default: return 'Hold mic to speak';
     }
   })();
+
+  const isListening = state === 'listening';
 
   return (
     <Animated.View style={[styles.container, containerAnim]}>
@@ -252,7 +259,25 @@ export function VoiceBorderGlow({
       </View>
 
       <View style={styles.statusRow}>
-        <View style={styles.statusLeft}>
+        {/* Hold-to-speak mic button */}
+        <Pressable
+          onPressIn={onMicPressIn}
+          onPressOut={onMicPressOut}
+          style={({ pressed }) => [
+            styles.micHoldButton,
+            isListening && styles.micHoldButtonActive,
+            pressed && { opacity: 0.85, transform: [{ scale: 0.95 }] },
+          ]}
+          hitSlop={4}
+        >
+          <Ionicons
+            name={isListening ? 'radio' : 'mic'}
+            size={18}
+            color="#fff"
+          />
+        </Pressable>
+
+        <View style={styles.statusCenter}>
           <View style={[styles.statusDot, {
             backgroundColor: state === 'listening' ? colors.primary :
               state === 'thinking' ? colors.accent :
@@ -262,6 +287,8 @@ export function VoiceBorderGlow({
             {displayText || statusText}
           </Text>
         </View>
+
+        {/* Close button */}
         <Pressable
           onPress={onStop}
           style={({ pressed }) => [
@@ -343,15 +370,26 @@ const createStyles = (colors: ThemeColors, _isDark: boolean) =>
     statusRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
       paddingHorizontal: Spacing.sm,
       paddingVertical: Spacing.sm,
+      gap: Spacing.sm,
     },
-    statusLeft: {
+    micHoldButton: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    micHoldButtonActive: {
+      backgroundColor: '#FF4444',
+    },
+    statusCenter: {
       flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
-      gap: Spacing.sm,
+      gap: Spacing.xs,
     },
     statusDot: {
       width: 8,

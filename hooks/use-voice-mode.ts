@@ -18,6 +18,10 @@ interface UseVoiceModeReturn {
   transcript: string;
   partialTranscript: string;
   responseText: string;
+  /** Call on press-in: stops TTS if playing, starts listening */
+  holdToSpeak: () => void;
+  /** Call on press-out: stops listening, triggers processing */
+  releaseToSend: () => void;
   startListening: () => Promise<void>;
   stopListening: () => void;
   speak: (text: string) => Promise<void>;
@@ -28,12 +32,7 @@ interface UseVoiceModeReturn {
   setCloudTTS: (fn: CloudTTSFn | null) => void;
 }
 
-/**
- * Split text into sentences for chunked TTS.
- * Splits on sentence-ending punctuation while keeping the punctuation attached.
- */
 function splitIntoSentences(text: string): string[] {
-  // Split on sentence boundaries: . ! ? followed by space or end of string
   const raw = text.match(/[^.!?]+[.!?]+[\s]?|[^.!?]+$/g);
   if (!raw) return [text];
   return raw.map(s => s.trim()).filter(s => s.length > 0);
@@ -56,8 +55,8 @@ export function useVoiceMode(): UseVoiceModeReturn {
   const gotFinalResultRef = useRef(false);
   const cloudTTSRef = useRef<CloudTTSFn | null>(null);
   const soundRef = useRef<Audio.Sound | null>(null);
-  // Flag to cancel in-progress chunked playback
   const cancelPlaybackRef = useRef(false);
+  const speakResolveRef = useRef<(() => void) | null>(null);
 
   const setCloudTTS = useCallback((fn: CloudTTSFn | null) => {
     cloudTTSRef.current = fn;
@@ -76,7 +75,7 @@ export function useVoiceMode(): UseVoiceModeReturn {
     };
   }, []);
 
-  // Speech recognition event handlers
+  // Speech recognition events
   useSpeechRecognitionEvent('result', (event) => {
     if (!isMountedRef.current) return;
     const text = event.results[0]?.transcript ?? '';
@@ -92,7 +91,7 @@ export function useVoiceMode(): UseVoiceModeReturn {
 
   useSpeechRecognitionEvent('error', (event) => {
     if (!isMountedRef.current) return;
-    console.warn('[VoiceMode] Recognition error:', event.error, 'current state:', stateRef.current);
+    console.warn('[VoiceMode] Recognition error:', event.error);
     if (stateRef.current === 'listening') {
       setStateAndRef('idle');
     }
@@ -111,13 +110,9 @@ export function useVoiceMode(): UseVoiceModeReturn {
     try {
       const result = await ExpoSpeechRecognitionModule.getPermissionsAsync();
       if (!isMountedRef.current) return;
-      if (result.granted) {
-        setPermissionStatus('granted');
-      } else if (result.canAskAgain) {
-        setPermissionStatus('undetermined');
-      } else {
-        setPermissionStatus('denied');
-      }
+      if (result.granted) setPermissionStatus('granted');
+      else if (result.canAskAgain) setPermissionStatus('undetermined');
+      else setPermissionStatus('denied');
     } catch {
       if (isMountedRef.current) setPermissionStatus('denied');
     }
@@ -130,10 +125,9 @@ export function useVoiceMode(): UseVoiceModeReturn {
       if (result.granted) {
         setPermissionStatus('granted');
         return true;
-      } else {
-        setPermissionStatus(result.canAskAgain ? 'undetermined' : 'denied');
-        return false;
       }
+      setPermissionStatus(result.canAskAgain ? 'undetermined' : 'denied');
+      return false;
     } catch {
       if (isMountedRef.current) setPermissionStatus('denied');
       return false;
@@ -155,7 +149,7 @@ export function useVoiceMode(): UseVoiceModeReturn {
       ExpoSpeechRecognitionModule.start({
         lang: 'en-US',
         interimResults: true,
-        continuous: false,
+        continuous: true,  // Keep listening until we explicitly stop
       });
     } catch (e) {
       console.error('[VoiceMode] Failed to start recognition:', e);
@@ -167,67 +161,102 @@ export function useVoiceMode(): UseVoiceModeReturn {
     try {
       ExpoSpeechRecognitionModule.stop();
     } catch {}
-    if (isMountedRef.current) setStateAndRef('idle');
-  }, [setStateAndRef]);
+    // Don't set idle here — the 'result' event with isFinal will set 'thinking'
+    // If no final result comes, the 'end' event handler sets idle
+  }, []);
 
-  // ── Speak with sentence-level pipelining ──
-  // Split text into sentences → fire TTS for all in parallel → play sequentially
-  // First sentence audio starts playing as soon as it's ready (while others still generating)
+  // ── Hold-to-speak: press in ──
+  // Stops any TTS, starts listening
+  const holdToSpeak = useCallback(() => {
+    console.log('[VoiceMode] Hold to speak — stopping TTS, starting listening');
+
+    // Stop TTS if playing
+    if (stateRef.current === 'speaking') {
+      cancelPlaybackRef.current = true;
+      if (soundRef.current) {
+        soundRef.current.stopAsync().catch(() => {});
+        soundRef.current.unloadAsync().catch(() => {});
+        soundRef.current = null;
+      }
+      Speech.stop();
+      if (speakResolveRef.current) {
+        speakResolveRef.current();
+        speakResolveRef.current = null;
+      }
+    }
+
+    // Start listening
+    startListening();
+  }, [startListening]);
+
+  // ── Hold-to-speak: press out ──
+  // Stops listening — the STT final result triggers thinking state
+  const releaseToSend = useCallback(() => {
+    console.log('[VoiceMode] Released — stopping recognition');
+    if (stateRef.current === 'listening') {
+      stopListening();
+    }
+  }, [stopListening]);
+
+  // ── Speak with sentence pipelining ──
   const speak = useCallback(async (text: string): Promise<void> => {
     setResponseText(text);
     setStateAndRef('speaking');
     cancelPlaybackRef.current = false;
 
-    if (cloudTTSRef.current) {
-      try {
-        const sentences = splitIntoSentences(text);
-        console.log(`[VoiceMode] Pipelining TTS for ${sentences.length} sentence(s)`);
+    return new Promise<void>(async (resolve) => {
+      speakResolveRef.current = resolve;
 
-        // Fire ALL TTS requests in parallel — each returns a promise
-        const audioPromises = sentences.map(sentence =>
-          cloudTTSRef.current!(sentence).catch(() => null)
-        );
+      if (cloudTTSRef.current) {
+        try {
+          const sentences = splitIntoSentences(text);
+          console.log(`[VoiceMode] Pipelining TTS for ${sentences.length} sentence(s)`);
 
-        // Play each sentence as soon as its audio is ready, in order
-        for (let i = 0; i < audioPromises.length; i++) {
-          if (cancelPlaybackRef.current || !isMountedRef.current) break;
+          const audioPromises = sentences.map(sentence =>
+            cloudTTSRef.current!(sentence).catch(() => null)
+          );
 
-          const base64Audio = await audioPromises[i];
-          if (!base64Audio) continue;
-          if (cancelPlaybackRef.current || !isMountedRef.current) break;
+          for (let i = 0; i < audioPromises.length; i++) {
+            if (cancelPlaybackRef.current || !isMountedRef.current) break;
 
-          await playBase64Audio(base64Audio, /* setIdleOnFinish */ false);
+            const base64Audio = await audioPromises[i];
+            if (!base64Audio) continue;
+            if (cancelPlaybackRef.current || !isMountedRef.current) break;
+
+            await playBase64Audio(base64Audio, false);
+          }
+
+          if (isMountedRef.current && !cancelPlaybackRef.current) {
+            setStateAndRef('idle');
+          }
+
+          speakResolveRef.current = null;
+          resolve();
+          return;
+        } catch (err) {
+          console.warn('[VoiceMode] Cloud TTS failed, falling back to system:', err);
         }
-
-        // All sentences played (or cancelled)
-        if (isMountedRef.current && !cancelPlaybackRef.current) {
-          setStateAndRef('idle');
-        }
-        return;
-      } catch (err) {
-        console.warn('[VoiceMode] Cloud TTS pipeline failed, falling back to system:', err);
       }
-    }
 
-    // Fallback: system TTS (no pipelining possible)
-    if (!isMountedRef.current) return;
-    return new Promise<void>((resolve) => {
+      // Fallback: system TTS
+      if (!isMountedRef.current) { resolve(); return; }
       Speech.speak(text, {
         language: 'en-US',
         rate: 0.95,
         onDone: () => {
           if (isMountedRef.current) setStateAndRef('idle');
+          speakResolveRef.current = null;
           resolve();
         },
         onError: () => {
           if (isMountedRef.current) setStateAndRef('idle');
+          speakResolveRef.current = null;
           resolve();
         },
       });
     });
   }, [setStateAndRef]);
 
-  /** Play base64-encoded mp3 audio via expo-av. Resolves when playback finishes. */
   const playBase64Audio = useCallback(async (
     base64: string,
     setIdleOnFinish = true,
@@ -237,7 +266,6 @@ export function useVoiceMode(): UseVoiceModeReturn {
     file.write(bytes);
     const uri = file.uri;
 
-    // Unload any previous sound
     if (soundRef.current) {
       try { await soundRef.current.unloadAsync(); } catch {}
       soundRef.current = null;
@@ -276,6 +304,10 @@ export function useVoiceMode(): UseVoiceModeReturn {
       soundRef.current = null;
     }
     Speech.stop();
+    if (speakResolveRef.current) {
+      speakResolveRef.current();
+      speakResolveRef.current = null;
+    }
     if (isMountedRef.current) setStateAndRef('idle');
   }, [setStateAndRef]);
 
@@ -288,6 +320,10 @@ export function useVoiceMode(): UseVoiceModeReturn {
       soundRef.current = null;
     }
     Speech.stop();
+    if (speakResolveRef.current) {
+      speakResolveRef.current();
+      speakResolveRef.current = null;
+    }
     if (isMountedRef.current) {
       setStateAndRef('idle');
       setTranscript('');
@@ -301,6 +337,8 @@ export function useVoiceMode(): UseVoiceModeReturn {
     transcript,
     partialTranscript,
     responseText,
+    holdToSpeak,
+    releaseToSend,
     startListening,
     stopListening,
     speak,

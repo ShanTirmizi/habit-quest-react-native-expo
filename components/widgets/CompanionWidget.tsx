@@ -30,8 +30,6 @@ import { BottomSheet, BottomSheetTextInput as TextInput } from '@/components/ui/
 import { Button } from '@/components/ui/Button';
 import { useToast } from '@/contexts/toast-context';
 import { useVoiceModeController } from '@/components/voice/VoiceModeOverlay';
-import { VoiceBorderGlow } from '@/components/voice/VoiceBorderGlow';
-import type { VoiceState } from '@/hooks/use-voice-mode';
 
 const SPECIES_ICON: Record<string, keyof typeof Ionicons.glyphMap> = {
   treant: 'leaf',
@@ -110,7 +108,7 @@ export function CompanionWidget({
   externalVisible,
   onExternalClose,
 }: CompanionWidgetProps) {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const speciesColorMap = useMemo(() => getSpeciesColor(colors), [colors]);
   const { showToast } = useToast();
@@ -124,8 +122,8 @@ export function CompanionWidget({
   const [chatInput, setChatInput] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [localMessages, setLocalMessages] = useState<ChatMessage[]>([]);
-  const [voiceModeActive, setVoiceModeActive] = useState(false);
-  const [voiceState, setVoiceState] = useState<VoiceState>('idle');
+  const [holdToSpeakTooltip, setHoldToSpeakTooltip] = useState(false);
+  const micPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const sessionIdRef = useRef<string>(Date.now().toString());
   const chatListRef = useRef<ScrollView>(null);
@@ -154,10 +152,10 @@ export function CompanionWidget({
     }
   }, [ttsSynthesize]);
 
-  // Voice mode controller (must be called before any conditional returns)
+  // Voice mode controller — always active, hold-to-speak
   const voiceController = useVoiceModeController({
-    active: voiceModeActive,
-    onDeactivate: () => setVoiceModeActive(false),
+    active: true,
+    onDeactivate: () => {},
     userId,
     sessionId: sessionIdRef.current,
     sendMessage: sendMessageAction,
@@ -171,7 +169,6 @@ export function CompanionWidget({
       if (lower.includes('tired') || lower.includes('exhausted')) return "Rest is part of the journey. Be gentle with yourself today.";
       return "Thanks for sharing! How can I help you with your habits today?";
     },
-    onStateChange: setVoiceState,
     cloudTTS,
   });
 
@@ -297,11 +294,8 @@ export function CompanionWidget({
     setLocalMessages([]);
     chatReadyRef.current = false;
     prevMessageCountRef.current = 0;
-    // Stop voice mode if active
-    if (voiceModeActive) {
-      voiceController.stop();
-      setVoiceModeActive(false);
-    }
+    // Stop any active voice playback/listening
+    voiceController.stop();
     onExternalClose?.();
   };
 
@@ -641,21 +635,30 @@ export function CompanionWidget({
         </View>
       )}
 
-      {/* Input bar OR Voice wave */}
-      {voiceModeActive ? (
-        <VoiceBorderGlow
-          state={voiceState}
-          colors={colors}
-          isDark={isDark}
-          companionName={companion.name}
-          transcript={voiceController.transcript}
-          partialTranscript={voiceController.partialTranscript}
-          onStop={() => {
-            voiceController.stop();
-            setVoiceModeActive(false);
-          }}
-        />
-      ) : (
+      {/* Voice status indicator */}
+      {(voiceController.voiceState === 'listening' || voiceController.voiceState === 'thinking' || voiceController.voiceState === 'speaking') && (
+        <View style={styles.voiceStatusRow}>
+          <View style={[styles.voiceStatusDot, {
+            backgroundColor: voiceController.voiceState === 'listening' ? colors.primary :
+              voiceController.voiceState === 'thinking' ? colors.accent : '#00D4AA',
+          }]} />
+          <Text style={styles.voiceStatusText} numberOfLines={1}>
+            {voiceController.partialTranscript ||
+              (voiceController.voiceState === 'listening' ? 'Listening...' :
+               voiceController.voiceState === 'thinking' ? `${companion.name} is thinking...` :
+               `${companion.name} is speaking...`)}
+          </Text>
+        </View>
+      )}
+
+      {/* Hold-to-speak tooltip */}
+      {holdToSpeakTooltip && (
+        <View style={styles.holdTooltip}>
+          <Text style={styles.holdTooltipText}>Hold to speak</Text>
+        </View>
+      )}
+
+      {/* Input bar */}
       <View style={styles.chatInputBar}>
         <TextInput
           style={styles.chatTextInput}
@@ -686,20 +689,40 @@ export function CompanionWidget({
           </Pressable>
         ) : (
           <Pressable
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              setVoiceModeActive(true);
+            onPressIn={() => {
+              micPressTimerRef.current = setTimeout(() => {
+                micPressTimerRef.current = null;
+              }, 250);
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              voiceController.holdMic();
+            }}
+            onPressOut={() => {
+              if (micPressTimerRef.current) {
+                // Quick tap — show tooltip
+                clearTimeout(micPressTimerRef.current);
+                micPressTimerRef.current = null;
+                voiceController.releaseMic();
+                setHoldToSpeakTooltip(true);
+                setTimeout(() => setHoldToSpeakTooltip(false), 2000);
+              } else {
+                // Real hold — release to send
+                voiceController.releaseMic();
+              }
             }}
             style={({ pressed }) => [
               styles.micButton,
-              pressed && { opacity: 0.9, transform: [{ scale: 0.97 }] },
+              voiceController.voiceState === 'listening' && styles.micButtonActive,
+              pressed && { opacity: 0.9, transform: [{ scale: 0.95 }] },
             ]}
           >
-            <Ionicons name="mic" size={20} color="#fff" />
+            <Ionicons
+              name={voiceController.voiceState === 'listening' ? 'radio' : 'mic'}
+              size={20}
+              color="#fff"
+            />
           </Pressable>
         )}
       </View>
-      )}
     </View>
   );
 
@@ -1045,5 +1068,42 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  micButtonActive: {
+    backgroundColor: '#FF4444',
+  },
+  voiceStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    paddingHorizontal: Spacing.xs,
+    paddingVertical: Spacing.xs,
+    marginTop: Spacing.xs,
+  },
+  voiceStatusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  voiceStatusText: {
+    flex: 1,
+    fontSize: FontSize.xs,
+    fontFamily: FontFamily.medium,
+    color: colors.textSecondary,
+  },
+  holdTooltip: {
+    alignSelf: 'center',
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    marginTop: Spacing.xs,
+  },
+  holdTooltipText: {
+    fontSize: FontSize.xs,
+    fontFamily: FontFamily.medium,
+    color: colors.textSecondary,
   },
 });
