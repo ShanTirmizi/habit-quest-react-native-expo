@@ -731,7 +731,10 @@ export const autoEndHoliday = mutation({
 
 // Update the last coaching date (for daily auto-fetch limit)
 export const updateCoachingDate = mutation({
-  args: { userId: v.id('users') },
+  args: {
+    userId: v.id('users'),
+    fingerprint: v.optional(v.string()),
+  },
   handler: async (ctx, args) => {
     await verifyAuth(ctx, args.userId);
 
@@ -742,7 +745,11 @@ export const updateCoachingDate = mutation({
 
     if (progress) {
       const today = new Date().toISOString().split('T')[0];
-      await ctx.db.patch(progress._id, { lastCoachingDate: today });
+      await ctx.db.patch(progress._id, {
+        lastCoachingDate: today,
+        lastCoachingTimestamp: Date.now(),
+        ...(args.fingerprint ? { lastCoachingFingerprint: args.fingerprint } : {}),
+      });
     }
   },
 });

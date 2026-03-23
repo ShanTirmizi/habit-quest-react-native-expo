@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { View, Text, StyleSheet, Pressable, Animated } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Animated, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAction } from 'convex/react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -170,7 +170,7 @@ export function CoachPanel({ userId }: CoachPanelProps) {
   });
 
   // Fetch insights from API and update cache
-  const fetchInsights = useCallback(async () => {
+  const fetchInsights = useCallback(async (isManualRefresh = false) => {
     setLoading(true);
     setError(null);
     setInsufficientData(false);
@@ -182,6 +182,13 @@ export function CoachPanel({ userId }: CoachPanelProps) {
       if (!result || (typeof result === 'object' && 'insufficientData' in result && result.insufficientData)) {
         setInsufficientData(true);
         setInsights(null);
+      } else if (typeof result === 'object' && ('rateLimited' in result || 'unchanged' in result)) {
+        // Rate limited or data unchanged — show message but keep existing insights
+        const msg = (result as any).message ?? 'Try again later.';
+        if (isManualRefresh) {
+          Alert.alert('Dr. Sage', msg);
+        }
+        // Don't clear existing insights — they're still valid
       } else {
         const typedResult = result as CoachingInsights;
         setInsights(typedResult);
@@ -220,10 +227,10 @@ export function CoachPanel({ userId }: CoachPanelProps) {
     });
   }, [fetchInsights, userId]);
 
-  // Refresh handler — always re-fetches (manual override)
+  // Refresh handler — re-fetches with manual flag for user feedback
   const handleRefresh = useCallback(() => {
     if (loading) return;
-    fetchInsights();
+    fetchInsights(true);
   }, [loading, fetchInsights]);
 
   // Toggle collapse

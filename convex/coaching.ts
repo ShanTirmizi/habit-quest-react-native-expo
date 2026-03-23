@@ -39,8 +39,43 @@ const INSUFFICIENT_DATA_INSIGHTS = {
   todayFocus: "Keep building habits and I'll have personalized insights for you soon!",
 };
 
+// Rate limit config for insights
+const INSIGHTS_RATE_LIMIT = {
+  COOLDOWN_MS: 15 * 60 * 1000, // 15 minutes between API calls
+};
+
+// Build a fingerprint of the user's data to detect changes.
+// Uses generic array/record types since this receives enriched query results
+// (habits with completedDates/streak added, not raw Doc<'habits'>).
+function buildDataFingerprint(
+  habits: Array<{ completedDates?: string[]; streak: number }>,
+  progress: { level?: number; totalXp?: number; currentHp?: number } | null,
+  journalEntries: Array<{ entryDate?: string; _creationTime?: number; mood?: string }>,
+): string {
+  const todayStr = new Date().toISOString().split('T')[0];
+  const parts = [
+    `h:${habits.length}`,
+    `tc:${habits.reduce((s, h) => s + (h.completedDates?.length ?? 0), 0)}`,
+    `ls:${Math.max(0, ...habits.map((h) => h.streak))}`,
+    `lv:${progress?.level ?? 0}`,
+    `xp:${progress?.totalXp ?? 0}`,
+    `hp:${progress?.currentHp ?? 0}`,
+    `jc:${journalEntries.length}`,
+    // Include latest journal date to detect new entries
+    `jd:${journalEntries[0]?.entryDate ?? (journalEntries[0]?._creationTime ? String(journalEntries[0]._creationTime) : 'none')}`,
+    // Include latest mood
+    `jm:${journalEntries[0]?.mood ?? 'none'}`,
+    // Include today's completions
+    `td:${habits.filter((h) => (h.completedDates ?? []).includes(todayStr)).length}`,
+  ];
+  return parts.join('|');
+}
+
 export const generateInsights = action({
-  args: { userId: v.id("users") },
+  args: {
+    userId: v.id("users"),
+    forceRefresh: v.optional(v.boolean()), // Client can request force refresh (still rate-limited)
+  },
   handler: async (ctx, args) => {
     // 1. Fetch user data via ctx.runQuery
     const [habits, progress, journalEntries, memories] = await Promise.all([
@@ -61,6 +96,32 @@ export const generateInsights = action({
 
     if (habits.length < 1 || totalCompletions < 3) {
       return INSUFFICIENT_DATA_INSIGHTS;
+    }
+
+    // ── Rate limiting + fingerprint check ──
+    const nowMs = Date.now();
+    const lastTimestamp = progress?.lastCoachingTimestamp ?? 0;
+    const timeSinceLast = nowMs - lastTimestamp;
+    const currentFingerprint = buildDataFingerprint(habits, progress, journalEntries);
+    const previousFingerprint = progress?.lastCoachingFingerprint ?? '';
+
+    // Hard rate limit — no Claude call within cooldown, no matter what
+    if (timeSinceLast < INSIGHTS_RATE_LIMIT.COOLDOWN_MS) {
+      const minutesLeft = Math.ceil((INSIGHTS_RATE_LIMIT.COOLDOWN_MS - timeSinceLast) / 60_000);
+      return {
+        ...FALLBACK_INSIGHTS,
+        rateLimited: true,
+        message: `Dr. Sage needs ${minutesLeft} more minute${minutesLeft > 1 ? 's' : ''} to analyze new patterns. Check back soon!`,
+      };
+    }
+
+    // Fingerprint check — if data hasn't changed, don't call Claude
+    if (currentFingerprint === previousFingerprint && !args.forceRefresh) {
+      return {
+        ...FALLBACK_INSIGHTS,
+        unchanged: true,
+        message: "Nothing has changed since my last analysis. Complete some habits, write in your journal, or check back later for fresh insights!",
+      };
     }
 
     // Check for API key
@@ -233,10 +294,11 @@ RESPOND WITH VALID JSON ONLY (no markdown, no code fences):
         return FALLBACK_INSIGHTS;
       }
 
-      // 6. Update the progress record with lastCoachingDate
+      // 6. Update the progress record with lastCoachingDate + fingerprint + timestamp
       try {
         await ctx.runMutation(api.progress.updateCoachingDate, {
           userId: args.userId,
+          fingerprint: currentFingerprint,
         });
       } catch (e) {
         // Non-critical — log but don't fail the whole action

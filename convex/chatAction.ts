@@ -467,6 +467,28 @@ export const sendMessage = action({
     sessionId: v.string(),
   },
   handler: async (ctx, args): Promise<string> => {
+    // 0. Rate limit check — prevent API abuse
+    const rateCheck = await ctx.runQuery(api.chat.checkChatRateLimit, {
+      userId: args.userId,
+    });
+    if (rateCheck.limited) {
+      // Save user message + rate-limit response so it shows in history
+      await ctx.runMutation(api.chat.saveMessage, {
+        userId: args.userId,
+        role: "user",
+        content: args.userMessage,
+        sessionId: args.sessionId,
+      });
+      const limitMsg = rateCheck.message ?? "Let's slow down a bit. Try again in a moment!";
+      await ctx.runMutation(api.chat.saveMessage, {
+        userId: args.userId,
+        role: "assistant",
+        content: limitMsg,
+        sessionId: args.sessionId,
+      });
+      return limitMsg;
+    }
+
     // 1. Fetch context data in parallel
     const [habits, progress, journalEntries, memories, recentMessages] =
       await Promise.all([

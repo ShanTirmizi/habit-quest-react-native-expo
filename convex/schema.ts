@@ -86,6 +86,8 @@ export default defineSchema({
     underworldResurrections: v.optional(v.number()),
     // AI Coaching tracking
     lastCoachingDate: v.optional(v.string()), // "YYYY-MM-DD" - tracks when AI insights were last auto-fetched
+    lastCoachingTimestamp: v.optional(v.number()), // Unix ms — exact time of last coaching API call (for rate limiting)
+    lastCoachingFingerprint: v.optional(v.string()), // Hash of input data — skip Claude if unchanged
     // Memory extraction tracking
     lastMemoryExtractionDate: v.optional(v.string()), // "YYYY-MM-DD" - tracks last journal memory extraction
     memoryExtractionEntryCount: v.optional(v.number()), // Entries since last extraction

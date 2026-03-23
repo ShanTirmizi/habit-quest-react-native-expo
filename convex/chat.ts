@@ -17,6 +17,76 @@ async function verifyAuth(ctx: MutationCtx | QueryCtx, requestedUserId: string) 
 }
 
 // ============================================
+// RATE LIMITING
+// ============================================
+
+const CHAT_RATE_LIMITS = {
+  PER_MINUTE: 5,   // Max 5 messages per minute
+  PER_HOUR: 30,    // Max 30 messages per hour
+  COOLDOWN_MS: 3000, // Min 3 seconds between messages
+};
+
+// Query to check if user is rate-limited (called from chatAction)
+export const checkChatRateLimit = query({
+  args: { userId: v.id('users') },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const oneMinuteAgo = now - 60_000;
+    const oneHourAgo = now - 3_600_000;
+
+    // Get recent user messages (last hour, user role only)
+    const recentMessages = await ctx.db
+      .query('chatMessages')
+      .withIndex('by_user', (q) => q.eq('userId', args.userId))
+      .order('desc')
+      .take(CHAT_RATE_LIMITS.PER_HOUR + 1);
+
+    const userMessages = recentMessages.filter((m) => m.role === 'user');
+
+    // Check cooldown — time since last message
+    if (userMessages.length > 0) {
+      const lastMsg = userMessages[0];
+      if (now - lastMsg._creationTime < CHAT_RATE_LIMITS.COOLDOWN_MS) {
+        return {
+          limited: true,
+          reason: 'cooldown',
+          message: "I'm still thinking about your last message! Give me a moment.",
+          retryAfterMs: CHAT_RATE_LIMITS.COOLDOWN_MS - (now - lastMsg._creationTime),
+        };
+      }
+    }
+
+    // Check per-minute limit
+    const lastMinuteCount = userMessages.filter(
+      (m) => m._creationTime >= oneMinuteAgo
+    ).length;
+    if (lastMinuteCount >= CHAT_RATE_LIMITS.PER_MINUTE) {
+      return {
+        limited: true,
+        reason: 'per_minute',
+        message: "You're chatting really fast! Let's slow down a bit — quality over quantity. Try again in a minute.",
+        retryAfterMs: 60_000,
+      };
+    }
+
+    // Check per-hour limit
+    const lastHourCount = userMessages.filter(
+      (m) => m._creationTime >= oneHourAgo
+    ).length;
+    if (lastHourCount >= CHAT_RATE_LIMITS.PER_HOUR) {
+      return {
+        limited: true,
+        reason: 'per_hour',
+        message: "We've had a great conversation! I need a short break to recharge. Let's pick this up in a bit.",
+        retryAfterMs: 3_600_000,
+      };
+    }
+
+    return { limited: false, reason: null, message: null, retryAfterMs: 0 };
+  },
+});
+
+// ============================================
 // CHAT MESSAGES
 // ============================================
 
