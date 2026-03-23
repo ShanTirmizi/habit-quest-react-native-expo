@@ -160,6 +160,7 @@ export default function DashboardScreen() {
   const addNoteMutation = useMutation(api.habits.addNote);
   const updateHabitMutation = useMutation(api.habits.updateHabit);
   const addXpMutation = useMutation(api.progress.addXp);
+  const removeXpMutation = useMutation(api.progress.removeXp);
   const reorderHabitsMutation = useMutation(api.habits.reorderHabits);
   const hibernateHabitMutation = useMutation(api.habits.hibernateHabit);
   const wakeHabitMutation = useMutation(api.habits.wakeHabit);
@@ -444,11 +445,19 @@ export default function DashboardScreen() {
             }
           } catch {}
         }
+      } else {
+        // Undo: remove the XP that was awarded
+        const habit = habits.find((h) => h.id === id);
+        if (habit) {
+          try {
+            await removeXpMutation({ userId, amount: habit.xpReward });
+          } catch {}
+        }
       }
     } catch (err) {
       showToast('Failed to toggle habit', undefined, 'error');
     }
-  }, [userId, todayDate, toggleCompletionMutation, habits, showToast, addXpMutation]);
+  }, [userId, todayDate, toggleCompletionMutation, habits, showToast, addXpMutation, removeXpMutation]);
 
   const handleAddHabit = useCallback(
     async (habitData: {

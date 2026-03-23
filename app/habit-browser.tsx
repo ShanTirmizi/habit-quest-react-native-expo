@@ -221,6 +221,7 @@ export default function HabitBrowserScreen() {
   const hibernateHabitMutation = useMutation(api.habits.hibernateHabit);
   const wakeHabitMutation = useMutation(api.habits.wakeHabit);
   const addXpMutation = useMutation(api.progress.addXp);
+  const removeXpMutation = useMutation(api.progress.removeXp);
 
   // ── Data ──
   const rawHabits = useQuery(api.habits.getHabits, userId ? { userId } : 'skip');
@@ -322,11 +323,19 @@ export default function HabitBrowserScreen() {
             await addXpMutation({ userId, amount: habit.xpReward });
           } catch { /* ignore xp errors */ }
         }
+      } else {
+        // Undo: remove the XP that was awarded
+        const habit = habits.find((h) => h.id === id);
+        if (habit) {
+          try {
+            await removeXpMutation({ userId, amount: habit.xpReward });
+          } catch { /* ignore xp errors */ }
+        }
       }
     } catch {
       showToast('Failed to toggle habit', undefined, 'error');
     }
-  }, [userId, todayDate, toggleCompletionMutation, habits, showToast, addXpMutation]);
+  }, [userId, todayDate, toggleCompletionMutation, habits, showToast, addXpMutation, removeXpMutation]);
 
   const handleDeleteHabit = useCallback(async (id: string) => {
     if (!userId) return;

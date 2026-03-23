@@ -66,6 +66,30 @@ export const addXp = mutation({
   },
 });
 
+// Remove XP (e.g. when undoing a habit completion)
+export const removeXp = mutation({
+  args: {
+    userId: v.id('users'),
+    amount: v.number(),
+  },
+  handler: async (ctx, args) => {
+    await verifyAuth(ctx, args.userId);
+
+    const progress = await getOrCreateProgress(ctx, args.userId);
+    if (!progress) throw new Error('Failed to create progress');
+
+    const newTotalXp = Math.max(progress.totalXp - args.amount, 0);
+    const newLevel = computeLevel(newTotalXp);
+
+    await ctx.db.patch(progress._id, {
+      totalXp: newTotalXp,
+      level: newLevel,
+    });
+
+    return { totalXp: newTotalXp, newLevel };
+  },
+});
+
 // Unlock achievement
 export const unlockAchievement = mutation({
   args: {
