@@ -65,6 +65,98 @@ If you find yourself writing the same logic a second time, stop and extract it i
 - Use constants from `theme.ts`: `FontSize`, `Spacing`, `Radius`, `FontFamily`, `Shadows`.
 - Never hardcode colors - always reference `colors.*`.
 
+### Screen Layout Conventions — FOLLOW THESE EXACTLY
+
+When creating any new screen, **copy the exact patterns below**. Do NOT invent new header or layout patterns. Reference `app/settings.tsx` or `app/goals.tsx` as canonical examples.
+
+#### Container & Safe Area
+
+Every screen root: `<View style={[styles.container, { paddingTop: insets.top }]}>` where `container` is `{ flex: 1, backgroundColor: colors.background }`.
+
+Bottom safe area: apply in ScrollView contentContainerStyle or input bar: `paddingBottom: Math.max(insets.bottom, Spacing.md)`.
+
+#### Back Button (all non-tab screens)
+
+```tsx
+<Pressable onPress={() => router.back()} style={styles.backButton} hitSlop={12}>
+  <Ionicons name="chevron-back" size={24} color={colors.foreground} />
+</Pressable>
+```
+
+Style — **never deviate from these values:**
+```ts
+backButton: {
+  width: 36,
+  height: 36,
+  borderRadius: Radius.sm,
+  backgroundColor: colors.surfaceLight,
+  alignItems: 'center',
+  justifyContent: 'center',
+}
+```
+
+#### Header Bar
+
+```ts
+header: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  paddingHorizontal: Spacing.lg,
+  paddingVertical: Spacing.md,
+}
+headerTitle: {
+  fontFamily: FontFamily.semibold,
+  fontSize: FontSize.lg,
+  color: colors.foreground,
+}
+headerSpacer: { width: 36 }  // balances the back button
+```
+
+Layout order: `[backButton] [title (centered)] [spacer or action button]`.
+
+#### Content Padding
+
+- Screen-level horizontal padding: **`Spacing.lg`** (applied to ScrollView contentContainerStyle or wrapper).
+- Section gap: **`Spacing.sm`** (between cards/sections).
+- Card internal padding: **`Spacing.lg`** horizontal, **`Spacing.md`** vertical.
+
+#### Pressable Interaction
+
+All Pressable components must use a consistent pressed state:
+```tsx
+style={({ pressed }) => [styles.myButton, pressed && { opacity: 0.9, transform: [{ scale: 0.97 }] }]}
+```
+
+#### Typography Hierarchy
+
+| Use | FontFamily | FontSize |
+|-----|-----------|----------|
+| Page title (large) | `extrabold` | `FontSize['3xl']` |
+| Section header | `semibold` | `FontSize.lg` |
+| Body / labels | `regular` or `medium` | `FontSize.base` or `FontSize.sm` |
+| Captions / badges | `semibold` | `FontSize.xs` |
+
+#### Cards & Surfaces
+
+```ts
+sectionCard: {
+  backgroundColor: colors.surface,
+  borderRadius: Radius.lg,
+  borderWidth: 1,
+  borderColor: colors.border,
+  overflow: 'hidden',
+  ...Shadows.card,
+}
+```
+
+#### Before Creating a New Screen
+
+1. **Look at an existing screen first** — `settings.tsx` for simple screens, `habit-browser.tsx` for list screens.
+2. Copy the header, container, and back button code verbatim — do not reinvent.
+3. Match horizontal padding (`Spacing.lg`) and bottom safe area handling.
+4. Use `<EmptyState />` for zero-state, `<Skeleton />` for loading state.
+
 ## Testing Changes
 
 - Run `npx tsc --noEmit` to verify TypeScript compilation before considering work done.
