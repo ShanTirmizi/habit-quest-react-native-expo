@@ -46,6 +46,21 @@ Shared modules that already exist — always check these before creating anythin
 
 If you find yourself writing the same logic a second time, stop and extract it into `convex/lib/` first.
 
+## React Hooks Rules — CRITICAL
+
+**All hooks must be called before any early returns.** This is React's #1 rule and violating it causes the app to crash with "Rendered more hooks than during the previous render."
+
+When adding a new hook (`useState`, `useCallback`, `useEffect`, `useMemo`, `useRef`, `useQuery`, `useMutation`, `useAction`, `useSharedValue`, `useAnimatedStyle`, or any custom hook) to an existing component:
+
+1. **Search the component for ALL early returns** (`return` statements that are NOT the final JSX return). Common patterns: `if (loading) return null`, `if (!data) return <Skeleton />`, `if (error) return <ErrorView />`.
+2. **Place the new hook ABOVE every early return.** No exceptions. Even if the hook's value is only used in the non-early-return path, it must still be called unconditionally.
+3. **Never place hooks inside conditional blocks, loops, or after early returns.**
+4. **When refactoring:** if you move an early return higher in the component, audit all hooks below it to make sure none are now after it.
+
+This rule applies to custom hooks too — if `useMyHook()` calls 5 hooks internally, placing it after an early return means 5 hooks disappear on certain renders.
+
+**Verification:** After modifying any component, grep for `useCallback\|useState\|useEffect\|useMemo\|useRef` and verify every match appears before any `return` that isn't the final render return.
+
 ## File Structure
 
 - `app/` - Expo Router screens (file-based routing)
