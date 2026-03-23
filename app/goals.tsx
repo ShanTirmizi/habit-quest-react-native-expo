@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,8 @@ import {
   ScrollView,
   Pressable,
   RefreshControl,
+  TextInput,
+  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -15,6 +17,7 @@ import * as Haptics from 'expo-haptics';
 import { format, differenceInDays, parseISO } from 'date-fns';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
+import type { Id, Doc } from '@/convex/_generated/dataModel';
 import { useAuth } from '@/contexts/auth-context';
 import { useTheme } from '@/contexts/theme-context';
 import { FontSize, Spacing, Radius, FontFamily, Shadows, type ThemeColors } from '@/constants/theme';
@@ -25,13 +28,13 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { useToast } from '@/contexts/toast-context';
 import { AddGoalWizard } from '@/components/goals/AddGoalWizard';
-import type { Goal, GoalStatus } from '@/types';
+import type { Goal, GoalStatus, GoalCategory } from '@/types';
 import { GOAL_CATEGORY_CONFIG, GOAL_STATUS_CONFIG } from '@/types';
 
 type FilterValue = 'all' | GoalStatus;
 
 /** Map a Convex goal document to the local Goal type */
-function mapConvexGoal(raw: any): Goal {
+function mapConvexGoal(raw: Doc<'goals'>): Goal {
   return {
     id: raw._id,
     userId: raw.userId,
@@ -44,10 +47,17 @@ function mapConvexGoal(raw: any): Goal {
     dailyTimeAvailable: raw.dailyTimeAvailable,
     constraints: raw.constraints,
     preferences: raw.preferences,
-    linkedHabitIds: raw.linkedHabitIds,
+    linkedHabitIds: raw.linkedHabitIds?.map(String),
     milestones: raw.milestones,
     checkIns: raw.checkIns,
-    phases: raw.phases,
+    phases: raw.phases?.map((p) => ({
+      ...p,
+      habitUpdates: p.habitUpdates.map((hu) => ({
+        habitId: String(hu.habitId),
+        newName: hu.newName,
+        newXpReward: hu.newXpReward,
+      })),
+    })),
     currentPhaseIndex: raw.currentPhaseIndex,
     createdAt: raw._creationTime
       ? new Date(raw._creationTime).toISOString()
@@ -71,6 +81,16 @@ export default function GoalsScreen() {
   // Convex queries & mutations
   const rawGoals = useQuery(api.goals.getGoals, userId ? { userId } : 'skip');
   const completeMilestoneMutation = useMutation(api.goals.completeMilestone);
+  const uncompleteMilestoneMutation = useMutation(api.goals.uncompleteMilestone);
+  const updateGoalMutation = useMutation(api.goals.updateGoal);
+  const updateGoalStatusMutation = useMutation(api.goals.updateGoalStatus);
+  const deleteGoalMutation = useMutation(api.goals.deleteGoal);
+
+  // Fetch goal details (with linked habits) when a goal is selected
+  const goalDetails = useQuery(
+    api.goals.getGoalById,
+    selectedGoal && userId ? { goalId: selectedGoal.id as Id<'goals'>, userId } : 'skip'
+  );
 
   // Map Convex documents to local Goal type
   const goals: Goal[] = useMemo(() => {
@@ -85,6 +105,106 @@ export default function GoalsScreen() {
 
   const activeCount = goals.filter((g) => g.status === 'active').length;
   const achievedCount = goals.filter((g) => g.status === 'achieved').length;
+
+  // Delete goal handler
+  const handleDeleteGoal = useCallback((goal: Goal) => {
+    const hasLinkedHabits = goal.linkedHabitIds && goal.linkedHabitIds.length > 0;
+
+    if (hasLinkedHabits) {
+      Alert.alert(
+        'Delete Goal',
+        `"${goal.title}" has linked habits. What would you like to do?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Keep Habits',
+            onPress: async () => {
+              if (!userId) return;
+              try {
+                await deleteGoalMutation({ goalId: goal.id as Id<'goals'>, userId, deleteLinkedHabits: false });
+                setSelectedGoal(null);
+                showToast('Goal deleted', undefined, 'hp');
+              } catch {
+                showToast('Failed to delete goal', undefined, 'error');
+              }
+            },
+          },
+          {
+            text: 'Delete All',
+            style: 'destructive',
+            onPress: async () => {
+              if (!userId) return;
+              try {
+                await deleteGoalMutation({ goalId: goal.id as Id<'goals'>, userId, deleteLinkedHabits: true });
+                setSelectedGoal(null);
+                showToast('Goal and linked habits deleted', undefined, 'hp');
+              } catch {
+                showToast('Failed to delete goal', undefined, 'error');
+              }
+            },
+          },
+        ]
+      );
+    } else {
+      Alert.alert(
+        'Delete Goal',
+        `Are you sure you want to delete "${goal.title}"?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: async () => {
+              if (!userId) return;
+              try {
+                await deleteGoalMutation({ goalId: goal.id as Id<'goals'>, userId });
+                setSelectedGoal(null);
+                showToast('Goal deleted', undefined, 'hp');
+              } catch {
+                showToast('Failed to delete goal', undefined, 'error');
+              }
+            },
+          },
+        ]
+      );
+    }
+  }, [userId, deleteGoalMutation, showToast]);
+
+  // Update goal handler
+  const handleUpdateGoal = useCallback(async (
+    goalId: string,
+    updates: { title?: string; description?: string; category?: GoalCategory; targetDate?: string }
+  ) => {
+    if (!userId) return;
+    try {
+      await updateGoalMutation({
+        goalId: goalId as Id<'goals'>,
+        userId,
+        ...updates,
+      });
+      // Update selected goal locally
+      setSelectedGoal((prev) => prev ? { ...prev, ...updates } : null);
+      showToast('Goal updated', undefined, 'xp');
+    } catch {
+      showToast('Failed to update goal', undefined, 'error');
+    }
+  }, [userId, updateGoalMutation, showToast]);
+
+  // Update goal status handler
+  const handleUpdateStatus = useCallback(async (goalId: string, status: GoalStatus) => {
+    if (!userId) return;
+    try {
+      await updateGoalStatusMutation({
+        goalId: goalId as Id<'goals'>,
+        userId,
+        status,
+      });
+      setSelectedGoal((prev) => prev ? { ...prev, status } : null);
+      showToast(`Goal marked as ${GOAL_STATUS_CONFIG[status].label.toLowerCase()}`, undefined, 'xp');
+    } catch {
+      showToast('Failed to update status', undefined, 'error');
+    }
+  }, [userId, updateGoalStatusMutation, showToast]);
 
   // Loading state
   if (rawGoals === undefined) {
@@ -222,32 +342,59 @@ export default function GoalsScreen() {
         {selectedGoal ? (
           <GoalDetail
             goal={selectedGoal}
-            onCompleteMilestone={async (goalId, milestoneId) => {
+            linkedHabits={goalDetails?.linkedHabits ?? []}
+            onDelete={() => handleDeleteGoal(selectedGoal)}
+            onUpdate={handleUpdateGoal}
+            onUpdateStatus={handleUpdateStatus}
+            onToggleMilestone={async (goalId, milestoneId, completed) => {
               if (!userId) return;
               try {
-                await completeMilestoneMutation({
-                  goalId: goalId as any,
-                  userId,
-                  milestoneId,
-                });
-                // Update selected goal locally so the sheet reflects the change
-                setSelectedGoal((prev) => {
-                  if (!prev) return null;
-                  return {
-                    ...prev,
-                    milestones: prev.milestones?.map((m) =>
-                      m.id === milestoneId
-                        ? { ...m, completed: true, completedAt: new Date().toISOString() }
-                        : m
-                    ),
-                  };
-                });
-              } catch (error) {
-                showToast('Failed to complete milestone', undefined, 'error');
+                if (completed) {
+                  // Uncomplete it
+                  await uncompleteMilestoneMutation({
+                    goalId: goalId as Id<'goals'>,
+                    userId,
+                    milestoneId,
+                  });
+                  setSelectedGoal((prev) => {
+                    if (!prev) return null;
+                    return {
+                      ...prev,
+                      milestones: prev.milestones?.map((m) =>
+                        m.id === milestoneId
+                          ? { ...m, completed: false, completedAt: undefined }
+                          : m
+                      ),
+                    };
+                  });
+                  showToast('Milestone uncompleted', undefined, 'hp');
+                } else {
+                  // Complete it
+                  await completeMilestoneMutation({
+                    goalId: goalId as Id<'goals'>,
+                    userId,
+                    milestoneId,
+                  });
+                  setSelectedGoal((prev) => {
+                    if (!prev) return null;
+                    return {
+                      ...prev,
+                      milestones: prev.milestones?.map((m) =>
+                        m.id === milestoneId
+                          ? { ...m, completed: true, completedAt: new Date().toISOString() }
+                          : m
+                      ),
+                    };
+                  });
+                  showToast('Milestone completed!', undefined, 'xp');
+                }
+              } catch {
+                showToast('Failed to update milestone', undefined, 'error');
               }
             }}
             colors={colors}
             styles={styles}
+            isDark={isDark}
           />
         ) : null}
       </BottomSheet>
@@ -313,24 +460,178 @@ function GoalCard({ goal, onPress, colors, styles, isDark }: { goal: Goal; onPre
   );
 }
 
+interface LinkedHabit {
+  _id: Id<'habits'>;
+  name: string;
+  category: string;
+  xpReward: number;
+  streak: number;
+}
+
+const HABIT_CATEGORY_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
+  health: 'heart',
+  career: 'briefcase',
+  mind: 'book',
+  life: 'people',
+};
+
+const HABIT_CATEGORY_COLORS: Record<string, string> = {
+  health: '#2AB872',
+  career: '#E29628',
+  mind: '#D44E82',
+  life: '#24A894',
+};
+
 function GoalDetail({
   goal,
-  onCompleteMilestone,
+  linkedHabits,
+  onToggleMilestone,
+  onDelete,
+  onUpdate,
+  onUpdateStatus,
   colors,
   styles,
+  isDark,
 }: {
   goal: Goal;
-  onCompleteMilestone: (goalId: string, milestoneId: string) => void;
+  linkedHabits: LinkedHabit[];
+  onToggleMilestone: (goalId: string, milestoneId: string, currentlyCompleted: boolean) => void;
+  onDelete: () => void;
+  onUpdate: (goalId: string, updates: { title?: string; description?: string; category?: GoalCategory; targetDate?: string }) => void;
+  onUpdateStatus: (goalId: string, status: GoalStatus) => void;
   colors: ThemeColors;
   styles: ReturnType<typeof createStyles>;
+  isDark: boolean;
 }) {
   const categoryConfig = GOAL_CATEGORY_CONFIG[goal.category];
+  const [isEditing, setIsEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState(goal.title);
+  const [editDescription, setEditDescription] = useState(goal.description ?? '');
+
+  const handleSaveEdit = () => {
+    const updates: { title?: string; description?: string } = {};
+    if (editTitle.trim() && editTitle !== goal.title) updates.title = editTitle.trim();
+    if (editDescription.trim() !== (goal.description ?? '')) updates.description = editDescription.trim() || undefined;
+    if (Object.keys(updates).length > 0) {
+      onUpdate(goal.id, updates);
+    }
+    setIsEditing(false);
+  };
+
+  const handleCancelEdit = () => {
+    setEditTitle(goal.title);
+    setEditDescription(goal.description ?? '');
+    setIsEditing(false);
+  };
 
   return (
     <View style={styles.detailContainer}>
-      {goal.description ? (
+      {/* Action buttons row */}
+      <View style={styles.detailActions}>
+        <Pressable
+          onPress={() => {
+            if (isEditing) {
+              handleSaveEdit();
+            } else {
+              setIsEditing(true);
+            }
+          }}
+          style={({ pressed }) => [styles.detailActionBtn, pressed && { opacity: 0.7 }]}
+        >
+          <Ionicons
+            name={isEditing ? 'checkmark' : 'create-outline'}
+            size={16}
+            color={isEditing ? colors.success : colors.primary}
+          />
+          <Text style={[styles.detailActionText, { color: isEditing ? colors.success : colors.primary }]}>
+            {isEditing ? 'Save' : 'Edit'}
+          </Text>
+        </Pressable>
+
+        {isEditing ? (
+          <Pressable
+            onPress={handleCancelEdit}
+            style={({ pressed }) => [styles.detailActionBtn, pressed && { opacity: 0.7 }]}
+          >
+            <Ionicons name="close" size={16} color={colors.textMuted} />
+            <Text style={[styles.detailActionText, { color: colors.textMuted }]}>Cancel</Text>
+          </Pressable>
+        ) : null}
+
+        <View style={{ flex: 1 }} />
+
+        <Pressable
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            onDelete();
+          }}
+          style={({ pressed }) => [styles.detailActionBtn, styles.detailDeleteBtn, pressed && { opacity: 0.7 }]}
+        >
+          <Ionicons name="trash-outline" size={16} color={colors.danger} />
+          <Text style={[styles.detailActionText, { color: colors.danger }]}>Delete</Text>
+        </Pressable>
+      </View>
+
+      {/* Editable title & description */}
+      {isEditing ? (
+        <View style={styles.editSection}>
+          <Text style={styles.editLabel}>Title</Text>
+          <TextInput
+            value={editTitle}
+            onChangeText={setEditTitle}
+            style={styles.editInput}
+            placeholderTextColor={colors.textMuted}
+            placeholder="Goal title"
+          />
+          <Text style={styles.editLabel}>Description</Text>
+          <TextInput
+            value={editDescription}
+            onChangeText={setEditDescription}
+            style={[styles.editInput, styles.editInputMultiline]}
+            placeholderTextColor={colors.textMuted}
+            placeholder="Goal description (optional)"
+            multiline
+            numberOfLines={3}
+          />
+        </View>
+      ) : goal.description ? (
         <Text style={styles.detailDesc}>{goal.description}</Text>
       ) : null}
+
+      {/* Status selector */}
+      <View style={styles.statusSection}>
+        <Text style={styles.detailSectionTitle}>Status</Text>
+        <View style={styles.statusRow}>
+          {(['active', 'achieved', 'paused', 'abandoned'] as GoalStatus[]).map((s) => {
+            const config = GOAL_STATUS_CONFIG[s];
+            const isActive = goal.status === s;
+            return (
+              <Pressable
+                key={s}
+                onPress={() => {
+                  if (!isActive) {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    onUpdateStatus(goal.id, s);
+                  }
+                }}
+                style={[
+                  styles.statusChip,
+                  isActive && { backgroundColor: `${config.color}20`, borderColor: config.color },
+                ]}
+              >
+                <Ionicons
+                  name={config.icon as keyof typeof Ionicons.glyphMap}
+                  size={12}
+                  color={isActive ? config.color : colors.textMuted}
+                />
+                <Text style={[styles.statusChipText, isActive && { color: config.color }]}>
+                  {config.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
 
       <View style={styles.detailMeta}>
         <View style={styles.detailMetaItem}>
@@ -356,6 +657,37 @@ function GoalDetail({
         ) : null}
       </View>
 
+      {/* Linked Habits */}
+      {linkedHabits.length > 0 ? (
+        <View style={styles.linkedHabitsSection}>
+          <Text style={styles.detailSectionTitle}>Linked Habits</Text>
+          {linkedHabits.map((habit) => {
+            const habitColor = HABIT_CATEGORY_COLORS[habit.category] ?? colors.primary;
+            const habitIcon = HABIT_CATEGORY_ICONS[habit.category] ?? 'ellipse';
+            return (
+              <View key={habit._id} style={styles.linkedHabitItem}>
+                <View style={[styles.linkedHabitIcon, { backgroundColor: `${habitColor}18` }]}>
+                  <Ionicons name={habitIcon} size={14} color={habitColor} />
+                </View>
+                <View style={styles.linkedHabitInfo}>
+                  <Text style={styles.linkedHabitName} numberOfLines={1}>{habit.name}</Text>
+                  <View style={styles.linkedHabitStats}>
+                    <View style={styles.linkedHabitStat}>
+                      <Ionicons name="flame" size={11} color={colors.accent} />
+                      <Text style={styles.linkedHabitStatText}>{habit.streak}</Text>
+                    </View>
+                    <View style={styles.linkedHabitStat}>
+                      <Ionicons name="star" size={11} color={colors.primary} />
+                      <Text style={styles.linkedHabitStatText}>{habit.xpReward} XP</Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
+            );
+          })}
+        </View>
+      ) : null}
+
       {/* Milestones */}
       {goal.milestones && goal.milestones.length > 0 ? (
         <View style={styles.milestonesSection}>
@@ -364,12 +696,14 @@ function GoalDetail({
             <Pressable
               key={m.id}
               onPress={() => {
-                if (!m.completed) {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                  onCompleteMilestone(goal.id, m.id);
-                }
+                Haptics.impactAsync(
+                  m.completed
+                    ? Haptics.ImpactFeedbackStyle.Light
+                    : Haptics.ImpactFeedbackStyle.Medium
+                );
+                onToggleMilestone(goal.id, m.id, m.completed);
               }}
-              style={styles.milestoneItem}
+              style={({ pressed }) => [styles.milestoneItem, pressed && { opacity: 0.7 }]}
             >
               <View style={[styles.milestoneCheck, m.completed && styles.milestoneCheckDone]}>
                 {m.completed ? (
@@ -381,7 +715,10 @@ function GoalDetail({
                   {m.title}
                 </Text>
                 <Text style={styles.milestoneDate}>
-                  {format(parseISO(m.targetDate), 'MMM d, yyyy')}
+                  {m.completed && m.completedAt
+                    ? `Completed ${format(parseISO(m.completedAt), 'MMM d, yyyy')}`
+                    : format(parseISO(m.targetDate), 'MMM d, yyyy')
+                  }
                 </Text>
               </View>
             </Pressable>
@@ -599,6 +936,76 @@ const createStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create
     gap: Spacing.lg,
     paddingBottom: Spacing['2xl'],
   },
+  detailActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  detailActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs + 2,
+    borderRadius: Radius.full,
+    backgroundColor: colors.surfaceLight,
+  },
+  detailDeleteBtn: {
+    backgroundColor: `${colors.danger}12`,
+  },
+  detailActionText: {
+    fontSize: FontSize.xs,
+    fontFamily: FontFamily.semibold,
+  },
+  editSection: {
+    gap: Spacing.sm,
+  },
+  editLabel: {
+    fontSize: FontSize.xs,
+    fontFamily: FontFamily.semibold,
+    color: colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  editInput: {
+    fontSize: FontSize.sm,
+    fontFamily: FontFamily.regular,
+    color: colors.foreground,
+    backgroundColor: colors.surfaceLight,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm + 2,
+  },
+  editInputMultiline: {
+    minHeight: 72,
+    textAlignVertical: 'top',
+  },
+  statusSection: {
+    gap: Spacing.sm,
+  },
+  statusRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.sm,
+  },
+  statusChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: Spacing.sm + 2,
+    paddingVertical: Spacing.xs + 1,
+    borderRadius: Radius.full,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceLight,
+  },
+  statusChipText: {
+    fontSize: FontSize.xs,
+    fontFamily: FontFamily.medium,
+    color: colors.textMuted,
+  },
   detailDesc: {
     fontSize: FontSize.sm,
     color: colors.textSecondary,
@@ -627,6 +1034,48 @@ const createStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: Spacing.sm,
+  },
+  // Linked habits
+  linkedHabitsSection: {
+    gap: Spacing.xs,
+  },
+  linkedHabitItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  linkedHabitIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  linkedHabitInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  linkedHabitName: {
+    fontSize: FontSize.sm,
+    fontFamily: FontFamily.semibold,
+    color: colors.foreground,
+  },
+  linkedHabitStats: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+  },
+  linkedHabitStat: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  linkedHabitStatText: {
+    fontSize: FontSize.xs,
+    fontFamily: FontFamily.medium,
+    color: colors.textMuted,
   },
   milestonesSection: {},
   milestoneItem: {

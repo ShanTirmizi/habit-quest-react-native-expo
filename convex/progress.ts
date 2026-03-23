@@ -253,7 +253,7 @@ export const checkMissedHabitsOnLogin = mutation({
     const completedHabitIds = new Set(yesterdayCompletions.map((c) => c.habitId.toString()));
 
     // Count missed daily habits
-    const yesterdayDayOfWeek = yesterday.getDay();
+    const yesterdayDayOfWeek = yesterdayDate.getDay();
     let missedCount = 0;
 
     for (const habit of habits) {
