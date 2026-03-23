@@ -25,7 +25,6 @@ import { HabitDetailSheet } from '@/components/habits/HabitDetailSheet';
 import { AddHabitSheet } from '@/components/habits/AddHabitSheet';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { SkeletonDashboard } from '@/components/ui/Skeleton';
-import { CompanionWidget } from '@/components/widgets/CompanionWidget';
 import { OracleChallengeCard } from '@/components/widgets/OracleChallengeCard';
 import { UnderworldOverlay } from '@/components/overlays/UnderworldOverlay';
 import { LevelUpCelebration } from '@/components/overlays/LevelUpCelebration';
@@ -116,7 +115,6 @@ export default function DashboardScreen() {
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const [showAddSheet, setShowAddSheet] = useState(false);
 
-  const [showCompanionSheet, setShowCompanionSheet] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedHabit, setSelectedHabit] = useState<Habit | null>(null);
   const [levelUpVisible, setLevelUpVisible] = useState(false);
@@ -637,11 +635,11 @@ export default function DashboardScreen() {
       {/* ── Top bar: Dr. Sage left, settings + add right ── */}
       <View style={styles.topBar}>
         <View style={styles.topBarLeft}>
-          {companion ? (
+          {companion !== undefined ? (
             <Pressable
-              onPress={() => setShowCompanionSheet(true)}
+              onPress={() => router.push('/companion')}
               style={({ pressed }) => [styles.sageButton, pressed && { opacity: 0.9, transform: [{ scale: 0.97 }] }]}
-              accessibilityLabel="Open Dr. Sage companion"
+              accessibilityLabel={companion ? "Open Dr. Sage companion" : "Choose companion"}
               accessibilityRole="button"
             >
               <View style={[styles.sageAvatar, { borderColor: colors.primary }]}>
@@ -650,17 +648,6 @@ export default function DashboardScreen() {
                   size={18}
                   color={colors.primary}
                 />
-              </View>
-            </Pressable>
-          ) : companion === null ? (
-            <Pressable
-              onPress={() => setShowCompanionSheet(true)}
-              style={({ pressed }) => [styles.sageButton, pressed && { opacity: 0.9, transform: [{ scale: 0.97 }] }]}
-              accessibilityLabel="Choose companion"
-              accessibilityRole="button"
-            >
-              <View style={[styles.sageAvatar, { borderColor: colors.primary }]}>
-                <Ionicons name="chatbubble-ellipses" size={18} color={colors.primary} />
               </View>
             </Pressable>
           ) : null}
@@ -1158,18 +1145,6 @@ export default function DashboardScreen() {
         onAdd={handleAddHabit}
         existingHabits={habits}
       />
-
-      {/* Companion Sheet (Dr. Sage) — triggered from top bar avatar */}
-      {userId ? (
-        <CompanionWidget
-          userId={userId}
-          completionRate={completionRate}
-          currentHp={currentHp}
-          maxHp={maxHp}
-          externalVisible={showCompanionSheet}
-          onExternalClose={() => setShowCompanionSheet(false)}
-        />
-      ) : null}
 
       {/* Level Up Celebration */}
       <LevelUpCelebration
