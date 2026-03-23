@@ -1,5 +1,5 @@
 import React, { useCallback, useRef, useEffect, useMemo } from 'react';
-import { View, Text, StyleSheet, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, Keyboard, Platform } from 'react-native';
 import {
   BottomSheetModal,
   BottomSheetScrollView,
@@ -39,6 +39,23 @@ export function BottomSheet({ visible, onClose, title, children }: BottomSheetPr
       isPresented.current = false;
     }
   }, [visible]);
+
+  // Work around a gorhom/bottom-sheet bug where enableDynamicSizing +
+  // keyboardBehavior="interactive" leaves the sheet at the expanded height
+  // after the keyboard closes. Force it to re-snap to its content size.
+  useEffect(() => {
+    const event = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const sub = Keyboard.addListener(event, () => {
+      if (isPresented.current) {
+        // Delay slightly so the keyboard animation finishes and the sheet
+        // can measure its content at the correct (non-keyboard) height.
+        setTimeout(() => {
+          sheetRef.current?.snapToIndex(0);
+        }, 50);
+      }
+    });
+    return () => sub.remove();
+  }, []);
 
   const handleDismiss = useCallback(() => {
     isPresented.current = false;
