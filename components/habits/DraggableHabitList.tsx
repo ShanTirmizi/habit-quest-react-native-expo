@@ -25,6 +25,8 @@ interface DraggableHabitListProps {
   keystoneMap?: Map<string, KeystoneInfo>;
   chainFollowersMap?: Map<string, Habit[]>;
   completedIds?: Set<string>;
+  onDragBegin?: () => void;
+  onDragEnd?: () => void;
 }
 
 export function DraggableHabitList({
@@ -39,6 +41,8 @@ export function DraggableHabitList({
   keystoneMap,
   chainFollowersMap,
   completedIds,
+  onDragBegin,
+  onDragEnd,
 }: DraggableHabitListProps) {
   const [expandedChainIds, setExpandedChainIds] = useState<Set<string>>(new Set());
 
@@ -73,6 +77,7 @@ export function DraggableHabitList({
             // Collapse all chain previews when dragging starts
             setExpandedChainIds(new Set());
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            onDragBegin?.();
             drag();
           }}
           isDragging={isActive}
@@ -109,14 +114,15 @@ export function DraggableHabitList({
         </ScaleDecorator>
       );
     },
-    [isCompleted, onToggle, onPress, chainNameMap, scheduleMap, automaticityMap, keystoneMap, chainFollowersMap, completedIds, expandedChainIds, toggleChainPreview],
+    [isCompleted, onToggle, onPress, chainNameMap, scheduleMap, automaticityMap, keystoneMap, chainFollowersMap, completedIds, expandedChainIds, toggleChainPreview, onDragBegin],
   );
 
   const handleDragEnd = useCallback(
     ({ data }: { data: Habit[] }) => {
+      onDragEnd?.();
       onReorder(data);
     },
-    [onReorder],
+    [onReorder, onDragEnd],
   );
 
   const keyExtractor = useCallback((item: Habit) => item.id, []);

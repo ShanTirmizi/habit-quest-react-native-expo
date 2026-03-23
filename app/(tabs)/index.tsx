@@ -118,6 +118,7 @@ export default function DashboardScreen() {
 
   const [showCompanionSheet, setShowCompanionSheet] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [isDraggingHabit, setIsDraggingHabit] = useState(false);
   const [selectedHabitId, setSelectedHabitId] = useState<string | null>(null);
   const setSelectedHabit = useCallback((h: Habit | null) => {
     setSelectedHabitId(h?.id ?? null);
@@ -738,6 +739,7 @@ export default function DashboardScreen() {
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
+          scrollEnabled={!isDraggingHabit}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -1008,6 +1010,8 @@ export default function DashboardScreen() {
                             keystoneMap={keystoneMap}
                             chainFollowersMap={chainFollowersMap}
                             completedIds={completedIds}
+                            onDragBegin={() => setIsDraggingHabit(true)}
+                            onDragEnd={() => setIsDraggingHabit(false)}
                           />
                         ) : null}
                         {group.completed.map((habit) => {
