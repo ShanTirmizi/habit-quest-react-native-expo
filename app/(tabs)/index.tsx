@@ -840,7 +840,7 @@ export default function DashboardScreen() {
                 setCompassionDismissed(true);
                 if (compassionMessage.suggestedHabitId) {
                   const h = habits.find((hab) => hab.id === compassionMessage.suggestedHabitId);
-                  if (h) handleToggle(h.id);
+                  if (h) setSelectedHabit(h);
                 }
               }}
               onDismiss={() => setCompassionDismissed(true)}
