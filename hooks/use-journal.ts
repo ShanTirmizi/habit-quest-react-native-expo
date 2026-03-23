@@ -8,6 +8,7 @@ interface UseJournalReturn {
   isLoaded: boolean;
   addEntry: (params: {
     gratitudes: [string, string, string];
+    achievements?: string[];
     improvement?: string;
     content?: string;
     mood?: JournalMood;
@@ -39,6 +40,7 @@ export function useJournal(): UseJournalReturn {
   const addEntry = useCallback(
     (params: {
       gratitudes: [string, string, string];
+      achievements?: string[];
       improvement?: string;
       content?: string;
       mood?: JournalMood;

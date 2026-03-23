@@ -95,7 +95,10 @@ export const generateInsights = action({
         j.gratitudes.length > 0
           ? j.gratitudes.slice(0, 2).join("; ")
           : "none";
-      return `- ${date}: mood=${j.mood ?? "unset"}, gratitudes="${gratitudePreview}", type=${j.entryType ?? "daily"}`;
+      const achievementsPreview = j.achievements && j.achievements.length > 0
+        ? j.achievements.join("; ")
+        : null;
+      return `- ${date}: mood=${j.mood ?? "unset"}, gratitudes="${gratitudePreview}"${achievementsPreview ? `, achievements="${achievementsPreview}"` : ""}, type=${j.entryType ?? "daily"}`;
     });
 
     // AI memories (filtered to confidence >= 0.5)

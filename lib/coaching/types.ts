@@ -47,6 +47,7 @@ export interface JournalAnalysis {
     date: string;
     mood: string | null;
     gratitudes: string[];
+    achievements: string[];
     improvement?: string;
     habitCompletionThatDay: number;
   }>;

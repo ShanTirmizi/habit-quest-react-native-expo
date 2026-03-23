@@ -18,10 +18,11 @@ async function verifyAuth(ctx: MutationCtx | QueryCtx, requestedUserId: string) 
 
 const JOURNAL_XP = {
   BASE: 20,
+  ACHIEVEMENTS_BONUS: 5,
   IMPROVEMENT_BONUS: 10,
   THOUGHTS_BONUS: 10,
   WEEKLY_BONUS: 25,
-  MAX_DAILY: 60,
+  MAX_DAILY: 65,
 };
 
 function countWords(text: string): number {
@@ -30,17 +31,20 @@ function countWords(text: string): number {
 
 function calculateWordCount(data: {
   gratitudes: string[];
+  achievements?: string[];
   improvement?: string;
   content?: string;
 }): number {
   const gratitudeWords = data.gratitudes.reduce((sum, g) => sum + countWords(g), 0);
+  const achievementWords = data.achievements ? data.achievements.reduce((sum, a) => sum + countWords(a), 0) : 0;
   const improvementWords = data.improvement ? countWords(data.improvement) : 0;
   const contentWords = data.content ? countWords(data.content) : 0;
-  return gratitudeWords + improvementWords + contentWords;
+  return gratitudeWords + achievementWords + improvementWords + contentWords;
 }
 
 function calculateJournalXp(data: {
   gratitudes: string[];
+  achievements?: string[];
   improvement?: string;
   content?: string;
 }): number {
@@ -49,12 +53,18 @@ function calculateJournalXp(data: {
   const allGratitudesFilled = data.gratitudes.every((g) => g.trim().length > 0);
   const hasContent = data.content && data.content.trim().length > 0;
   const hasSubstantialContent = data.content && data.content.trim().length >= 50;
+  const hasAchievements = data.achievements && data.achievements.length > 0 && data.achievements.some((a) => a.trim().length > 0);
 
   // Base XP: Either all 3 gratitudes OR substantial content
   if (allGratitudesFilled) {
     xp += JOURNAL_XP.BASE;
   } else if (hasSubstantialContent) {
     xp += JOURNAL_XP.BASE;
+  }
+
+  // Bonus for achievements
+  if (hasAchievements) {
+    xp += JOURNAL_XP.ACHIEVEMENTS_BONUS;
   }
 
   // Bonus for improvement
@@ -122,6 +132,7 @@ export const addEntry = mutation({
   args: {
     userId: v.id('users'),
     gratitudes: v.array(v.string()),
+    achievements: v.optional(v.array(v.string())),
     improvement: v.optional(v.string()),
     content: v.optional(v.string()),
     mood: v.optional(
@@ -150,6 +161,7 @@ export const addEntry = mutation({
       // Past entries get 50% XP, no daily cap check
       const potentialXp = calculateJournalXp({
         gratitudes: args.gratitudes,
+        achievements: args.achievements,
         improvement: args.improvement,
         content: args.content,
       });
@@ -167,6 +179,7 @@ export const addEntry = mutation({
 
       const potentialXp = calculateJournalXp({
         gratitudes: args.gratitudes,
+        achievements: args.achievements,
         improvement: args.improvement,
         content: args.content,
       });
@@ -176,13 +189,18 @@ export const addEntry = mutation({
 
     const wordCount = calculateWordCount({
       gratitudes: args.gratitudes,
+      achievements: args.achievements,
       improvement: args.improvement,
       content: args.content,
     });
 
+    // Filter out empty achievement strings
+    const cleanAchievements = args.achievements?.filter((a) => a.trim().length > 0);
+
     const entryId = await ctx.db.insert('journalEntries', {
       userId: args.userId,
       gratitudes: args.gratitudes,
+      achievements: cleanAchievements && cleanAchievements.length > 0 ? cleanAchievements : undefined,
       improvement: args.improvement,
       content: args.content,
       mood: args.mood,
@@ -264,6 +282,7 @@ export const updateEntry = mutation({
     entryId: v.id('journalEntries'),
     userId: v.id('users'),
     gratitudes: v.optional(v.array(v.string())),
+    achievements: v.optional(v.array(v.string())),
     improvement: v.optional(v.string()),
     content: v.optional(v.string()),
     mood: v.optional(
@@ -280,17 +299,23 @@ export const updateEntry = mutation({
 
     const updates: Record<string, unknown> = {};
     if (args.gratitudes !== undefined) updates.gratitudes = args.gratitudes;
+    if (args.achievements !== undefined) {
+      const cleanAchievements = args.achievements.filter((a) => a.trim().length > 0);
+      updates.achievements = cleanAchievements.length > 0 ? cleanAchievements : undefined;
+    }
     if (args.improvement !== undefined) updates.improvement = args.improvement;
     if (args.content !== undefined) updates.content = args.content;
     if (args.mood !== undefined) updates.mood = args.mood;
 
     // Recalculate word count
     const newGratitudes = args.gratitudes ?? entry.gratitudes;
+    const newAchievements = args.achievements ?? (entry as any).achievements;
     const newImprovement = args.improvement ?? entry.improvement;
     const newContent = args.content ?? entry.content;
 
     updates.wordCount = calculateWordCount({
       gratitudes: newGratitudes,
+      achievements: newAchievements,
       improvement: newImprovement,
       content: newContent,
     });

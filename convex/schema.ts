@@ -352,6 +352,7 @@ export default defineSchema({
     userId: v.id('users'),
     entryType: v.optional(v.union(v.literal('daily'), v.literal('weekly'))),
     gratitudes: v.array(v.string()),
+    achievements: v.optional(v.array(v.string())),
     improvement: v.optional(v.string()),
     content: v.optional(v.string()),
     // Weekly reflection

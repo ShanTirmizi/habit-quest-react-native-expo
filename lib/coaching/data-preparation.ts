@@ -28,6 +28,7 @@ interface JournalEntry {
   entryDate?: string;
   mood?: string;
   gratitudes: string[];
+  achievements?: string[];
   improvement?: string;
   content?: string;
   entryType?: string;
@@ -491,6 +492,7 @@ function analyzeJournals(
       date: entryDate,
       mood: entry.mood || null,
       gratitudes: entry.gratitudes || [],
+      achievements: entry.achievements || [],
       improvement: entry.improvement,
       habitCompletionThatDay: completionRate,
     };
@@ -564,6 +566,7 @@ function extractBlockers(
     const textToSearch = [
       entry.improvement || '',
       entry.content || '',
+      ...(entry.achievements || []),
     ]
       .join(' ')
       .toLowerCase();
@@ -705,7 +708,7 @@ function extractGratitudeThemes(entries: JournalEntry[]): GratitudeTheme[] {
     {};
 
   for (const entry of entries.slice(0, 30)) {
-    const gratitudeText = (entry.gratitudes || []).join(' ').toLowerCase();
+    const gratitudeText = [...(entry.gratitudes || []), ...(entry.achievements || [])].join(' ').toLowerCase();
     const isGoodDay = entry.mood === 'great' || entry.mood === 'good';
 
     for (const [theme, keywords] of Object.entries(themeKeywords)) {
@@ -761,7 +764,7 @@ function analyzeMindset(entries: JournalEntry[]): MindsetIndicators {
   let fixedCount = 0;
 
   for (const entry of entries.slice(0, 30)) {
-    const text = [entry.content || '', entry.improvement || '']
+    const text = [entry.content || '', entry.improvement || '', ...(entry.achievements || [])]
       .join(' ')
       .toLowerCase();
 
@@ -802,7 +805,7 @@ function extractUnmetDesires(entries: JournalEntry[]): string[] {
   const desires: string[] = [];
 
   for (const entry of entries.slice(0, 30)) {
-    const text = [entry.content || '', entry.improvement || ''].join(' ');
+    const text = [entry.content || '', entry.improvement || '', ...(entry.achievements || [])].join(' ');
 
     for (const pattern of wishPatterns) {
       const matches = text.matchAll(pattern);
@@ -832,6 +835,7 @@ function extractMoodThemes(entries: JournalEntry[]): {
   for (const entry of entries.slice(0, 30)) {
     const text = [
       ...(entry.gratitudes || []),
+      ...(entry.achievements || []),
       entry.improvement || '',
       entry.content || '',
     ].join(' ');

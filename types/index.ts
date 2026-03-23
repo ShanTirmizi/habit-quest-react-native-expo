@@ -89,6 +89,7 @@ export interface JournalEntry {
   id: string;
   entryType?: JournalEntryType;
   gratitudes: [string, string, string];
+  achievements?: string[];
   improvement?: string;
   content?: string;
   weekHighlights?: string;
@@ -385,10 +386,11 @@ export const MOOD_CONFIG: Record<JournalMood, { icon: string; label: string; col
 
 export const JOURNAL_XP = {
   BASE: 20,
+  ACHIEVEMENTS_BONUS: 5,
   IMPROVEMENT_BONUS: 10,
   THOUGHTS_BONUS: 10,
   WEEKLY_BONUS: 25,
-  MAX_DAILY: 60,
+  MAX_DAILY: 65,
 };
 
 export const TIME_OF_DAY_CONFIG: Record<TimeOfDay, { icon: string; label: string; range: string }> =

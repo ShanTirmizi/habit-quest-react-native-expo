@@ -31,6 +31,7 @@ import { AuthProvider, useAuth } from '@/contexts/auth-context';
 import { ThemeProvider, useTheme } from '@/contexts/theme-context';
 import { ToastProvider } from '@/contexts/toast-context';
 import { XpToast } from '@/components/ui/XpToast';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -153,7 +154,9 @@ export default function RootLayout() {
             <BottomSheetModalProvider>
               <SafeAreaProvider>
                 <ToastProvider>
-                  <ThemedApp />
+                  <ErrorBoundary>
+                    <ThemedApp />
+                  </ErrorBoundary>
                 </ToastProvider>
               </SafeAreaProvider>
             </BottomSheetModalProvider>

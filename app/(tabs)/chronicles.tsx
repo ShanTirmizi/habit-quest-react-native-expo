@@ -47,6 +47,8 @@ export default function ChroniclesScreen() {
   const [gratitude1, setGratitude1] = useState('');
   const [gratitude2, setGratitude2] = useState('');
   const [gratitude3, setGratitude3] = useState('');
+  const [achievements, setAchievements] = useState<string[]>([]);
+  const [achievementInput, setAchievementInput] = useState('');
   const [improvement, setImprovement] = useState('');
   const [content, setContent] = useState('');
   const [selectedMood, setSelectedMood] = useState<JournalMood | null>(null);
@@ -64,6 +66,7 @@ export default function ChroniclesScreen() {
       id: e._id,
       entryType: e.entryType as JournalEntry['entryType'],
       gratitudes: e.gratitudes as [string, string, string],
+      achievements: (e as any).achievements as string[] | undefined,
       improvement: e.improvement,
       content: e.content,
       weekHighlights: e.weekHighlights,
@@ -96,10 +99,11 @@ export default function ChroniclesScreen() {
   const calculateXp = useCallback(() => {
     let xp = 0;
     if (gratitude1 && gratitude2 && gratitude3) xp += JOURNAL_XP.BASE;
+    if (achievements.length > 0) xp += JOURNAL_XP.ACHIEVEMENTS_BONUS;
     if (improvement) xp += JOURNAL_XP.IMPROVEMENT_BONUS;
     if (content) xp += JOURNAL_XP.THOUGHTS_BONUS;
     return Math.min(xp, JOURNAL_XP.MAX_DAILY);
-  }, [gratitude1, gratitude2, gratitude3, improvement, content]);
+  }, [gratitude1, gratitude2, gratitude3, achievements, improvement, content]);
 
   const handleSaveEntry = useCallback(async () => {
     if (!gratitude1 || !gratitude2 || !gratitude3 || !userId) return;
@@ -110,6 +114,7 @@ export default function ChroniclesScreen() {
         userId,
         entryType: 'daily',
         gratitudes: [gratitude1, gratitude2, gratitude3],
+        achievements: achievements.length > 0 ? achievements : undefined,
         improvement: improvement || undefined,
         content: content || undefined,
         mood: selectedMood || undefined,
@@ -120,6 +125,8 @@ export default function ChroniclesScreen() {
       setGratitude1('');
       setGratitude2('');
       setGratitude3('');
+      setAchievements([]);
+      setAchievementInput('');
       setImprovement('');
       setContent('');
       setSelectedMood(null);
@@ -139,6 +146,7 @@ export default function ChroniclesScreen() {
         entryId: editingEntry.id as any,
         userId,
         gratitudes: [gratitude1, gratitude2, gratitude3],
+        achievements: achievements.length > 0 ? achievements : undefined,
         improvement: improvement || undefined,
         content: content || undefined,
         mood: selectedMood || undefined,
@@ -150,6 +158,8 @@ export default function ChroniclesScreen() {
       setGratitude1('');
       setGratitude2('');
       setGratitude3('');
+      setAchievements([]);
+      setAchievementInput('');
       setImprovement('');
       setContent('');
       setSelectedMood(null);
@@ -164,6 +174,8 @@ export default function ChroniclesScreen() {
     setGratitude1(entry.gratitudes[0] || '');
     setGratitude2(entry.gratitudes[1] || '');
     setGratitude3(entry.gratitudes[2] || '');
+    setAchievements(entry.achievements || []);
+    setAchievementInput('');
     setImprovement(entry.improvement || '');
     setContent(entry.content || '');
     setSelectedMood(entry.mood || null);
@@ -260,6 +272,18 @@ export default function ChroniclesScreen() {
                   </View>
                 ))}
               </View>
+
+              {todayEntry.achievements && todayEntry.achievements.length > 0 && (
+                <View style={styles.featuredAchievements}>
+                  <Text style={styles.featuredAchievementsLabel}>Achievements</Text>
+                  {todayEntry.achievements.map((a, i) => (
+                    <View key={i} style={styles.featuredAchievementRow}>
+                      <Ionicons name="trophy-outline" size={12} color={colors.accent} />
+                      <Text style={styles.featuredAchievementText} numberOfLines={1}>{a}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
 
               <View style={styles.featuredFooter}>
                 <Text style={styles.featuredFooterText}>
@@ -382,6 +406,65 @@ export default function ChroniclesScreen() {
                 </View>
               ))}
             </View>
+          </View>
+
+          {/* Achievements */}
+          <View style={styles.section}>
+            <Text style={styles.formLabel}>
+              Today's achievements (+{JOURNAL_XP.ACHIEVEMENTS_BONUS} XP)
+            </Text>
+            <View style={styles.achievementInputRow}>
+              <TextInput
+                style={styles.achievementInput}
+                value={achievementInput}
+                onChangeText={setAchievementInput}
+                placeholder="What did you accomplish?"
+                placeholderTextColor={colors.textMuted}
+                selectionColor={colors.primary}
+                onSubmitEditing={() => {
+                  if (achievementInput.trim()) {
+                    setAchievements((prev) => [...prev, achievementInput.trim()]);
+                    setAchievementInput('');
+                  }
+                }}
+                returnKeyType="done"
+              />
+              <Pressable
+                onPress={() => {
+                  if (achievementInput.trim()) {
+                    Haptics.selectionAsync();
+                    setAchievements((prev) => [...prev, achievementInput.trim()]);
+                    setAchievementInput('');
+                  }
+                }}
+                style={({ pressed }) => [
+                  styles.achievementAddBtn,
+                  !achievementInput.trim() && { opacity: 0.4 },
+                  pressed && { opacity: 0.7 },
+                ]}
+              >
+                <Ionicons name="add" size={20} color={colors.primaryButtonText} />
+              </Pressable>
+            </View>
+            {achievements.length > 0 && (
+              <View style={styles.achievementChips}>
+                {achievements.map((a, i) => (
+                  <View key={i} style={styles.achievementChip}>
+                    <Ionicons name="trophy-outline" size={12} color={colors.accent} />
+                    <Text style={styles.achievementChipText} numberOfLines={1}>{a}</Text>
+                    <Pressable
+                      onPress={() => {
+                        Haptics.selectionAsync();
+                        setAchievements((prev) => prev.filter((_, idx) => idx !== i));
+                      }}
+                      hitSlop={6}
+                    >
+                      <Ionicons name="close-circle" size={16} color={colors.textMuted} />
+                    </Pressable>
+                  </View>
+                ))}
+              </View>
+            )}
           </View>
 
           {/* Improvement */}
@@ -507,6 +590,16 @@ function PastEntryCard({
             </Text>
           ))}
         </View>
+        {entry.achievements && entry.achievements.length > 0 ? (
+          <View style={styles.expandedBlock}>
+            <Text style={styles.expandedBlockLabel}>Achievements</Text>
+            {entry.achievements.map((a, i) => (
+              <Text key={i} style={styles.expandedBlockText}>
+                {i + 1}. {a}
+              </Text>
+            ))}
+          </View>
+        ) : null}
         {entry.improvement ? (
           <View style={styles.expandedBlock}>
             <Text style={styles.expandedBlockLabel}>Improvement</Text>
@@ -691,6 +784,57 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontFamily: FontFamily.regular,
   },
 
+  /* Achievements */
+  achievementInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  achievementInput: {
+    flex: 1,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    fontSize: FontSize.sm,
+    color: colors.foreground,
+    fontFamily: FontFamily.regular,
+  },
+  achievementAddBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  achievementChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.xs,
+    marginTop: Spacing.sm,
+  },
+  achievementChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: colors.accentBg,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 6,
+    borderRadius: Radius.full,
+    borderWidth: 1,
+    borderColor: `${colors.accent}30`,
+    maxWidth: '100%' as any,
+  },
+  achievementChipText: {
+    fontSize: FontSize.xs,
+    fontFamily: FontFamily.medium,
+    color: colors.foreground,
+    flexShrink: 1,
+  },
+
   /* Text areas */
   section: {},
   textArea: {
@@ -802,6 +946,29 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontFamily: FontFamily.bold,
   },
   featuredGratitudeText: {
+    flex: 1,
+    fontSize: FontSize.sm,
+    color: colors.foreground,
+    fontFamily: FontFamily.regular,
+  },
+  featuredAchievements: {
+    marginTop: Spacing.sm,
+    gap: 4,
+  },
+  featuredAchievementsLabel: {
+    fontSize: FontSize.xs,
+    fontFamily: FontFamily.bold,
+    color: colors.accent,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  featuredAchievementRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  featuredAchievementText: {
     flex: 1,
     fontSize: FontSize.sm,
     color: colors.foreground,

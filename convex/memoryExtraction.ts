@@ -28,6 +28,7 @@ interface ExtractedMemory {
 // Journal entry type (simplified for extraction)
 interface JournalEntryForExtraction {
   gratitudes: string[];
+  achievements?: string[];
   improvement?: string;
   content?: string;
   mood?: "great" | "good" | "okay" | "rough";
@@ -98,6 +99,9 @@ export const extractMemoriesFromJournal = internalAction({
 
       if (e.gratitudes?.length > 0) {
         text += `  Gratitudes: ${e.gratitudes.filter((g) => g).join("; ")}\n`;
+      }
+      if (e.achievements && e.achievements.length > 0) {
+        text += `  Achievements: ${e.achievements.join("; ")}\n`;
       }
       if (e.improvement) {
         text += `  Could be better: ${e.improvement}\n`;
