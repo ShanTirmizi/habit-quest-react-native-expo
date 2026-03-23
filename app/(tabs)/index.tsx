@@ -837,11 +837,16 @@ export default function DashboardScreen() {
             <CompassionCard
               message={compassionMessage}
               onAction={() => {
-                setCompassionDismissed(true);
                 if (compassionMessage.suggestedHabitId) {
                   const h = habits.find((hab) => hab.id === compassionMessage.suggestedHabitId);
-                  if (h) setSelectedHabit(h);
+                  if (h) {
+                    setSelectedHabit(h);
+                    // Dismiss after opening sheet to prevent touch pass-through to habit cards beneath
+                    requestAnimationFrame(() => setCompassionDismissed(true));
+                    return;
+                  }
                 }
+                setCompassionDismissed(true);
               }}
               onDismiss={() => setCompassionDismissed(true)}
             />
