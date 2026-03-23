@@ -6,6 +6,8 @@ import {
   Pressable,
   ScrollView,
   ActivityIndicator,
+  Keyboard,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -279,12 +281,26 @@ export function CompanionWidget({
   }, []);
 
   const heightWrapperStyle = useAnimatedStyle(() => {
+    // Skip the animated height constraint for chat tab — the keyboard handling
+    // needs the content to flow naturally without being clipped.
     if (contentHeight.value === 0) return {};
     return {
       height: contentHeight.value,
-      overflow: 'hidden' as const,
     };
   });
+
+  // Scroll messages to bottom when keyboard appears so the input stays visible
+  useEffect(() => {
+    const event = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const sub = Keyboard.addListener(event, () => {
+      if (activeTab === 'chat') {
+        setTimeout(() => {
+          chatListRef.current?.scrollToEnd({ animated: true });
+        }, 100);
+      }
+    });
+    return () => sub.remove();
+  }, [activeTab]);
 
   // Reset session ID and tab when the sheet opens
   useEffect(() => {
@@ -938,12 +954,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
 
   // ---- Chat tab ----
   chatContainer: {
-    minHeight: 400,
     paddingBottom: Spacing.md,
   },
   chatMessageList: {
-    maxHeight: 400,
-    minHeight: 280,
+    maxHeight: 350,
   },
   chatMessageListContent: {
     paddingVertical: Spacing.sm,
