@@ -379,8 +379,8 @@ export default function CompanionScreen() {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.header}>
-          <Pressable onPress={handleBack} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color={colors.foreground} />
+          <Pressable onPress={handleBack} style={styles.backButton} hitSlop={12}>
+            <Ionicons name="chevron-back" size={24} color={colors.foreground} />
           </Pressable>
           <Text style={styles.headerTitle}>Dr. Sage</Text>
           <View style={styles.headerSpacer} />
@@ -397,8 +397,8 @@ export default function CompanionScreen() {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.header}>
-          <Pressable onPress={handleBack} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color={colors.foreground} />
+          <Pressable onPress={handleBack} style={styles.backButton} hitSlop={12}>
+            <Ionicons name="chevron-back" size={24} color={colors.foreground} />
           </Pressable>
           <Text style={styles.headerTitle}>Dr. Sage</Text>
           <View style={styles.headerSpacer} />
@@ -648,7 +648,7 @@ export default function CompanionScreen() {
       )}
 
       {/* Input bar */}
-      <View style={styles.chatInputBar}>
+      <View style={[styles.chatInputBar, { paddingBottom: Math.max(insets.bottom, Spacing.md) }]}>
         <TextInput
           style={styles.chatTextInput}
           value={chatInput}
@@ -720,8 +720,8 @@ export default function CompanionScreen() {
     >
       {/* Header */}
       <View style={styles.header}>
-        <Pressable onPress={handleBack} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={colors.foreground} />
+        <Pressable onPress={handleBack} style={styles.backButton} hitSlop={12}>
+          <Ionicons name="chevron-back" size={24} color={colors.foreground} />
         </Pressable>
         <Text style={styles.headerTitle}>{companion.name}</Text>
         <View style={styles.headerSpacer} />
@@ -753,25 +753,25 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: Radius.sm,
+    backgroundColor: colors.surfaceLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitle: {
-    flex: 1,
-    textAlign: 'center',
+    fontFamily: FontFamily.semibold,
     fontSize: FontSize.lg,
-    fontFamily: FontFamily.bold,
     color: colors.foreground,
   },
   headerSpacer: {
-    width: 40,
+    width: 36,
   },
 
   // Tab content
@@ -958,7 +958,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   // ---- Chat tab ----
   chatContainer: {
     flex: 1,
-    paddingHorizontal: Spacing.md,
+    paddingHorizontal: Spacing.lg,
   },
   chatMessageList: {
     flex: 1,
@@ -1078,7 +1078,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: 'flex-end',
     gap: Spacing.sm,
     paddingTop: Spacing.sm,
-    paddingBottom: Spacing.md,
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
