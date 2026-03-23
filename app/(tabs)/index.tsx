@@ -21,7 +21,7 @@ import { CircularProgress } from '@/components/ui/CircularProgress';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { HabitCard } from '@/components/habits/HabitCard';
 import { DraggableHabitList } from '@/components/habits/DraggableHabitList';
-import { HabitDetailSheet } from '@/components/habits/HabitDetailSheet';
+import { HabitDetailSheet, type HabitUpdateData } from '@/components/habits/HabitDetailSheet';
 import { AddHabitSheet } from '@/components/habits/AddHabitSheet';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { SkeletonDashboard } from '@/components/ui/Skeleton';
@@ -118,7 +118,10 @@ export default function DashboardScreen() {
 
   const [showCompanionSheet, setShowCompanionSheet] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [selectedHabit, setSelectedHabit] = useState<Habit | null>(null);
+  const [selectedHabitId, setSelectedHabitId] = useState<string | null>(null);
+  const setSelectedHabit = useCallback((h: Habit | null) => {
+    setSelectedHabitId(h?.id ?? null);
+  }, []);
   const [levelUpVisible, setLevelUpVisible] = useState(false);
   const [levelUpLevel, setLevelUpLevel] = useState(0);
   const [showHibernated, setShowHibernated] = useState(false);
@@ -156,6 +159,7 @@ export default function DashboardScreen() {
   const toggleCompletionMutation = useMutation(api.habits.toggleCompletion);
   const deleteHabitMutation = useMutation(api.habits.deleteHabit);
   const addNoteMutation = useMutation(api.habits.addNote);
+  const updateHabitMutation = useMutation(api.habits.updateHabit);
   const addXpMutation = useMutation(api.progress.addXp);
   const reorderHabitsMutation = useMutation(api.habits.reorderHabits);
   const hibernateHabitMutation = useMutation(api.habits.hibernateHabit);
@@ -213,6 +217,14 @@ export default function DashboardScreen() {
       hibernatedAt: h.hibernatedAt,
     }));
   }, [rawHabits]);
+
+  // Derive selectedHabit from fresh habits array so it stays in sync with Convex queries.
+  // When a note is added/habit is updated, the Convex query refreshes `habits`, and this
+  // automatically picks up the latest data instead of holding a stale snapshot.
+  const selectedHabit = useMemo(
+    () => (selectedHabitId ? habits.find((h) => h.id === selectedHabitId) ?? null : null),
+    [selectedHabitId, habits],
+  );
 
   // Filter out hibernated habits for the active dashboard
   const activeHabits = useMemo(
@@ -492,6 +504,20 @@ export default function DashboardScreen() {
       showToast('Failed to add note', undefined, 'error');
     }
   }, [userId, addNoteMutation, showToast]);
+
+  const handleUpdateHabit = useCallback(async (habitId: string, data: HabitUpdateData) => {
+    if (!userId) return;
+    try {
+      await updateHabitMutation({
+        habitId: habitId as Parameters<typeof updateHabitMutation>[0]['habitId'],
+        userId,
+        ...data,
+      } as Parameters<typeof updateHabitMutation>[0]);
+      showToast('Habit updated!', undefined, 'xp');
+    } catch {
+      showToast('Failed to update habit', undefined, 'error');
+    }
+  }, [userId, updateHabitMutation, showToast]);
 
   const handleToggleHoliday = useCallback(async () => {
     if (!userId) return;
@@ -1142,6 +1168,7 @@ export default function DashboardScreen() {
         onToggle={handleToggle}
         onDelete={handleDeleteHabit}
         onAddNote={handleAddNote}
+        onUpdate={handleUpdateHabit}
         automaticityInfo={selectedHabit ? automaticityMap.get(selectedHabit.id) ?? null : null}
         streakFreezes={streakFreezes}
         onHibernate={handleHibernate}

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,10 +11,11 @@ import {
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useQuery } from 'convex/react';
+import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { useAuth } from '@/contexts/auth-context';
 import { useTheme } from '@/contexts/theme-context';
+import { useToast } from '@/contexts/toast-context';
 import {
   FontSize,
   Spacing,
@@ -27,6 +28,7 @@ import {
 import { BadgePill } from '@/components/ui/BadgePill';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { HabitDetailSheet, type HabitUpdateData } from '@/components/habits/HabitDetailSheet';
 import type {
   Habit,
   HabitCategory,
@@ -94,10 +96,12 @@ function BrowserHabitCard({
   habit,
   colors,
   styles,
+  onPress,
 }: {
   habit: Habit;
   colors: ThemeColors;
   styles: ReturnType<typeof createStyles>;
+  onPress: (habit: Habit) => void;
 }) {
   const catColor = getCategoryColor(habit.category);
   const freqDesc = getFrequencyDescription(habit);
@@ -105,7 +109,14 @@ function BrowserHabitCard({
   const isHibernated = !!habit.hibernatedAt;
 
   return (
-    <View style={[styles.card, isHibernated && styles.cardHibernated]}>
+    <Pressable
+      onPress={() => onPress(habit)}
+      style={({ pressed }) => [
+        styles.card,
+        isHibernated && styles.cardHibernated,
+        pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] },
+      ]}
+    >
       {/* Left accent bar */}
       <View style={[styles.cardAccent, { backgroundColor: catColor }]} />
 
@@ -180,7 +191,7 @@ function BrowserHabitCard({
           </View>
         </View>
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -191,11 +202,25 @@ export default function HabitBrowserScreen() {
   const router = useRouter();
   const { userId } = useAuth();
   const { colors, isDark } = useTheme();
+  const { showToast } = useToast();
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
 
   const [frequencyFilter, setFrequencyFilter] = useState<FrequencyFilter>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedHabitId, setSelectedHabitId] = useState<string | null>(null);
+  const setSelectedHabit = useCallback((h: Habit | null) => {
+    setSelectedHabitId(h?.id ?? null);
+  }, []);
+
+  // ── Mutations ──
+  const toggleCompletionMutation = useMutation(api.habits.toggleCompletion);
+  const deleteHabitMutation = useMutation(api.habits.deleteHabit);
+  const addNoteMutation = useMutation(api.habits.addNote);
+  const updateHabitMutation = useMutation(api.habits.updateHabit);
+  const hibernateHabitMutation = useMutation(api.habits.hibernateHabit);
+  const wakeHabitMutation = useMutation(api.habits.wakeHabit);
+  const addXpMutation = useMutation(api.progress.addXp);
 
   // ── Data ──
   const rawHabits = useQuery(api.habits.getHabits, userId ? { userId } : 'skip');
@@ -225,6 +250,12 @@ export default function HabitBrowserScreen() {
       goalId: h.goalId?.toString(),
     }));
   }, [rawHabits]);
+
+  // Derive selectedHabit from fresh habits array so it stays in sync after mutations
+  const selectedHabit = useMemo(
+    () => (selectedHabitId ? habits.find((h) => h.id === selectedHabitId) ?? null : null),
+    [selectedHabitId, habits],
+  );
 
   // ── Filtering ──
   const filteredHabits = useMemo(() => {
@@ -257,6 +288,113 @@ export default function HabitBrowserScreen() {
 
   const activeCount = habits.filter((h) => !h.hibernatedAt).length;
   const hibernatedCount = habits.filter((h) => !!h.hibernatedAt).length;
+
+  // ── Today's date for completions ──
+  const todayDate = useMemo(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  }, []);
+
+  const completedIds = useMemo(() => {
+    const set = new Set<string>();
+    for (const h of habits) {
+      if (h.completedDates.includes(todayDate)) {
+        set.add(h.id);
+      }
+    }
+    return set;
+  }, [habits, todayDate]);
+
+  // ── Handlers ──
+  const handleToggle = useCallback(async (id: string) => {
+    if (!userId) return;
+    try {
+      const result = await toggleCompletionMutation({
+        habitId: id as Parameters<typeof toggleCompletionMutation>[0]['habitId'],
+        userId,
+        date: todayDate,
+      });
+      if (result.completed) {
+        const habit = habits.find((h) => h.id === id);
+        if (habit) {
+          showToast(`${habit.name} completed!`, habit.xpReward, 'xp');
+          try {
+            await addXpMutation({ userId, amount: habit.xpReward });
+          } catch { /* ignore xp errors */ }
+        }
+      }
+    } catch {
+      showToast('Failed to toggle habit', undefined, 'error');
+    }
+  }, [userId, todayDate, toggleCompletionMutation, habits, showToast, addXpMutation]);
+
+  const handleDeleteHabit = useCallback(async (id: string) => {
+    if (!userId) return;
+    try {
+      await deleteHabitMutation({
+        habitId: id as Parameters<typeof deleteHabitMutation>[0]['habitId'],
+        userId,
+      });
+      setSelectedHabit(null);
+      showToast('Habit deleted', undefined, 'hp');
+    } catch {
+      showToast('Failed to delete habit', undefined, 'error');
+    }
+  }, [userId, deleteHabitMutation, showToast]);
+
+  const handleAddNote = useCallback(async (habitId: string, text: string) => {
+    if (!userId) return;
+    try {
+      await addNoteMutation({
+        habitId: habitId as Parameters<typeof addNoteMutation>[0]['habitId'],
+        userId,
+        text,
+      });
+      showToast('Note added', undefined, 'xp');
+    } catch {
+      showToast('Failed to add note', undefined, 'error');
+    }
+  }, [userId, addNoteMutation, showToast]);
+
+  const handleUpdateHabit = useCallback(async (habitId: string, data: HabitUpdateData) => {
+    if (!userId) return;
+    try {
+      await updateHabitMutation({
+        habitId: habitId as Parameters<typeof updateHabitMutation>[0]['habitId'],
+        userId,
+        ...data,
+      } as Parameters<typeof updateHabitMutation>[0]);
+      showToast('Habit updated!', undefined, 'xp');
+    } catch {
+      showToast('Failed to update habit', undefined, 'error');
+    }
+  }, [userId, updateHabitMutation, showToast]);
+
+  const handleHibernate = useCallback(async (id: string) => {
+    if (!userId) return;
+    try {
+      await hibernateHabitMutation({
+        habitId: id as Parameters<typeof hibernateHabitMutation>[0]['habitId'],
+        userId,
+      });
+      showToast('Habit hibernated', undefined, 'hp');
+    } catch {
+      showToast('Failed to hibernate', undefined, 'error');
+    }
+  }, [userId, hibernateHabitMutation, showToast]);
+
+  const handleWake = useCallback(async (id: string) => {
+    if (!userId) return;
+    try {
+      await wakeHabitMutation({
+        habitId: id as Parameters<typeof wakeHabitMutation>[0]['habitId'],
+        userId,
+      });
+      showToast('Habit reactivated!', undefined, 'xp');
+    } catch {
+      showToast('Failed to wake habit', undefined, 'error');
+    }
+  }, [userId, wakeHabitMutation, showToast]);
 
   // ── Render ──
 
@@ -385,6 +523,7 @@ export default function HabitBrowserScreen() {
                 habit={habit}
                 colors={colors}
                 styles={styles}
+                onPress={setSelectedHabit}
               />
             ))}
           </View>
@@ -393,6 +532,19 @@ export default function HabitBrowserScreen() {
         {/* Bottom spacer */}
         <View style={{ height: insets.bottom + Spacing['2xl'] }} />
       </ScrollView>
+
+      {/* Habit Detail Sheet */}
+      <HabitDetailSheet
+        habit={selectedHabit}
+        isCompleted={selectedHabit ? completedIds.has(selectedHabit.id) : false}
+        onClose={() => setSelectedHabit(null)}
+        onToggle={handleToggle}
+        onDelete={handleDeleteHabit}
+        onAddNote={handleAddNote}
+        onUpdate={handleUpdateHabit}
+        onHibernate={handleHibernate}
+        onWake={handleWake}
+      />
     </View>
   );
 }

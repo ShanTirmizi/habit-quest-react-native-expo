@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { View, Text, StyleSheet, Pressable, Alert } from 'react-native';
+import React, { useState, useMemo, useEffect } from 'react';
+import { View, Text, StyleSheet, Pressable, Alert, ScrollView } from 'react-native';
 import { BottomSheetTextInput as TextInput } from '@gorhom/bottom-sheet';
 import { Ionicons } from '@expo/vector-icons';
 import { format, parseISO } from 'date-fns';
@@ -10,11 +10,51 @@ import { Button } from '@/components/ui/Button';
 import { BadgePill } from '@/components/ui/BadgePill';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { AutomaticityArc } from './AutomaticityArc';
-import type { Habit, ReflectionMood, MicroReflection } from '@/types';
-import { FREQUENCY_LABELS, REFLECTION_MOOD_CONFIG } from '@/types';
+import type { Habit, HabitCategory, HabitFrequencyType, TimeOfDay, ReflectionMood, MicroReflection } from '@/types';
+import { FREQUENCY_LABELS, REFLECTION_MOOD_CONFIG, DAYS_OF_WEEK, TIME_OF_DAY_CONFIG } from '@/types';
 import type { AutomaticityInfo } from '@/lib/automaticity';
 import type { KeystoneInfo } from '@/lib/keystone-detection';
 import type { DifficultySuggestion } from '@/lib/adaptive-difficulty';
+
+// ── Edit mode types ──
+
+export interface HabitUpdateData {
+  name?: string;
+  category?: HabitCategory;
+  xpReward?: number;
+  frequency?: { type: HabitFrequencyType; daysOfWeek?: number[]; timesPerWeek?: number };
+  timeOfDay?: TimeOfDay;
+  location?: string;
+  trigger?: string;
+  rewardBundle?: string;
+  clearLocation?: boolean;
+  clearTrigger?: boolean;
+  clearRewardBundle?: boolean;
+}
+
+const CATEGORY_OPTIONS: { value: HabitCategory; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+  { value: 'health', label: 'Health', icon: 'heart' },
+  { value: 'career', label: 'Career', icon: 'briefcase' },
+  { value: 'mind', label: 'Mind', icon: 'bulb' },
+  { value: 'life', label: 'Life', icon: 'leaf' },
+];
+
+const FREQUENCY_OPTIONS: { value: HabitFrequencyType; label: string }[] = [
+  { value: 'daily', label: 'Daily' },
+  { value: 'weekdays', label: 'Weekdays' },
+  { value: 'weekends', label: 'Weekends' },
+  { value: 'custom', label: 'Custom' },
+  { value: 'timesPerWeek', label: 'X/Week' },
+];
+
+const TIME_OPTIONS: { value: TimeOfDay; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+  { value: 'morning', label: 'Morning', icon: 'sunny-outline' },
+  { value: 'afternoon', label: 'Afternoon', icon: 'partly-sunny-outline' },
+  { value: 'evening', label: 'Evening', icon: 'moon-outline' },
+  { value: 'anytime', label: 'Anytime', icon: 'time-outline' },
+];
+
+const XP_OPTIONS = [5, 10, 15, 20, 25, 30, 40, 50];
 
 interface HabitDetailSheetProps {
   habit: Habit | null;
@@ -23,6 +63,7 @@ interface HabitDetailSheetProps {
   onToggle: (id: string) => void;
   onDelete: (id: string) => void;
   onAddNote: (habitId: string, text: string) => void;
+  onUpdate?: (habitId: string, data: HabitUpdateData) => void;
   automaticityInfo?: AutomaticityInfo | null;
   streakFreezes?: number;
   onHibernate?: (id: string) => void;
@@ -40,6 +81,7 @@ export function HabitDetailSheet({
   onToggle,
   onDelete,
   onAddNote,
+  onUpdate,
   automaticityInfo,
   streakFreezes,
   onHibernate,
@@ -55,12 +97,121 @@ export function HabitDetailSheet({
   const [noteText, setNoteText] = useState('');
   const [showNoteInput, setShowNoteInput] = useState(false);
 
+  // ── Edit mode state ──
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editCategory, setEditCategory] = useState<HabitCategory>('health');
+  const [editXp, setEditXp] = useState(10);
+  const [editFreqType, setEditFreqType] = useState<HabitFrequencyType>('daily');
+  const [editDaysOfWeek, setEditDaysOfWeek] = useState<number[]>([]);
+  const [editTimesPerWeek, setEditTimesPerWeek] = useState(3);
+  const [editTimeOfDay, setEditTimeOfDay] = useState<TimeOfDay>('anytime');
+  const [editLocation, setEditLocation] = useState('');
+  const [editTrigger, setEditTrigger] = useState('');
+  const [editRewardBundle, setEditRewardBundle] = useState('');
+
+  // Reset edit state when habit changes
+  useEffect(() => {
+    if (habit) {
+      setEditName(habit.name);
+      setEditCategory(habit.category);
+      setEditXp(habit.xpReward);
+      setEditFreqType(habit.frequency?.type ?? 'daily');
+      setEditDaysOfWeek(habit.frequency?.daysOfWeek ?? []);
+      setEditTimesPerWeek(habit.frequency?.timesPerWeek ?? 3);
+      setEditTimeOfDay(habit.timeOfDay ?? 'anytime');
+      setEditLocation(habit.location ?? '');
+      setEditTrigger(habit.trigger ?? '');
+      setEditRewardBundle(habit.rewardBundle ?? '');
+      setIsEditing(false);
+    }
+  }, [habit]);
+
   if (!habit) return null;
 
   const categoryColor = categoryColors[habit.category] || colors.textSecondary;
   const freqLabel = habit.frequency?.type
     ? FREQUENCY_LABELS[habit.frequency.type]
     : 'Every day';
+
+  const handleStartEdit = () => {
+    setIsEditing(true);
+  };
+
+  const handleCancelEdit = () => {
+    if (habit) {
+      setEditName(habit.name);
+      setEditCategory(habit.category);
+      setEditXp(habit.xpReward);
+      setEditFreqType(habit.frequency?.type ?? 'daily');
+      setEditDaysOfWeek(habit.frequency?.daysOfWeek ?? []);
+      setEditTimesPerWeek(habit.frequency?.timesPerWeek ?? 3);
+      setEditTimeOfDay(habit.timeOfDay ?? 'anytime');
+      setEditLocation(habit.location ?? '');
+      setEditTrigger(habit.trigger ?? '');
+      setEditRewardBundle(habit.rewardBundle ?? '');
+    }
+    setIsEditing(false);
+  };
+
+  const handleSaveEdit = () => {
+    if (!onUpdate || !editName.trim()) return;
+    const data: HabitUpdateData = {};
+
+    if (editName.trim() !== habit.name) data.name = editName.trim();
+    if (editCategory !== habit.category) data.category = editCategory;
+    if (editXp !== habit.xpReward) data.xpReward = editXp;
+    if (editTimeOfDay !== (habit.timeOfDay ?? 'anytime')) data.timeOfDay = editTimeOfDay;
+
+    // Frequency
+    const oldFreqType = habit.frequency?.type ?? 'daily';
+    if (editFreqType !== oldFreqType ||
+        JSON.stringify(editDaysOfWeek) !== JSON.stringify(habit.frequency?.daysOfWeek ?? []) ||
+        editTimesPerWeek !== (habit.frequency?.timesPerWeek ?? 3)) {
+      const freq: HabitUpdateData['frequency'] = { type: editFreqType };
+      if (editFreqType === 'custom') freq.daysOfWeek = editDaysOfWeek;
+      if (editFreqType === 'timesPerWeek') freq.timesPerWeek = editTimesPerWeek;
+      data.frequency = freq;
+    }
+
+    // Location
+    if (editLocation.trim() !== (habit.location ?? '')) {
+      if (editLocation.trim()) {
+        data.location = editLocation.trim();
+      } else {
+        data.clearLocation = true;
+      }
+    }
+
+    // Trigger
+    if (editTrigger.trim() !== (habit.trigger ?? '')) {
+      if (editTrigger.trim()) {
+        data.trigger = editTrigger.trim();
+      } else {
+        data.clearTrigger = true;
+      }
+    }
+
+    // Reward bundle
+    if (editRewardBundle.trim() !== (habit.rewardBundle ?? '')) {
+      if (editRewardBundle.trim()) {
+        data.rewardBundle = editRewardBundle.trim();
+      } else {
+        data.clearRewardBundle = true;
+      }
+    }
+
+    if (Object.keys(data).length > 0) {
+      onUpdate(habit.id, data);
+    }
+    setIsEditing(false);
+  };
+
+  const toggleDayOfWeek = (day: number) => {
+    setEditDaysOfWeek((prev) =>
+      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day].sort()
+    );
+  };
 
   const handleDelete = () => {
     Alert.alert(
@@ -88,8 +239,230 @@ export function HabitDetailSheet({
   };
 
   return (
-    <BottomSheet visible={!!habit} onClose={onClose} title={habit.name}>
+    <BottomSheet visible={!!habit} onClose={() => { setIsEditing(false); onClose(); }} title={isEditing ? 'Edit Habit' : habit.name}>
       <View style={styles.container}>
+        {/* Edit Mode */}
+        {isEditing ? (
+          <View style={styles.editContainer}>
+            {/* Name */}
+            <View style={styles.editSection}>
+              <Text style={styles.editLabel}>Name</Text>
+              <TextInput
+                style={styles.editInput}
+                value={editName}
+                onChangeText={setEditName}
+                placeholder="Habit name"
+                placeholderTextColor={colors.textMuted}
+              />
+            </View>
+
+            {/* Category */}
+            <View style={styles.editSection}>
+              <Text style={styles.editLabel}>Category</Text>
+              <View style={styles.editChipRow}>
+                {CATEGORY_OPTIONS.map((opt) => (
+                  <Pressable
+                    key={opt.value}
+                    onPress={() => setEditCategory(opt.value)}
+                    style={[
+                      styles.editChip,
+                      editCategory === opt.value && { backgroundColor: categoryColors[opt.value] + '25', borderColor: categoryColors[opt.value] },
+                    ]}
+                  >
+                    <Ionicons
+                      name={opt.icon}
+                      size={14}
+                      color={editCategory === opt.value ? categoryColors[opt.value] : colors.textMuted}
+                    />
+                    <Text style={[
+                      styles.editChipText,
+                      editCategory === opt.value && { color: categoryColors[opt.value] },
+                    ]}>
+                      {opt.label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+
+            {/* XP Reward */}
+            <View style={styles.editSection}>
+              <Text style={styles.editLabel}>XP Reward</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View style={styles.editChipRow}>
+                  {XP_OPTIONS.map((xp) => (
+                    <Pressable
+                      key={xp}
+                      onPress={() => setEditXp(xp)}
+                      style={[
+                        styles.editChip,
+                        editXp === xp && { backgroundColor: colors.primaryBg, borderColor: colors.primary },
+                      ]}
+                    >
+                      <Text style={[
+                        styles.editChipText,
+                        editXp === xp && { color: colors.primary },
+                      ]}>
+                        {xp} XP
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </ScrollView>
+            </View>
+
+            {/* Frequency */}
+            <View style={styles.editSection}>
+              <Text style={styles.editLabel}>Frequency</Text>
+              <View style={styles.editChipRow}>
+                {FREQUENCY_OPTIONS.map((opt) => (
+                  <Pressable
+                    key={opt.value}
+                    onPress={() => setEditFreqType(opt.value)}
+                    style={[
+                      styles.editChip,
+                      editFreqType === opt.value && { backgroundColor: colors.primaryBg, borderColor: colors.primary },
+                    ]}
+                  >
+                    <Text style={[
+                      styles.editChipText,
+                      editFreqType === opt.value && { color: colors.primary },
+                    ]}>
+                      {opt.label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+
+              {/* Custom days picker */}
+              {editFreqType === 'custom' ? (
+                <View style={styles.editDaysRow}>
+                  {DAYS_OF_WEEK.map((dayLabel, idx) => (
+                    <Pressable
+                      key={idx}
+                      onPress={() => toggleDayOfWeek(idx)}
+                      style={[
+                        styles.editDayChip,
+                        editDaysOfWeek.includes(idx) && { backgroundColor: colors.primary, borderColor: colors.primary },
+                      ]}
+                    >
+                      <Text style={[
+                        styles.editDayText,
+                        editDaysOfWeek.includes(idx) && { color: '#fff' },
+                      ]}>
+                        {dayLabel.slice(0, 2)}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              ) : null}
+
+              {/* Times per week picker */}
+              {editFreqType === 'timesPerWeek' ? (
+                <View style={styles.editTimesRow}>
+                  {[1, 2, 3, 4, 5, 6].map((n) => (
+                    <Pressable
+                      key={n}
+                      onPress={() => setEditTimesPerWeek(n)}
+                      style={[
+                        styles.editDayChip,
+                        editTimesPerWeek === n && { backgroundColor: colors.primary, borderColor: colors.primary },
+                      ]}
+                    >
+                      <Text style={[
+                        styles.editDayText,
+                        editTimesPerWeek === n && { color: '#fff' },
+                      ]}>
+                        {n}x
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              ) : null}
+            </View>
+
+            {/* Time of Day */}
+            <View style={styles.editSection}>
+              <Text style={styles.editLabel}>Time of Day</Text>
+              <View style={styles.editChipRow}>
+                {TIME_OPTIONS.map((opt) => (
+                  <Pressable
+                    key={opt.value}
+                    onPress={() => setEditTimeOfDay(opt.value)}
+                    style={[
+                      styles.editChip,
+                      editTimeOfDay === opt.value && { backgroundColor: colors.primaryBg, borderColor: colors.primary },
+                    ]}
+                  >
+                    <Ionicons
+                      name={opt.icon}
+                      size={14}
+                      color={editTimeOfDay === opt.value ? colors.primary : colors.textMuted}
+                    />
+                    <Text style={[
+                      styles.editChipText,
+                      editTimeOfDay === opt.value && { color: colors.primary },
+                    ]}>
+                      {opt.label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+
+            {/* Location */}
+            <View style={styles.editSection}>
+              <Text style={styles.editLabel}>Location (optional)</Text>
+              <TextInput
+                style={styles.editInput}
+                value={editLocation}
+                onChangeText={setEditLocation}
+                placeholder="e.g. Home gym, Office"
+                placeholderTextColor={colors.textMuted}
+              />
+            </View>
+
+            {/* Trigger */}
+            <View style={styles.editSection}>
+              <Text style={styles.editLabel}>Trigger (optional)</Text>
+              <TextInput
+                style={styles.editInput}
+                value={editTrigger}
+                onChangeText={setEditTrigger}
+                placeholder="e.g. After morning coffee"
+                placeholderTextColor={colors.textMuted}
+              />
+            </View>
+
+            {/* Reward Bundle */}
+            <View style={styles.editSection}>
+              <Text style={styles.editLabel}>Reward Bundle (optional)</Text>
+              <TextInput
+                style={styles.editInput}
+                value={editRewardBundle}
+                onChangeText={setEditRewardBundle}
+                placeholder="e.g. Watch a show after workout"
+                placeholderTextColor={colors.textMuted}
+              />
+            </View>
+
+            {/* Save / Cancel */}
+            <View style={styles.editActions}>
+              <Pressable onPress={handleCancelEdit} style={styles.editCancelBtn}>
+                <Text style={styles.editCancelText}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                onPress={handleSaveEdit}
+                style={[styles.editSaveBtn, !editName.trim() && { opacity: 0.5 }]}
+                disabled={!editName.trim()}
+              >
+                <Ionicons name="checkmark" size={16} color="#fff" />
+                <Text style={styles.editSaveText}>Save Changes</Text>
+              </Pressable>
+            </View>
+          </View>
+        ) : (
+        <>
         {/* Meta */}
         <View style={styles.metaRow}>
           <BadgePill
@@ -103,6 +476,12 @@ export function HabitDetailSheet({
               <Ionicons name="sparkles" size={12} color={colors.secondary} />
               <Text style={styles.aiBadgeText}>AI-Generated</Text>
             </View>
+          ) : null}
+          {onUpdate ? (
+            <Pressable onPress={handleStartEdit} style={styles.editBadge} hitSlop={8}>
+              <Ionicons name="pencil" size={12} color={colors.primary} />
+              <Text style={styles.editBadgeText}>Edit</Text>
+            </Pressable>
           ) : null}
         </View>
 
@@ -405,6 +784,8 @@ export function HabitDetailSheet({
             </Pressable>
           </View>
         </View>
+        </>
+        )}
       </View>
     </BottomSheet>
   );
@@ -802,5 +1183,130 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: FontSize.xs,
     fontFamily: FontFamily.medium,
     color: colors.textMuted,
+  },
+
+  // Edit badge
+  editBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: colors.primaryBg,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 3,
+    borderRadius: Radius.full,
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  editBadgeText: {
+    fontSize: FontSize.xs,
+    fontFamily: FontFamily.semibold,
+    color: colors.primary,
+  },
+
+  // Edit mode
+  editContainer: {
+    gap: Spacing.lg,
+  },
+  editSection: {
+    gap: Spacing.xs,
+  },
+  editLabel: {
+    fontSize: FontSize.xs,
+    fontFamily: FontFamily.bold,
+    color: colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  editInput: {
+    backgroundColor: colors.surfaceLight,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm + 2,
+    fontSize: FontSize.sm,
+    fontFamily: FontFamily.medium,
+    color: colors.foreground,
+  },
+  editChipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.xs,
+  },
+  editChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: Spacing.sm + 2,
+    paddingVertical: Spacing.xs + 2,
+    borderRadius: Radius.full,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceLight,
+  },
+  editChipText: {
+    fontSize: FontSize.xs,
+    fontFamily: FontFamily.semibold,
+    color: colors.textMuted,
+  },
+  editDaysRow: {
+    flexDirection: 'row',
+    gap: Spacing.xs,
+    marginTop: Spacing.xs,
+  },
+  editDayChip: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceLight,
+  },
+  editDayText: {
+    fontSize: FontSize.xs,
+    fontFamily: FontFamily.semibold,
+    color: colors.textMuted,
+  },
+  editTimesRow: {
+    flexDirection: 'row',
+    gap: Spacing.xs,
+    marginTop: Spacing.xs,
+  },
+  editActions: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    marginTop: Spacing.sm,
+  },
+  editCancelBtn: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing.sm + 2,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceLight,
+  },
+  editCancelText: {
+    fontSize: FontSize.sm,
+    fontFamily: FontFamily.semibold,
+    color: colors.textSecondary,
+  },
+  editSaveBtn: {
+    flex: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.xs,
+    paddingVertical: Spacing.sm + 2,
+    borderRadius: Radius.md,
+    backgroundColor: colors.primary,
+  },
+  editSaveText: {
+    fontSize: FontSize.sm,
+    fontFamily: FontFamily.semibold,
+    color: '#fff',
   },
 });

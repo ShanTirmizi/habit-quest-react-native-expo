@@ -313,8 +313,6 @@ export const addNote = mutation({
     const today = new Date().toISOString().split('T')[0];
     const existingNotes = habit.notes ?? [];
 
-    // Check if there's already a note for today
-    const todayNoteIndex = existingNotes.findIndex((n) => n.date === today);
     const newNote = {
       id: `note-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       date: today,
@@ -322,13 +320,8 @@ export const addNote = mutation({
       createdAt: new Date().toISOString(),
     };
 
-    let updatedNotes;
-    if (todayNoteIndex >= 0) {
-      updatedNotes = [...existingNotes];
-      updatedNotes[todayNoteIndex] = newNote;
-    } else {
-      updatedNotes = [...existingNotes, newNote];
-    }
+    // Always append — users can add multiple notes per day
+    const updatedNotes = [...existingNotes, newNote];
 
     await ctx.db.patch(args.habitId, { notes: updatedNotes });
   },

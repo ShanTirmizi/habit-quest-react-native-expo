@@ -9,6 +9,7 @@ import {
   Keyboard,
   Platform,
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import Animated, {
@@ -441,6 +442,13 @@ export function CompanionWidget({
     return [...backend, ...localMessages];
   })();
 
+  // ---- Copy message handler (long-press to copy full message) ----
+  // NOTE: This hook MUST be before any early returns to satisfy React's rules of hooks.
+  const handleCopyMessage = useCallback(async (content: string) => {
+    await Clipboard.setStringAsync(content);
+    showToast('Message copied', undefined, 'xp');
+  }, [showToast]);
+
   // No companion yet -- show summon CTA in the sheet
   if (companion === null) {
     return (
@@ -593,18 +601,28 @@ export function CompanionWidget({
     const hasToolCalls = !isUser && item.toolCalls && item.toolCalls.length > 0;
     return (
       <View>
-        <View style={[styles.messageBubbleRow, isUser ? styles.messageBubbleRowUser : styles.messageBubbleRowAssistant]}>
+        <Pressable
+          onLongPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            handleCopyMessage(item.content);
+          }}
+          delayLongPress={400}
+          style={[styles.messageBubbleRow, isUser ? styles.messageBubbleRowUser : styles.messageBubbleRowAssistant]}
+        >
           {!isUser && (
             <View style={[styles.chatAvatar, { borderColor: speciesColor }]}>
               <Ionicons name={speciesIcon} size={14} color={speciesColor} />
             </View>
           )}
           <View style={[styles.messageBubble, isUser ? styles.messageBubbleUser : styles.messageBubbleAssistant]}>
-            <Text style={[styles.messageText, isUser ? styles.messageTextUser : styles.messageTextAssistant]}>
+            <Text
+              selectable
+              style={[styles.messageText, isUser ? styles.messageTextUser : styles.messageTextAssistant]}
+            >
               {item.content}
             </Text>
           </View>
-        </View>
+        </Pressable>
         {/* Tool call badges — below the message row */}
         {hasToolCalls && (
           <View style={styles.toolBadgeContainer}>
