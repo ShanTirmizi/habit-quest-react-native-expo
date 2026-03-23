@@ -1,20 +1,8 @@
 import { v } from 'convex/values';
 import { mutation, query, internalMutation, MutationCtx, QueryCtx } from './_generated/server';
 import { Id } from './_generated/dataModel';
-import { getAuthUserId } from '@convex-dev/auth/server';
 import { internal } from './_generated/api';
-
-// Helper to verify authenticated user matches requested user
-async function verifyAuth(ctx: MutationCtx | QueryCtx, requestedUserId: string) {
-  const authUserId = await getAuthUserId(ctx);
-  if (!authUserId) {
-    throw new Error('Unauthorized: Not authenticated');
-  }
-  if (authUserId !== requestedUserId) {
-    throw new Error("Unauthorized: Cannot access other user's data");
-  }
-  return authUserId;
-}
+import { verifyAuth } from './lib/auth';
 
 // ============================================
 // RATE LIMITING
@@ -97,6 +85,8 @@ export const getRecentMessages = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    await verifyAuth(ctx, args.userId);
+
     const limit = args.limit ?? 50;
 
     const messages = await ctx.db
@@ -113,16 +103,20 @@ export const getRecentMessages = query({
 // Get messages from a specific session
 export const getSessionMessages = query({
   args: {
+    userId: v.id('users'),
     sessionId: v.string(),
   },
   handler: async (ctx, args) => {
+    await verifyAuth(ctx, args.userId);
+
     const messages = await ctx.db
       .query('chatMessages')
       .withIndex('by_session', (q) => q.eq('sessionId', args.sessionId))
       .order('asc')
       .collect();
 
-    return messages;
+    // Ensure all messages in this session belong to the authenticated user
+    return messages.filter((m) => m.userId === args.userId);
   },
 });
 
@@ -192,6 +186,8 @@ export const getMemories = query({
     userId: v.id('users'),
   },
   handler: async (ctx, args) => {
+    await verifyAuth(ctx, args.userId);
+
     return await ctx.db
       .query('aiMemories')
       .withIndex('by_user', (q) => q.eq('userId', args.userId))
@@ -214,6 +210,8 @@ export const getMemoriesByCategory = query({
     ),
   },
   handler: async (ctx, args) => {
+    await verifyAuth(ctx, args.userId);
+
     return await ctx.db
       .query('aiMemories')
       .withIndex('by_category', (q) => q.eq('userId', args.userId).eq('category', args.category))
@@ -393,6 +391,8 @@ export const getChatSummary = query({
     userId: v.id('users'),
   },
   handler: async (ctx, args) => {
+    await verifyAuth(ctx, args.userId);
+
     // Get all messages to avoid a second query just for counting
     // We need all messages anyway for the count, and we take the last 20 from there
     const allMessages = await ctx.db

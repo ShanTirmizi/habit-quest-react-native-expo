@@ -1,26 +1,14 @@
 import { v } from 'convex/values';
 import { mutation, query, MutationCtx, QueryCtx } from './_generated/server';
 import { Id, Doc } from './_generated/dataModel';
-import { getAuthUserId } from '@convex-dev/auth/server';
-
-// Helper to verify authenticated user matches requested user
-async function verifyAuth(ctx: MutationCtx | QueryCtx, requestedUserId: string) {
-  const authUserId = await getAuthUserId(ctx);
-  if (!authUserId) {
-    throw new Error('Unauthorized: Not authenticated');
-  }
-  if (authUserId !== requestedUserId) {
-    throw new Error("Unauthorized: Cannot access other user's data");
-  }
-  return authUserId;
-}
+import { verifyAuth } from './lib/auth';
 
 // Get all habits for a user with their completions
 export const getHabits = query({
   args: { userId: v.id('users') },
   handler: async (ctx, args) => {
-    // Note: Queries can optionally verify auth for sensitive data
-    // For now, we trust the userId passed from authenticated context
+    await verifyAuth(ctx, args.userId);
+
     const habits = await ctx.db
       .query('habits')
       .withIndex('by_user', (q) => q.eq('userId', args.userId))
@@ -480,25 +468,7 @@ export const wakeHabit = mutation({
   },
 });
 
-// Use a streak freeze to protect a habit's streak
-export const useStreakFreeze = mutation({
-  args: {
-    userId: v.id('users'),
-  },
-  handler: async (ctx, args) => {
-    await verifyAuth(ctx, args.userId);
-    const progress = await ctx.db
-      .query('userProgress')
-      .withIndex('by_user', (q) => q.eq('userId', args.userId))
-      .first();
-    if (!progress) throw new Error('No progress found');
-    if (progress.streakFreezes <= 0) throw new Error('No streak freezes available');
-    await ctx.db.patch(progress._id, {
-      streakFreezes: progress.streakFreezes - 1,
-    });
-    return { success: true, remaining: progress.streakFreezes - 1 };
-  },
-});
+// Note: useStreakFreeze is in progress.ts (single source of truth)
 
 // Reorder habits (update sortOrder for a list of habit IDs)
 export const reorderHabits = mutation({
@@ -560,8 +530,17 @@ export const addMicroReflection = mutation({
 export const getReflections = query({
   args: {
     habitId: v.id('habits'),
+    userId: v.id('users'),
   },
   handler: async (ctx, args) => {
+    await verifyAuth(ctx, args.userId);
+
+    // Verify the habit belongs to this user
+    const habit = await ctx.db.get(args.habitId);
+    if (!habit || habit.userId !== args.userId) {
+      throw new Error('Habit not found or unauthorized');
+    }
+
     return await ctx.db
       .query('microReflections')
       .withIndex('by_habit', (q) => q.eq('habitId', args.habitId))

@@ -1,18 +1,6 @@
 import { v } from 'convex/values';
-import { mutation, query, MutationCtx, QueryCtx } from './_generated/server';
-import { getAuthUserId } from '@convex-dev/auth/server';
-
-// Helper to verify authenticated user matches requested user
-async function verifyAuth(ctx: MutationCtx | QueryCtx, requestedUserId: string) {
-  const authUserId = await getAuthUserId(ctx);
-  if (!authUserId) {
-    throw new Error('Unauthorized: Not authenticated');
-  }
-  if (authUserId !== requestedUserId) {
-    throw new Error("Unauthorized: Cannot access other user's data");
-  }
-  return authUserId;
-}
+import { mutation, query } from './_generated/server';
+import { verifyAuth } from './lib/auth';
 
 // Species based on dominant habit category
 export type CompanionSpecies = 'treant' | 'phoenix' | 'owl' | 'keeper';
@@ -83,6 +71,8 @@ export const getOrCreateCompanion = mutation({
 export const getCompanion = query({
   args: { userId: v.id('users') },
   handler: async (ctx, args) => {
+    await verifyAuth(ctx, args.userId);
+
     return await ctx.db
       .query('companions')
       .withIndex('by_user', (q) => q.eq('userId', args.userId))
@@ -346,6 +336,8 @@ export const addXp = mutation({
 export const getUnclaimedGiftsCount = query({
   args: { userId: v.id('users') },
   handler: async (ctx, args) => {
+    await verifyAuth(ctx, args.userId);
+
     const companion = await ctx.db
       .query('companions')
       .withIndex('by_user', (q) => q.eq('userId', args.userId))

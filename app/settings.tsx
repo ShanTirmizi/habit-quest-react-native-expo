@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -44,7 +44,8 @@ export default function SettingsScreen() {
   // Privacy controls
   const updateAiProcessing = useMutation(api.users.updateAiProcessing);
   const deleteAiMemories = useMutation(api.users.deleteAllAiMemories);
-  const exportData = useQuery(api.users.exportUserData);
+  const [exportRequested, setExportRequested] = useState(false);
+  const exportData = useQuery(api.users.exportUserData, exportRequested ? {} : "skip");
   const aiEnabled = user?.aiProcessingEnabled !== false; // defaults to true
 
   // Account deletion
@@ -236,8 +237,13 @@ export default function SettingsScreen() {
           <Pressable
             style={styles.row}
             onPress={async () => {
+              if (!exportRequested) {
+                setExportRequested(true);
+                Alert.alert('Preparing', 'Your data export is being prepared. Press the button again in a moment.');
+                return;
+              }
               if (!exportData) {
-                Alert.alert('Loading', 'Your data is still loading. Please try again.');
+                Alert.alert('Loading', 'Your data is still loading. Please try again in a moment.');
                 return;
               }
               try {

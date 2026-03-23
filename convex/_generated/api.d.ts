@@ -20,6 +20,8 @@ import type * as goals from "../goals.js";
 import type * as habits from "../habits.js";
 import type * as http from "../http.js";
 import type * as journal from "../journal.js";
+import type * as lib_auth from "../lib/auth.js";
+import type * as lib_constants from "../lib/constants.js";
 import type * as medicines from "../medicines.js";
 import type * as memoryExtraction from "../memoryExtraction.js";
 import type * as memoryMaintenance from "../memoryMaintenance.js";
@@ -50,6 +52,8 @@ declare const fullApi: ApiFromModules<{
   habits: typeof habits;
   http: typeof http;
   journal: typeof journal;
+  "lib/auth": typeof lib_auth;
+  "lib/constants": typeof lib_constants;
   medicines: typeof medicines;
   memoryExtraction: typeof memoryExtraction;
   memoryMaintenance: typeof memoryMaintenance;

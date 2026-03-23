@@ -1,20 +1,8 @@
 import { v } from 'convex/values';
-import { mutation, query, MutationCtx, QueryCtx } from './_generated/server';
+import { mutation, query, MutationCtx } from './_generated/server';
 import { Id } from './_generated/dataModel';
-import { getAuthUserId } from '@convex-dev/auth/server';
 import { internal } from './_generated/api';
-
-// Helper to verify authenticated user matches requested user
-async function verifyAuth(ctx: MutationCtx | QueryCtx, requestedUserId: string) {
-  const authUserId = await getAuthUserId(ctx);
-  if (!authUserId) {
-    throw new Error('Unauthorized: Not authenticated');
-  }
-  if (authUserId !== requestedUserId) {
-    throw new Error("Unauthorized: Cannot access other user's data");
-  }
-  return authUserId;
-}
+import { verifyAuth } from './lib/auth';
 
 const JOURNAL_XP = {
   BASE: 20,
@@ -84,6 +72,8 @@ function calculateJournalXp(data: {
 export const getEntries = query({
   args: { userId: v.id('users') },
   handler: async (ctx, args) => {
+    await verifyAuth(ctx, args.userId);
+
     return await ctx.db
       .query('journalEntries')
       .withIndex('by_user', (q) => q.eq('userId', args.userId))
@@ -100,6 +90,8 @@ export const getEntriesPaginated = query({
     cursor: v.optional(v.number()), // _creationTime of last item
   },
   handler: async (ctx, args) => {
+    await verifyAuth(ctx, args.userId);
+
     const limit = args.limit ?? 10;
 
     let query = ctx.db
@@ -346,6 +338,8 @@ export const deleteEntry = mutation({
 export const getStats = query({
   args: { userId: v.id('users') },
   handler: async (ctx, args) => {
+    await verifyAuth(ctx, args.userId);
+
     const entries = await ctx.db
       .query('journalEntries')
       .withIndex('by_user', (q) => q.eq('userId', args.userId))

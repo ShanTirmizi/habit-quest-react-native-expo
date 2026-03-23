@@ -1,31 +1,8 @@
 import { v } from 'convex/values';
 import { mutation, query, MutationCtx, QueryCtx } from './_generated/server';
 import { Id } from './_generated/dataModel';
-import { getAuthUserId } from '@convex-dev/auth/server';
-
-// Helper to verify authenticated user matches requested user
-async function verifyAuth(ctx: MutationCtx | QueryCtx, requestedUserId: string) {
-  const authUserId = await getAuthUserId(ctx);
-  if (!authUserId) {
-    throw new Error('Unauthorized: Not authenticated');
-  }
-  if (authUserId !== requestedUserId) {
-    throw new Error("Unauthorized: Cannot access other user's data");
-  }
-  return authUserId;
-}
-
-// Constants
-const HP_CONFIG = {
-  DEFAULT_HP: 100,
-  MAX_HP: 100,
-  MISSED_HABIT_DAMAGE: 10,
-  FAINT_THRESHOLD: 0,
-  FAINT_LEVEL_PENALTY: 1,
-  FAINT_HP_RESET: 50,
-  COMPLETION_HEAL: 5,
-  PERFECT_DAY_HEAL: 20,
-};
+import { verifyAuth } from './lib/auth';
+import { HP_CONFIG, UNDERWORLD_CONFIG, MEDICINE_CONFIG, computeLevel } from './lib/constants';
 
 // Helper to get or create user progress
 async function getOrCreateProgress(ctx: MutationCtx, userId: Id<'users'>) {
@@ -55,6 +32,8 @@ async function getOrCreateProgress(ctx: MutationCtx, userId: Id<'users'>) {
 export const getProgress = query({
   args: { userId: v.id('users') },
   handler: async (ctx, args) => {
+    await verifyAuth(ctx, args.userId);
+
     return await ctx.db
       .query('userProgress')
       .withIndex('by_user', (q) => q.eq('userId', args.userId))
@@ -75,7 +54,7 @@ export const addXp = mutation({
     if (!progress) throw new Error('Failed to create progress');
 
     const newTotalXp = progress.totalXp + args.amount;
-    const newLevel = Math.floor(Math.sqrt(newTotalXp / 100));
+    const newLevel = computeLevel(newTotalXp);
     const leveledUp = newLevel > progress.level;
 
     await ctx.db.patch(progress._id, {
@@ -212,14 +191,17 @@ export const deductHp = mutation({
 
 // Check missed habits on login
 export const checkMissedHabitsOnLogin = mutation({
-  args: { userId: v.id('users') },
+  args: {
+    userId: v.id('users'),
+    clientDate: v.optional(v.string()), // YYYY-MM-DD from client timezone
+  },
   handler: async (ctx, args) => {
     await verifyAuth(ctx, args.userId);
 
     const progress = await getOrCreateProgress(ctx, args.userId);
     if (!progress) throw new Error('Failed to create progress');
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = args.clientDate ?? new Date().toISOString().split('T')[0];
     const lastLogin = progress.lastLoginDate;
 
     // Auto-end expired holiday mode
@@ -244,10 +226,10 @@ export const checkMissedHabitsOnLogin = mutation({
       return { missedCount: 0, hpLost: 0, fainted: false, newHp: progress.currentHp };
     }
 
-    // Calculate yesterday
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toISOString().split('T')[0];
+    // Calculate yesterday based on client's "today"
+    const yesterdayDate = new Date(today + 'T12:00:00Z'); // noon to avoid DST edge cases
+    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+    const yesterdayStr = yesterdayDate.toISOString().split('T')[0];
 
     // Only check if last login was yesterday
     if (lastLogin !== yesterdayStr) {
@@ -440,7 +422,7 @@ export const defeatWeeklyBoss = mutation({
 
     // Mark boss as defeated and grant XP
     const newTotalXp = progress.totalXp + args.xpReward;
-    const newLevel = Math.floor(Math.sqrt(newTotalXp / 100));
+    const newLevel = computeLevel(newTotalXp);
     const leveledUp = newLevel > progress.level;
 
     await ctx.db.patch(progress._id, {
@@ -462,6 +444,8 @@ export const defeatWeeklyBoss = mutation({
 export const getWeeklyBossProgress = query({
   args: { userId: v.id('users') },
   handler: async (ctx, args) => {
+    await verifyAuth(ctx, args.userId);
+
     const progress = await ctx.db
       .query('userProgress')
       .withIndex('by_user', (q) => q.eq('userId', args.userId))
@@ -474,12 +458,6 @@ export const getWeeklyBossProgress = query({
 // ============================================
 // Underworld System (Failure Recovery)
 // ============================================
-
-const UNDERWORLD_CONFIG = {
-  DAYS_TO_RESURRECT: 3,
-  RESURRECTION_HP: 75,
-  RESURRECTION_XP_BONUS: 100,
-};
 
 // Enter the underworld (called when HP hits 0)
 export const enterUnderworld = mutation({
@@ -579,7 +557,7 @@ export const resurrect = mutation({
     // Calculate XP reward
     const xpBonus = UNDERWORLD_CONFIG.RESURRECTION_XP_BONUS;
     const newTotalXp = progress.totalXp + xpBonus;
-    const newLevel = Math.floor(Math.sqrt(newTotalXp / 100));
+    const newLevel = computeLevel(newTotalXp);
 
     await ctx.db.patch(progress._id, {
       inUnderworld: false,
@@ -606,6 +584,8 @@ export const resurrect = mutation({
 export const getUnderworldStatus = query({
   args: { userId: v.id('users') },
   handler: async (ctx, args) => {
+    await verifyAuth(ctx, args.userId);
+
     const progress = await ctx.db
       .query('userProgress')
       .withIndex('by_user', (q) => q.eq('userId', args.userId))
@@ -679,6 +659,8 @@ export const endHoliday = mutation({
 export const getHolidayStatus = query({
   args: { userId: v.id('users') },
   handler: async (ctx, args) => {
+    await verifyAuth(ctx, args.userId);
+
     const progress = await ctx.db
       .query('userProgress')
       .withIndex('by_user', (q) => q.eq('userId', args.userId))
@@ -776,15 +758,6 @@ export const updatePatternCheckDate = mutation({
 // Medicine Gamification System
 // ============================================
 
-const MEDICINE_CONFIG = {
-  BASE_XP: 5, // Per dose
-  ON_TIME_BONUS_XP: 2, // Within 30 min of scheduled
-  GROUP_BONUS_XP: 3, // Using "Take All"
-  STREAK_BONUS_MAX: 5, // +1 per streak day, capped at 5
-  HP_HEAL: 3, // Per dose
-  PERFECT_DAY_HP: 10, // All meds taken bonus
-};
-
 // Add XP and HP from medicine completion
 export const addMedicineReward = mutation({
   args: {
@@ -804,7 +777,7 @@ export const addMedicineReward = mutation({
 
     // Update XP
     const newTotalXp = progress.totalXp + args.xpAmount;
-    const newLevel = Math.floor(Math.sqrt(newTotalXp / 100));
+    const newLevel = computeLevel(newTotalXp);
     const leveledUp = newLevel > progress.level;
 
     // Update HP (cap at max)
@@ -964,6 +937,8 @@ export const checkMedicineAchievements = mutation({
 export const getMedicineStats = query({
   args: { userId: v.id('users') },
   handler: async (ctx, args) => {
+    await verifyAuth(ctx, args.userId);
+
     const progress = await ctx.db
       .query('userProgress')
       .withIndex('by_user', (q) => q.eq('userId', args.userId))

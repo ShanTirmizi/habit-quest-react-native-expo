@@ -24,9 +24,27 @@ HabitQuest is a gamified habit tracking app built with React Native (Expo) and C
 
 - Deploy with `npx convex deploy --yes` (non-interactive mode).
 - Schema is defined in `convex/schema.ts` using Convex validators (`v.string()`, `v.number()`, etc.).
-- All mutations that access user data must call `verifyAuth(ctx, userId)` first.
 - Actions (server-side, `"use node"`) are used for external API calls (Claude, etc.).
 - Queries are read-only and cannot perform mutations. Use flag-based patterns when a query detects something that needs mutation (e.g., `expired: true` flag for holiday auto-end).
+
+### Authorization — CRITICAL
+
+**Every query AND mutation that takes a `userId` argument MUST call `await verifyAuth(ctx, args.userId)` as its first line.** No exceptions. This includes read-only queries — Convex queries are callable by any authenticated client, so a query without auth verification lets any logged-in user read any other user's data by guessing their ID.
+
+- Import from the shared module: `import { verifyAuth } from './lib/auth'`
+- For functions that derive userId from the session (no `userId` arg), use `requireAuth(ctx)` from the same module.
+- The ONLY exception is `internalMutation` / `internalQuery` functions that are called server-to-server (e.g., from scheduled jobs or actions) — these have no client-accessible endpoint.
+- When adding a new query or mutation, always ask: "Does this access user-specific data?" If yes, it needs auth.
+
+### No Duplicated Logic Across Files
+
+**Never copy-paste the same function, constant, or config object into multiple files.** If logic is needed in more than one file, it MUST live in a shared module under `convex/lib/` and be imported.
+
+Shared modules that already exist — always check these before creating anything new:
+- **`convex/lib/auth.ts`** — `verifyAuth(ctx, userId)` and `requireAuth(ctx)`. Never redefine auth helpers locally.
+- **`convex/lib/constants.ts`** — `MEDICINE_CONFIG`, `HP_CONFIG`, `UNDERWORLD_CONFIG`, `computeLevel(totalXp)`, `USER_DATA_TABLES`. Never hardcode these values in individual files.
+
+If you find yourself writing the same logic a second time, stop and extract it into `convex/lib/` first.
 
 ## File Structure
 

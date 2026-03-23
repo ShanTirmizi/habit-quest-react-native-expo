@@ -1,29 +1,8 @@
 import { v } from 'convex/values';
-import { mutation, query, MutationCtx, QueryCtx } from './_generated/server';
-import { getAuthUserId } from '@convex-dev/auth/server';
+import { mutation, query, MutationCtx } from './_generated/server';
 import { Id } from './_generated/dataModel';
-
-// Medicine gamification constants
-const MEDICINE_CONFIG = {
-  BASE_XP: 5,
-  ON_TIME_BONUS_XP: 2,
-  GROUP_BONUS_XP: 3,
-  STREAK_BONUS_MAX: 5,
-  HP_HEAL: 3,
-  PERFECT_DAY_HP: 10,
-};
-
-// Helper to verify authenticated user matches requested user
-async function verifyAuth(ctx: MutationCtx | QueryCtx, requestedUserId: string) {
-  const authUserId = await getAuthUserId(ctx);
-  if (!authUserId) {
-    throw new Error('Unauthorized: Not authenticated');
-  }
-  if (authUserId !== requestedUserId) {
-    throw new Error("Unauthorized: Cannot access other user's data");
-  }
-  return authUserId;
-}
+import { verifyAuth } from './lib/auth';
+import { MEDICINE_CONFIG, computeLevel } from './lib/constants';
 
 // Schedule time validator
 const scheduleTimeValidator = v.object({
@@ -36,6 +15,8 @@ const scheduleTimeValidator = v.object({
 export const getMedicines = query({
   args: { userId: v.id('users') },
   handler: async (ctx, args) => {
+    await verifyAuth(ctx, args.userId);
+
     const medicines = await ctx.db
       .query('medicines')
       .withIndex('by_user', (q) => q.eq('userId', args.userId))
@@ -49,6 +30,8 @@ export const getMedicines = query({
 export const getActiveMedicines = query({
   args: { userId: v.id('users') },
   handler: async (ctx, args) => {
+    await verifyAuth(ctx, args.userId);
+
     const medicines = await ctx.db
       .query('medicines')
       .withIndex('by_user_active', (q) => q.eq('userId', args.userId).eq('isActive', true))
@@ -62,6 +45,8 @@ export const getActiveMedicines = query({
 export const getTodaySchedule = query({
   args: { userId: v.id('users'), date: v.string() },
   handler: async (ctx, args) => {
+    await verifyAuth(ctx, args.userId);
+
     // Get active medicines
     const medicines = await ctx.db
       .query('medicines')
@@ -129,6 +114,8 @@ export const getMedicineHistory = query({
     endDate: v.string(),
   },
   handler: async (ctx, args) => {
+    await verifyAuth(ctx, args.userId);
+
     let completions;
 
     if (args.medicineId) {
@@ -384,7 +371,7 @@ export const markMedicineTaken = mutation({
 
       if (progress) {
         const newTotalXp = progress.totalXp + xpAwarded;
-        const newLevel = Math.floor(Math.sqrt(newTotalXp / 100));
+        const newLevel = computeLevel(newTotalXp);
         const newHp = Math.min((progress.currentHp ?? 100) + hpHealed, progress.maxHp ?? 100);
         const totalMedicinesTaken = (progress.totalMedicinesTaken ?? 0) + 1;
 
@@ -515,6 +502,8 @@ export const getMedicineAdherence = query({
     days: v.number(), // Number of days to look back
   },
   handler: async (ctx, args) => {
+    await verifyAuth(ctx, args.userId);
+
     const medicine = await ctx.db.get(args.medicineId);
     if (!medicine || medicine.userId !== args.userId) {
       return null;
@@ -555,6 +544,8 @@ export const getMedicineAdherence = query({
 export const getMedicineGroups = query({
   args: { userId: v.id('users') },
   handler: async (ctx, args) => {
+    await verifyAuth(ctx, args.userId);
+
     const groups = await ctx.db
       .query('medicineGroups')
       .withIndex('by_user', (q) => q.eq('userId', args.userId))
@@ -741,7 +732,7 @@ export const markGroupTaken = mutation({
 
       if (progress) {
         const newTotalXp = progress.totalXp + totalXpAwarded;
-        const newLevel = Math.floor(Math.sqrt(newTotalXp / 100));
+        const newLevel = computeLevel(newTotalXp);
         const newHp = Math.min((progress.currentHp ?? 100) + totalHpHealed, progress.maxHp ?? 100);
         const totalMedicinesTaken = (progress.totalMedicinesTaken ?? 0) + markedCount;
         const totalGroupTakeAllUsed = (progress.totalGroupTakeAllUsed ?? 0) + 1;
@@ -1010,6 +1001,8 @@ export const checkDailyMedicineAdherence = mutation({
 export const getTodayScheduleWithGroups = query({
   args: { userId: v.id('users'), date: v.string() },
   handler: async (ctx, args) => {
+    await verifyAuth(ctx, args.userId);
+
     // Get active medicines
     const medicines = await ctx.db
       .query('medicines')

@@ -1,19 +1,7 @@
 import { v } from 'convex/values';
-import { mutation, query, MutationCtx, QueryCtx } from './_generated/server';
+import { mutation, query } from './_generated/server';
 import { Id } from './_generated/dataModel';
-import { getAuthUserId } from '@convex-dev/auth/server';
-
-// Helper to verify authenticated user matches requested user
-async function verifyAuth(ctx: MutationCtx | QueryCtx, requestedUserId: string) {
-  const authUserId = await getAuthUserId(ctx);
-  if (!authUserId) {
-    throw new Error('Unauthorized: Not authenticated');
-  }
-  if (authUserId !== requestedUserId) {
-    throw new Error("Unauthorized: Cannot access other user's data");
-  }
-  return authUserId;
-}
+import { verifyAuth } from './lib/auth';
 
 // Goal category type
 const goalCategoryValidator = v.union(
@@ -56,6 +44,8 @@ const goalLevelValidator = v.union(
 export const getGoals = query({
   args: { userId: v.id('users') },
   handler: async (ctx, args) => {
+    await verifyAuth(ctx, args.userId);
+
     const goals = await ctx.db
       .query('goals')
       .withIndex('by_user', (q) => q.eq('userId', args.userId))
@@ -69,6 +59,8 @@ export const getGoals = query({
 export const getActiveGoals = query({
   args: { userId: v.id('users') },
   handler: async (ctx, args) => {
+    await verifyAuth(ctx, args.userId);
+
     const goals = await ctx.db
       .query('goals')
       .withIndex('by_user_status', (q) => q.eq('userId', args.userId).eq('status', 'active'))
@@ -85,6 +77,8 @@ export const getGoalById = query({
     userId: v.id('users'),
   },
   handler: async (ctx, args) => {
+    await verifyAuth(ctx, args.userId);
+
     const goal = await ctx.db.get(args.goalId);
     if (!goal || goal.userId !== args.userId) {
       return null;

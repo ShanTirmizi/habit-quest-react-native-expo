@@ -160,13 +160,13 @@ export default function DashboardScreen() {
   const reorderHabitsMutation = useMutation(api.habits.reorderHabits);
   const hibernateHabitMutation = useMutation(api.habits.hibernateHabit);
   const wakeHabitMutation = useMutation(api.habits.wakeHabit);
-  const useStreakFreezeMutation = useMutation(api.habits.useStreakFreeze);
+  const useStreakFreezeMutation = useMutation(api.progress.useStreakFreeze);
   const checkMissedMutation = useMutation(api.progress.checkMissedHabitsOnLogin);
 
   useEffect(() => {
     if (userId && !missedChecked.current) {
       missedChecked.current = true;
-      checkMissedMutation({ userId })
+      checkMissedMutation({ userId, clientDate: new Date().toISOString().split('T')[0] })
         .then((result) => {
           if (result.missedCount > 0) {
             showToast(
