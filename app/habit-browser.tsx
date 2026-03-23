@@ -1,0 +1,593 @@
+import React, { useState, useMemo } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Pressable,
+  RefreshControl,
+  TextInput,
+} from 'react-native';
+import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { useQuery } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { useAuth } from '@/contexts/auth-context';
+import { useTheme } from '@/contexts/theme-context';
+import {
+  FontSize,
+  Spacing,
+  Radius,
+  FontFamily,
+  Shadows,
+  getCategoryColors,
+  type ThemeColors,
+} from '@/constants/theme';
+import { BadgePill } from '@/components/ui/BadgePill';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { Skeleton } from '@/components/ui/Skeleton';
+import type {
+  Habit,
+  HabitCategory,
+  HabitFrequencyType,
+} from '@/types';
+import {
+  FREQUENCY_LABELS,
+  DAYS_OF_WEEK,
+  TIME_OF_DAY_CONFIG,
+  getCategoryColor,
+  getCategoryLabel,
+} from '@/types';
+
+// ── Types ──
+
+type FrequencyFilter = 'all' | HabitFrequencyType;
+
+const CATEGORY_ICONS: Record<HabitCategory, keyof typeof Ionicons.glyphMap> = {
+  health: 'heart',
+  career: 'briefcase',
+  mind: 'bulb',
+  life: 'leaf',
+};
+
+const FREQUENCY_FILTER_OPTIONS: { value: FrequencyFilter; label: string }[] = [
+  { value: 'all', label: 'All' },
+  { value: 'daily', label: 'Daily' },
+  { value: 'weekdays', label: 'Weekdays' },
+  { value: 'weekends', label: 'Weekends' },
+  { value: 'custom', label: 'Custom' },
+  { value: 'timesPerWeek', label: 'X/Week' },
+];
+
+// ── Helpers ──
+
+function getFrequencyDescription(habit: Habit): string {
+  const freq = habit.frequency;
+  if (!freq) return 'Every day';
+  switch (freq.type) {
+    case 'daily':
+      return 'Every day';
+    case 'weekdays':
+      return 'Mon – Fri';
+    case 'weekends':
+      return 'Sat – Sun';
+    case 'custom': {
+      const days = freq.daysOfWeek ?? [];
+      if (days.length === 0) return 'Custom days';
+      return days.map((d) => DAYS_OF_WEEK[d]).join(', ');
+    }
+    case 'timesPerWeek':
+      return `${freq.timesPerWeek ?? 1}x per week`;
+    default:
+      return 'Every day';
+  }
+}
+
+function getEffectiveFrequencyType(habit: Habit): HabitFrequencyType {
+  return habit.frequency?.type ?? 'daily';
+}
+
+// ── Habit Card (read-only, inline) ──
+
+function BrowserHabitCard({
+  habit,
+  colors,
+  styles,
+}: {
+  habit: Habit;
+  colors: ThemeColors;
+  styles: ReturnType<typeof createStyles>;
+}) {
+  const catColor = getCategoryColor(habit.category);
+  const freqDesc = getFrequencyDescription(habit);
+  const timeConfig = TIME_OF_DAY_CONFIG[habit.timeOfDay ?? 'anytime'];
+  const isHibernated = !!habit.hibernatedAt;
+
+  return (
+    <View style={[styles.card, isHibernated && styles.cardHibernated]}>
+      {/* Left accent bar */}
+      <View style={[styles.cardAccent, { backgroundColor: catColor }]} />
+
+      <View style={styles.cardBody}>
+        {/* Top row: icon + name + status */}
+        <View style={styles.cardTop}>
+          <View style={styles.cardNameRow}>
+            <Ionicons
+              name={CATEGORY_ICONS[habit.category]}
+              size={16}
+              color={isHibernated ? colors.textMuted : catColor}
+            />
+            <Text
+              style={[styles.cardName, isHibernated && { color: colors.textMuted }]}
+              numberOfLines={1}
+            >
+              {habit.name}
+            </Text>
+          </View>
+          {isHibernated ? (
+            <BadgePill
+              label="Hibernated"
+              icon="snow-outline"
+              color={colors.textMuted}
+              size="sm"
+            />
+          ) : null}
+        </View>
+
+        {/* Meta row: frequency + time of day */}
+        <View style={styles.cardMeta}>
+          <BadgePill
+            label={getCategoryLabel(habit.category)}
+            color={isHibernated ? colors.textMuted : catColor}
+            size="sm"
+          />
+          <BadgePill
+            label={freqDesc}
+            icon="calendar-outline"
+            color={colors.textSecondary}
+            size="sm"
+          />
+          <BadgePill
+            label={timeConfig.label}
+            icon={timeConfig.icon}
+            color={colors.textSecondary}
+            size="sm"
+          />
+        </View>
+
+        {/* Footer row: streak + xp */}
+        <View style={styles.cardFooter}>
+          <View style={styles.cardStat}>
+            <Ionicons
+              name="flame"
+              size={13}
+              color={isHibernated ? colors.textMuted : colors.accent}
+            />
+            <Text style={[styles.cardStatText, isHibernated && { color: colors.textMuted }]}>
+              {habit.streak} streak
+            </Text>
+          </View>
+          <View style={styles.cardStat}>
+            <Ionicons
+              name="star"
+              size={13}
+              color={isHibernated ? colors.textMuted : colors.primary}
+            />
+            <Text style={[styles.cardStatText, isHibernated && { color: colors.textMuted }]}>
+              {habit.xpReward} XP
+            </Text>
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+// ── Main Screen ──
+
+export default function HabitBrowserScreen() {
+  const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const { userId } = useAuth();
+  const { colors, isDark } = useTheme();
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
+
+  const [frequencyFilter, setFrequencyFilter] = useState<FrequencyFilter>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
+
+  // ── Data ──
+  const rawHabits = useQuery(api.habits.getHabits, userId ? { userId } : 'skip');
+  const isLoading = rawHabits === undefined;
+
+  const habits: Habit[] = useMemo(() => {
+    if (!rawHabits) return [];
+    return rawHabits.map((h) => ({
+      id: h._id,
+      name: h.name,
+      category: h.category as HabitCategory,
+      xpReward: h.xpReward,
+      streak: h.streak,
+      completedDates: h.completedDates ?? [],
+      createdAt: h._creationTime ? new Date(h._creationTime).toISOString() : '',
+      frequency: h.frequency as Habit['frequency'],
+      timeOfDay: h.timeOfDay as Habit['timeOfDay'],
+      notes: h.notes as Habit['notes'],
+      scaledDown: h.scaledDown as Habit['scaledDown'],
+      location: h.location,
+      trigger: h.trigger,
+      rationale: h.rationale,
+      sortOrder: h.sortOrder,
+      chainedToHabitId: h.chainedToHabitId,
+      rewardBundle: h.rewardBundle,
+      hibernatedAt: h.hibernatedAt,
+      goalId: h.goalId?.toString(),
+    }));
+  }, [rawHabits]);
+
+  // ── Filtering ──
+  const filteredHabits = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    return habits.filter((h) => {
+      if (frequencyFilter !== 'all') {
+        if (getEffectiveFrequencyType(h) !== frequencyFilter) return false;
+      }
+      if (query && !h.name.toLowerCase().includes(query)) return false;
+      return true;
+    });
+  }, [habits, frequencyFilter, searchQuery]);
+
+  // ── Counts per frequency type (for chip badges) ──
+  const frequencyCounts = useMemo(() => {
+    const counts: Record<FrequencyFilter, number> = {
+      all: habits.length,
+      daily: 0,
+      weekdays: 0,
+      weekends: 0,
+      custom: 0,
+      timesPerWeek: 0,
+    };
+    for (const h of habits) {
+      const ft = getEffectiveFrequencyType(h);
+      counts[ft] = (counts[ft] ?? 0) + 1;
+    }
+    return counts;
+  }, [habits]);
+
+  const activeCount = habits.filter((h) => !h.hibernatedAt).length;
+  const hibernatedCount = habits.filter((h) => !!h.hibernatedAt).length;
+
+  // ── Render ──
+
+  if (isLoading) {
+    return (
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <View style={styles.header}>
+          <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={12}>
+            <Ionicons name="chevron-back" size={24} color={colors.foreground} />
+          </Pressable>
+          <View style={styles.headerLeft}>
+            <Text style={styles.title}>All Habits</Text>
+          </View>
+        </View>
+        <View style={styles.loadingContainer}>
+          <Skeleton width="100%" height={48} borderRadius={Radius.md} />
+          <View style={{ height: Spacing.md }} />
+          <Skeleton width="100%" height={100} borderRadius={Radius.lg} />
+          <View style={{ height: Spacing.sm }} />
+          <Skeleton width="100%" height={100} borderRadius={Radius.lg} />
+          <View style={{ height: Spacing.sm }} />
+          <Skeleton width="100%" height={100} borderRadius={Radius.lg} />
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      {/* Header */}
+      <View style={styles.header}>
+        <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={12}>
+          <Ionicons name="chevron-back" size={24} color={colors.foreground} />
+        </Pressable>
+        <View style={styles.headerLeft}>
+          <Text style={styles.title}>All Habits</Text>
+          <View style={styles.badgeRow}>
+            <View style={styles.activeBadge}>
+              <Text style={styles.activeBadgeText}>{activeCount} active</Text>
+            </View>
+            {hibernatedCount > 0 ? (
+              <View style={styles.hibernatedBadge}>
+                <Text style={styles.hibernatedBadgeText}>{hibernatedCount} hibernated</Text>
+              </View>
+            ) : null}
+          </View>
+        </View>
+      </View>
+
+      {/* Search */}
+      <View style={styles.searchContainer}>
+        <Ionicons name="search" size={18} color={colors.textMuted} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search habits..."
+          placeholderTextColor={colors.textMuted}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          autoCorrect={false}
+          autoCapitalize="none"
+          returnKeyType="search"
+        />
+        {searchQuery.length > 0 ? (
+          <Pressable onPress={() => setSearchQuery('')} hitSlop={8}>
+            <Ionicons name="close-circle" size={18} color={colors.textMuted} />
+          </Pressable>
+        ) : null}
+      </View>
+
+      {/* Frequency Filter Chips */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.filterRow}
+        style={styles.filterScroll}
+      >
+        {FREQUENCY_FILTER_OPTIONS.map((opt) => {
+          const isActive = frequencyFilter === opt.value;
+          const count = frequencyCounts[opt.value];
+          return (
+            <Pressable
+              key={opt.value}
+              onPress={() => setFrequencyFilter(opt.value)}
+              style={[styles.filterChip, isActive && styles.filterChipActive]}
+            >
+              <Text style={[styles.filterChipText, isActive && styles.filterChipTextActive]}>
+                {opt.label}
+                {count > 0 && opt.value !== 'all' ? ` (${count})` : ''}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+
+      {/* Habit List */}
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => {
+              setRefreshing(true);
+              setTimeout(() => setRefreshing(false), 1000);
+            }}
+            tintColor={colors.primary}
+          />
+        }
+      >
+        {filteredHabits.length === 0 ? (
+          <EmptyState
+            icon="search-outline"
+            title="No habits found"
+            description={
+              searchQuery
+                ? `No habits match "${searchQuery}"`
+                : `No ${frequencyFilter === 'all' ? '' : FREQUENCY_LABELS[frequencyFilter as HabitFrequencyType].toLowerCase() + ' '}habits yet`
+            }
+          />
+        ) : (
+          <View style={styles.listContainer}>
+            {filteredHabits.map((habit) => (
+              <BrowserHabitCard
+                key={habit.id}
+                habit={habit}
+                colors={colors}
+                styles={styles}
+              />
+            ))}
+          </View>
+        )}
+
+        {/* Bottom spacer */}
+        <View style={{ height: insets.bottom + Spacing['2xl'] }} />
+      </ScrollView>
+    </View>
+  );
+}
+
+// ── Styles ──
+
+const createStyles = (colors: ThemeColors, isDark: boolean) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+
+    // Header
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: Spacing.lg,
+      paddingVertical: Spacing.md,
+      paddingBottom: Spacing.sm,
+      gap: Spacing.sm,
+    },
+    backBtn: {
+      width: 36,
+      height: 36,
+      borderRadius: Radius.sm,
+      backgroundColor: colors.surfaceLight,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    headerLeft: {
+      flex: 1,
+      gap: Spacing.xs,
+    },
+    title: {
+      fontSize: FontSize['3xl'],
+      fontFamily: FontFamily.extrabold,
+      color: colors.foreground,
+    },
+    badgeRow: {
+      flexDirection: 'row',
+      gap: Spacing.sm,
+    },
+    activeBadge: {
+      backgroundColor: `${colors.primary}18`,
+      paddingHorizontal: Spacing.sm + 2,
+      paddingVertical: 3,
+      borderRadius: Radius.full,
+    },
+    activeBadgeText: {
+      fontSize: FontSize.xs,
+      fontFamily: FontFamily.semibold,
+      color: colors.primary,
+    },
+    hibernatedBadge: {
+      backgroundColor: `${colors.textMuted}18`,
+      paddingHorizontal: Spacing.sm + 2,
+      paddingVertical: 3,
+      borderRadius: Radius.full,
+    },
+    hibernatedBadgeText: {
+      fontSize: FontSize.xs,
+      fontFamily: FontFamily.semibold,
+      color: colors.textMuted,
+    },
+
+    // Search
+    searchContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginHorizontal: Spacing.lg,
+      marginBottom: Spacing.sm,
+      backgroundColor: colors.surfaceLight,
+      borderRadius: Radius.md,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: Spacing.sm,
+      gap: Spacing.sm,
+      borderWidth: isDark ? 1 : 0,
+      borderColor: colors.border,
+    },
+    searchInput: {
+      flex: 1,
+      fontSize: FontSize.sm,
+      fontFamily: FontFamily.medium,
+      color: colors.foreground,
+      padding: 0,
+    },
+
+    // Filters
+    filterScroll: {
+      flexGrow: 0,
+    },
+    filterRow: {
+      paddingHorizontal: Spacing.lg,
+      gap: Spacing.sm,
+      paddingBottom: Spacing.md,
+    },
+    filterChip: {
+      paddingHorizontal: Spacing.md,
+      paddingVertical: Spacing.xs + 2,
+      borderRadius: Radius.full,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surfaceLight,
+    },
+    filterChipActive: {
+      backgroundColor: colors.primaryBg,
+      borderColor: colors.primary,
+    },
+    filterChipText: {
+      fontSize: FontSize.sm,
+      fontFamily: FontFamily.medium,
+      color: colors.textMuted,
+    },
+    filterChipTextActive: {
+      color: colors.primary,
+      fontFamily: FontFamily.semibold,
+    },
+
+    // Scroll
+    scrollView: {
+      flex: 1,
+    },
+    scrollContent: {
+      paddingHorizontal: Spacing.lg,
+    },
+
+    // Loading
+    loadingContainer: {
+      paddingHorizontal: Spacing.lg,
+      paddingTop: Spacing.lg,
+    },
+
+    // List
+    listContainer: {
+      gap: Spacing.sm,
+    },
+
+    // Card
+    card: {
+      flexDirection: 'row',
+      backgroundColor: colors.surface,
+      borderRadius: Radius.lg,
+      overflow: 'hidden',
+      ...Shadows.card,
+      borderWidth: isDark ? 1 : 0,
+      borderColor: colors.borderStrong,
+    },
+    cardHibernated: {
+      opacity: 0.6,
+    },
+    cardAccent: {
+      width: 4,
+    },
+    cardBody: {
+      flex: 1,
+      padding: Spacing.md,
+      gap: Spacing.sm,
+    },
+    cardTop: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: Spacing.sm,
+    },
+    cardNameRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.sm,
+      flex: 1,
+    },
+    cardName: {
+      fontSize: FontSize.base,
+      fontFamily: FontFamily.semibold,
+      color: colors.foreground,
+      flex: 1,
+    },
+    cardMeta: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: Spacing.xs,
+    },
+    cardFooter: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.lg,
+    },
+    cardStat: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    cardStatText: {
+      fontSize: FontSize.xs,
+      fontFamily: FontFamily.medium,
+      color: colors.textSecondary,
+    },
+  });
