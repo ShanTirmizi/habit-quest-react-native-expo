@@ -867,6 +867,17 @@ export default function DashboardScreen() {
             />
           ) : (
             <View style={styles.habitSection}>
+              {/* Section Header */}
+              <View style={styles.goalsSectionHeader}>
+                <Text style={styles.goalsSectionTitle}>Today&apos;s Habits</Text>
+                <Pressable
+                  onPress={() => router.push('/habit-browser')}
+                  style={({ pressed }) => [pressed && { opacity: 0.9, transform: [{ scale: 0.97 }] }]}
+                >
+                  <Text style={styles.goalsSeeAll}>All habits</Text>
+                </Pressable>
+              </View>
+
               {/* All Done Banner */}
               {allDone ? (
                 <View style={styles.allDoneCard}>

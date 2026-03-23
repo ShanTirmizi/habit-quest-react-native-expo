@@ -109,6 +109,10 @@ function ThemedApp() {
             options={{ animation: 'slide_from_right' }}
           />
           <Stack.Screen
+            name="habit-browser"
+            options={{ animation: 'slide_from_right' }}
+          />
+          <Stack.Screen
             name="settings"
             options={{ animation: 'slide_from_right' }}
           />
