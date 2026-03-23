@@ -33,6 +33,11 @@ import { Button } from '@/components/ui/Button';
 import { useToast } from '@/contexts/toast-context';
 import { useVoiceModeController } from '@/components/voice/VoiceModeOverlay';
 
+// Fixed snap point prevents the sheet from resizing when switching between
+// Info and Chat tabs (which have different content heights). This eliminates
+// the jitter that enableDynamicSizing causes on content changes.
+const COMPANION_SNAP_POINTS = ['92%'];
+
 const SPECIES_ICON: Record<string, keyof typeof Ionicons.glyphMap> = {
   treant: 'leaf',
   phoenix: 'flame',
@@ -70,11 +75,16 @@ const SAGE_RESPONSES = [
   "The fact that you're here, checking in, already says a lot about your character.",
 ];
 
-/** Animated wrapper that fades-in + slides-up each chat bubble on mount */
-function ChatBubble({ children }: { children: React.ReactNode }) {
-  const progress = useSharedValue(0);
+/** Animated wrapper that fades-in + slides-up each chat bubble on mount.
+ *  When `skipAnimation` is true, renders children immediately (used for
+ *  initial batch of messages to avoid triggering layout changes that make
+ *  the ScrollView visibly scroll). */
+function ChatBubble({ children, skipAnimation }: { children: React.ReactNode; skipAnimation?: boolean }) {
+  const progress = useSharedValue(skipAnimation ? 1 : 0);
   useEffect(() => {
-    progress.value = withTiming(1, { duration: 250, easing: Easing.out(Easing.cubic) });
+    if (!skipAnimation) {
+      progress.value = withTiming(1, { duration: 250, easing: Easing.out(Easing.cubic) });
+    }
   }, []);
   const animStyle = useAnimatedStyle(() => ({
     opacity: progress.value,
@@ -105,6 +115,77 @@ const TOOL_BADGE_CONFIG: Record<string, { icon: keyof typeof Ionicons.glyphMap; 
   toggle_holiday_mode: { icon: 'airplane', label: 'Holiday', color: '#9C27B0' },
 };
 
+// ── Memoized chat input bar ──
+// Extracted to prevent re-renders from voice state, message list, etc. from
+// resetting the BottomSheetTextInput cursor position while the user is typing.
+interface ChatInputBarProps {
+  value: string;
+  onChangeText: (text: string) => void;
+  onSend: () => void;
+  onMicPressIn: () => void;
+  onMicPressOut: () => void;
+  isSending: boolean;
+  placeholder: string;
+  colors: ThemeColors;
+  styles: ReturnType<typeof createStyles>;
+}
+
+const ChatInputBar = React.memo(function ChatInputBar({
+  value,
+  onChangeText,
+  onSend,
+  onMicPressIn,
+  onMicPressOut,
+  isSending,
+  placeholder,
+  colors,
+  styles,
+}: ChatInputBarProps) {
+  return (
+    <View style={styles.chatInputBar}>
+      <TextInput
+        style={styles.chatTextInput}
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        placeholderTextColor={colors.textMuted}
+        multiline
+        maxLength={500}
+        returnKeyType="default"
+        blurOnSubmit={false}
+      />
+      {value.trim() ? (
+        <Pressable
+          onPress={onSend}
+          disabled={isSending}
+          style={({ pressed }) => [
+            styles.sendButton,
+            isSending && styles.sendButtonDisabled,
+            pressed && { opacity: 0.9, transform: [{ scale: 0.97 }] },
+          ]}
+        >
+          <Ionicons
+            name="send"
+            size={18}
+            color={isSending ? colors.textMuted : '#fff'}
+          />
+        </Pressable>
+      ) : (
+        <Pressable
+          onPressIn={onMicPressIn}
+          onPressOut={onMicPressOut}
+          style={({ pressed }) => [
+            styles.micButton,
+            pressed && { opacity: 0.85, transform: [{ scale: 0.95 }] },
+          ]}
+        >
+          <Ionicons name="mic" size={20} color="#fff" />
+        </Pressable>
+      )}
+    </View>
+  );
+});
+
 interface CompanionWidgetProps {
   userId: Id<'users'>;
   completionRate: number;
@@ -132,8 +213,10 @@ export function CompanionWidget({
   const [activeTab, setActiveTab] = useState<TabType>('chat');
   const tabProgress = useSharedValue(1); // 0 = info, 1 = chat
   const [switcherWidth, setSwitcherWidth] = useState(0);
-  const contentHeight = useSharedValue(0);
-  const isFirstMeasure = useRef(true);
+  const initialRenderRef = useRef(true);
+  // True only on initial sheet open — used to trigger content fade-in after
+  // scroll is positioned. Not set during tab switches since switchTab handles that.
+  const needsRevealRef = useRef(false);
   const [chatInput, setChatInput] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [localMessages, setLocalMessages] = useState<ChatMessage[]>([]);
@@ -239,18 +322,21 @@ export function CompanionWidget({
   const switchTab = useCallback((tab: TabType) => {
     if (tab === activeTab) return;
     Haptics.selectionAsync();
-    // Reset chat scroll state so it jumps instantly when switching back to chat
-    chatReadyRef.current = false;
-    prevMessageCountRef.current = 0;
+    // Mark as initial render so chat messages skip animation + scroll instantly
+    if (tab === 'chat') {
+      initialRenderRef.current = true;
+      chatReadyRef.current = false;
+      prevMessageCountRef.current = 0;
+    }
     // Animate indicator
     tabProgress.value = withTiming(tab === 'chat' ? 1 : 0, {
       duration: 300,
       easing: Easing.out(Easing.cubic),
     });
     // Fade out → swap → fade in
-    contentOpacity.value = withTiming(0, { duration: 120 }, () => {
+    contentOpacity.value = withTiming(0, { duration: 100 }, () => {
       runOnJS(setActiveTab)(tab);
-      contentOpacity.value = withTiming(1, { duration: 180 });
+      contentOpacity.value = withTiming(1, { duration: 150 });
     });
   }, [activeTab]);
 
@@ -266,30 +352,6 @@ export function CompanionWidget({
     opacity: contentOpacity.value,
   }));
 
-  // Animated height — smoothly transitions when tab content changes size
-  const handleContentLayout = useCallback((e: { nativeEvent: { layout: { height: number } } }) => {
-    const h = e.nativeEvent.layout.height;
-    if (h === 0) return;
-    if (isFirstMeasure.current || contentHeight.value === 0) {
-      contentHeight.value = h;
-      isFirstMeasure.current = false;
-    } else if (Math.abs(contentHeight.value - h) > 2) {
-      contentHeight.value = withTiming(h, {
-        duration: 300,
-        easing: Easing.out(Easing.cubic),
-      });
-    }
-  }, []);
-
-  const heightWrapperStyle = useAnimatedStyle(() => {
-    // Skip the animated height constraint for chat tab — the keyboard handling
-    // needs the content to flow naturally without being clipped.
-    if (contentHeight.value === 0) return {};
-    return {
-      height: contentHeight.value,
-    };
-  });
-
   // Scroll messages to bottom when keyboard appears so the input stays visible
   useEffect(() => {
     const event = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
@@ -303,10 +365,19 @@ export function CompanionWidget({
     return () => sub.remove();
   }, [activeTab]);
 
-  // Reset session ID and tab when the sheet opens
+  // When switching to chat tab via setActiveTab (triggered by switchTab's runOnJS),
+  // the scroll refs are already reset in switchTab() before the fade animation.
+
+  // Reset session ID and scroll state when the sheet opens
   useEffect(() => {
     if (isVisible) {
       sessionIdRef.current = Date.now().toString();
+      chatReadyRef.current = false;
+      prevMessageCountRef.current = 0;
+      initialRenderRef.current = true;
+      needsRevealRef.current = true;
+      // Start content invisible so user doesn't see the scroll-to-bottom
+      contentOpacity.value = 0;
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
   }, [isVisible]);
@@ -317,12 +388,12 @@ export function CompanionWidget({
     setActiveTab('chat');
     tabProgress.value = 1;
     contentOpacity.value = 1;
-    contentHeight.value = 0;
-    isFirstMeasure.current = true;
     setChatInput('');
     setLocalMessages([]);
     chatReadyRef.current = false;
     prevMessageCountRef.current = 0;
+    initialRenderRef.current = true;
+    needsRevealRef.current = false;
     // Stop any active voice playback/listening
     voiceController.stop();
     onExternalClose?.();
@@ -386,9 +457,17 @@ export function CompanionWidget({
     return SAGE_RESPONSES[Math.floor(Math.random() * SAGE_RESPONSES.length)];
   }, []);
 
+  // Use a ref for chatInput so handleSendMessage doesn't depend on it.
+  // This prevents the send callback from changing on every keystroke, which would
+  // defeat React.memo on ChatInputBar and cause cursor jumping.
+  const chatInputRef = useRef(chatInput);
+  chatInputRef.current = chatInput;
+  const isSendingRef = useRef(isSending);
+  isSendingRef.current = isSending;
+
   const handleSendMessage = useCallback(async () => {
-    const text = chatInput.trim();
-    if (!text || isSending) return;
+    const text = chatInputRef.current.trim();
+    if (!text || isSendingRef.current) return;
 
     setChatInput('');
     setIsSending(true);
@@ -432,15 +511,35 @@ export function CompanionWidget({
     } finally {
       setIsSending(false);
     }
-  }, [chatInput, isSending, userId, sendMessageAction, saveMessageMutation, generateSageResponse, showToast]);
+  }, [userId, sendMessageAction, saveMessageMutation, generateSageResponse]);
 
-  // Merge backend messages with any local (optimistic) ones not yet in backend
-  const allMessages: ChatMessage[] = (() => {
+  // Stable mic callbacks — extracted so ChatInputBar doesn't re-render on voice state changes
+  const handleMicPressIn = useCallback(() => {
+    micPressTimerRef.current = setTimeout(() => {
+      micPressTimerRef.current = null;
+    }, 250);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    voiceController.holdMic();
+  }, [voiceController.holdMic]);
+
+  const handleMicPressOut = useCallback(() => {
+    if (micPressTimerRef.current) {
+      clearTimeout(micPressTimerRef.current);
+      micPressTimerRef.current = null;
+      voiceController.releaseMic();
+      setHoldToSpeakTooltip(true);
+      setTimeout(() => setHoldToSpeakTooltip(false), 2000);
+    } else {
+      voiceController.releaseMic();
+    }
+  }, [voiceController.releaseMic]);
+
+  // Merge backend messages with any local (optimistic) ones not yet in backend.
+  // Memoized to avoid creating a new array on every render (voice state changes etc.)
+  const allMessages: ChatMessage[] = useMemo(() => {
     const backend = recentMessages ?? [];
-    // If local messages exist, they were added after the last backend snapshot.
-    // Once the query refreshes and includes them, localMessages gets cleared.
     return [...backend, ...localMessages];
-  })();
+  }, [recentMessages, localMessages]);
 
   // ---- Copy message handler (long-press to copy full message) ----
   // NOTE: This hook MUST be before any early returns to satisfy React's rules of hooks.
@@ -652,15 +751,27 @@ export function CompanionWidget({
         ref={chatListRef}
         style={styles.chatMessageList}
         contentContainerStyle={styles.chatMessageListContent}
+        contentOffset={{ x: 0, y: 99999 }}
         showsVerticalScrollIndicator={false}
         nestedScrollEnabled
         onContentSizeChange={() => {
           const currentCount = allMessages.length + (isSending ? 1 : 0);
+
           if (!chatReadyRef.current) {
+            // First render or tab switch — instant scroll, no animation
             chatListRef.current?.scrollToEnd({ animated: false });
             chatReadyRef.current = true;
             prevMessageCountRef.current = currentCount;
+            initialRenderRef.current = false;
+            // On initial sheet open, content starts at opacity 0 to hide
+            // the scroll-to-bottom. Now that scroll is positioned, fade in.
+            // During tab switches, switchTab handles the fade, so skip.
+            if (needsRevealRef.current) {
+              needsRevealRef.current = false;
+              contentOpacity.value = withTiming(1, { duration: 200 });
+            }
           } else if (currentCount > prevMessageCountRef.current) {
+            // New message arrived — smooth scroll
             chatListRef.current?.scrollToEnd({ animated: true });
             prevMessageCountRef.current = currentCount;
           }
@@ -678,7 +789,7 @@ export function CompanionWidget({
           </View>
         ) : (
           allMessages.map((msg, index) => (
-            <ChatBubble key={msg._id ?? `local-${index}`}>
+            <ChatBubble key={msg._id ?? `local-${index}`} skipAnimation={initialRenderRef.current}>
               {renderMessage({ item: msg })}
             </ChatBubble>
           ))
@@ -720,81 +831,26 @@ export function CompanionWidget({
         </View>
       )}
 
-      {/* Input bar */}
-      <View style={styles.chatInputBar}>
-        <TextInput
-          style={styles.chatTextInput}
-          value={chatInput}
-          onChangeText={setChatInput}
-          placeholder={`Message ${companion.name}...`}
-          placeholderTextColor={colors.textMuted}
-          multiline
-          maxLength={500}
-          returnKeyType="default"
-          blurOnSubmit={false}
-        />
-        {chatInput.trim() ? (
-          <Pressable
-            onPress={handleSendMessage}
-            disabled={isSending}
-            style={({ pressed }) => [
-              styles.sendButton,
-              isSending && styles.sendButtonDisabled,
-              pressed && { opacity: 0.9, transform: [{ scale: 0.97 }] },
-            ]}
-          >
-            <Ionicons
-              name="send"
-              size={18}
-              color={isSending ? colors.textMuted : '#fff'}
-            />
-          </Pressable>
-        ) : (
-          <Pressable
-            onPressIn={() => {
-              micPressTimerRef.current = setTimeout(() => {
-                micPressTimerRef.current = null;
-              }, 250);
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              voiceController.holdMic();
-            }}
-            onPressOut={() => {
-              if (micPressTimerRef.current) {
-                // Quick tap — show tooltip
-                clearTimeout(micPressTimerRef.current);
-                micPressTimerRef.current = null;
-                voiceController.releaseMic();
-                setHoldToSpeakTooltip(true);
-                setTimeout(() => setHoldToSpeakTooltip(false), 2000);
-              } else {
-                // Real hold — release to send
-                voiceController.releaseMic();
-              }
-            }}
-            style={({ pressed }) => [
-              styles.micButton,
-              voiceController.voiceState === 'listening' && styles.micButtonActive,
-              pressed && { opacity: 0.9, transform: [{ scale: 0.95 }] },
-            ]}
-          >
-            <Ionicons
-              name={voiceController.voiceState === 'listening' ? 'radio' : 'mic'}
-              size={20}
-              color="#fff"
-            />
-          </Pressable>
-        )}
-      </View>
+      {/* Input bar — memoized to prevent cursor jumping from voice state re-renders */}
+      <ChatInputBar
+        value={chatInput}
+        onChangeText={setChatInput}
+        onSend={handleSendMessage}
+        onMicPressIn={handleMicPressIn}
+        onMicPressOut={handleMicPressOut}
+        isSending={isSending}
+        placeholder={`Message ${companion.name}...`}
+        colors={colors}
+        styles={styles}
+      />
     </View>
   );
 
   return (
-    <BottomSheet visible={isVisible} onClose={handleClose} title={companion.name}>
+    <BottomSheet visible={isVisible} onClose={handleClose} title={companion.name} snapPoints={COMPANION_SNAP_POINTS}>
       {renderTabSwitcher()}
-      <Animated.View style={heightWrapperStyle}>
-        <Animated.View style={contentAnimStyle} onLayout={handleContentLayout}>
-          {activeTab === 'info' ? renderInfoTab() : renderChatTab()}
-        </Animated.View>
+      <Animated.View style={contentAnimStyle}>
+        {activeTab === 'info' ? renderInfoTab() : renderChatTab()}
       </Animated.View>
     </BottomSheet>
   );
@@ -804,11 +860,11 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   // Tab switcher
   tabSwitcher: {
     flexDirection: 'row',
-    alignSelf: 'center',
     backgroundColor: colors.surfaceLight,
     borderRadius: Radius.full,
     padding: 3,
     marginBottom: Spacing.lg,
+    marginHorizontal: Spacing['2xl'],
     gap: 2,
   },
   tabIndicator: {

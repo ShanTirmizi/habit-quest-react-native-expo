@@ -91,11 +91,15 @@ interface ChatMessage {
   toolCalls?: ToolCallInfo[];
 }
 
-/** Animated wrapper that fades-in + slides-up each chat bubble on mount */
-function ChatBubble({ children }: { children: React.ReactNode }) {
-  const progress = useSharedValue(0);
+/** Animated wrapper that fades-in + slides-up each chat bubble on mount.
+ *  When skipAnimation is true, renders instantly (used for the initial batch
+ *  of messages to avoid triggering layout changes that cause visible scroll). */
+function ChatBubble({ children, skipAnimation }: { children: React.ReactNode; skipAnimation?: boolean }) {
+  const progress = useSharedValue(skipAnimation ? 1 : 0);
   useEffect(() => {
-    progress.value = withTiming(1, { duration: 250, easing: Easing.out(Easing.cubic) });
+    if (!skipAnimation) {
+      progress.value = withTiming(1, { duration: 250, easing: Easing.out(Easing.cubic) });
+    }
   }, []);
   const animStyle = useAnimatedStyle(() => ({
     opacity: progress.value,
@@ -130,6 +134,9 @@ export default function CompanionScreen() {
   const chatListRef = useRef<ScrollView>(null);
   const prevMessageCountRef = useRef(0);
   const chatReadyRef = useRef(false);
+  // True on first render — existing messages skip ChatBubble animation so
+  // they don't trigger multiple onContentSizeChange/layout shifts.
+  const initialRenderRef = useRef(true);
 
   // Queries
   const companion = useQuery(api.companions.getCompanion, userId ? { userId } : 'skip');
@@ -226,6 +233,17 @@ export default function CompanionScreen() {
 
   const contentOpacity = useSharedValue(1);
 
+  // Called from the UI thread after fade-out completes. Swaps the tab on the
+  // JS thread and waits for React to render the new content before fading in.
+  // This prevents the "pop" that happens when the fade-in starts before the
+  // new content has rendered.
+  const applyTabSwitch = useCallback((tab: TabType) => {
+    setActiveTab(tab);
+    requestAnimationFrame(() => {
+      contentOpacity.value = withTiming(1, { duration: 180, easing: Easing.out(Easing.cubic) });
+    });
+  }, []);
+
   const switchTab = useCallback((tab: TabType) => {
     if (tab === activeTab) return;
     Haptics.selectionAsync();
@@ -236,10 +254,9 @@ export default function CompanionScreen() {
       easing: Easing.out(Easing.cubic),
     });
     contentOpacity.value = withTiming(0, { duration: 120 }, () => {
-      runOnJS(setActiveTab)(tab);
-      contentOpacity.value = withTiming(1, { duration: 180 });
+      runOnJS(applyTabSwitch)(tab);
     });
-  }, [activeTab]);
+  }, [activeTab, applyTabSwitch]);
 
   // Pill indicator
   const pillHalf = switcherWidth > 0 ? (switcherWidth - 6) / 2 : 0;
@@ -580,6 +597,7 @@ export default function CompanionScreen() {
         ref={chatListRef}
         style={styles.chatMessageList}
         contentContainerStyle={styles.chatMessageListContent}
+        contentOffset={{ x: 0, y: 99999 }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         onContentSizeChange={() => {
@@ -588,6 +606,8 @@ export default function CompanionScreen() {
             chatListRef.current?.scrollToEnd({ animated: false });
             chatReadyRef.current = true;
             prevMessageCountRef.current = currentCount;
+            // Mark initial render done so new messages get animation
+            initialRenderRef.current = false;
           } else if (currentCount > prevMessageCountRef.current) {
             chatListRef.current?.scrollToEnd({ animated: true });
             prevMessageCountRef.current = currentCount;
@@ -606,7 +626,7 @@ export default function CompanionScreen() {
           </View>
         ) : (
           allMessages.map((msg, index) => (
-            <ChatBubble key={msg._id ?? `local-${index}`}>
+            <ChatBubble key={msg._id ?? `local-${index}`} skipAnimation={initialRenderRef.current}>
               {renderMessage({ item: msg })}
             </ChatBubble>
           ))
@@ -782,11 +802,11 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   // Tab switcher
   tabSwitcher: {
     flexDirection: 'row',
-    alignSelf: 'center',
     backgroundColor: colors.surfaceLight,
     borderRadius: Radius.full,
     padding: 3,
     marginBottom: Spacing.md,
+    marginHorizontal: Spacing.xl,
     gap: 2,
   },
   tabIndicator: {

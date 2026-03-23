@@ -19,11 +19,14 @@ interface BottomSheetProps {
   onClose: () => void;
   title?: string;
   children: React.ReactNode;
+  /** When provided, use fixed snap points instead of dynamic sizing.
+   *  e.g. ['92%'] for a near-full-screen sheet that never resizes. */
+  snapPoints?: (string | number)[];
 }
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-export function BottomSheet({ visible, onClose, title, children }: BottomSheetProps) {
+export function BottomSheet({ visible, onClose, title, children, snapPoints }: BottomSheetProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const insets = useSafeAreaInsets();
@@ -78,8 +81,10 @@ export function BottomSheet({ visible, onClose, title, children }: BottomSheetPr
   return (
     <BottomSheetModal
       ref={sheetRef}
-      enableDynamicSizing
-      maxDynamicContentSize={SCREEN_HEIGHT * 0.92}
+      {...(snapPoints
+        ? { snapPoints }
+        : { enableDynamicSizing: true, maxDynamicContentSize: SCREEN_HEIGHT * 0.92 }
+      )}
       enablePanDownToClose
       onDismiss={handleDismiss}
       backdropComponent={renderBackdrop}
