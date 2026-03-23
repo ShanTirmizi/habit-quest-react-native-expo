@@ -222,8 +222,22 @@ export const checkMissedHabitsOnLogin = mutation({
     const today = new Date().toISOString().split('T')[0];
     const lastLogin = progress.lastLoginDate;
 
+    // Auto-end expired holiday mode
+    if (progress.holidayMode?.active && progress.holidayMode.endDate && today > progress.holidayMode.endDate) {
+      await ctx.db.patch(progress._id, { holidayMode: undefined });
+    }
+
     // Update last login
     await ctx.db.patch(progress._id, { lastLoginDate: today });
+
+    // Skip damage if holiday mode is active
+    if (progress.holidayMode?.active) {
+      // Check if endDate hasn't passed yet (we already cleared expired ones above)
+      const endDate = progress.holidayMode.endDate;
+      if (!endDate || today <= endDate) {
+        return { missedCount: 0, hpLost: 0, fainted: false, newHp: progress.currentHp };
+      }
+    }
 
     // If no last login or same day, no damage
     if (!lastLogin || lastLogin === today) {
@@ -611,6 +625,103 @@ export const getUnderworldStatus = query({
       readyToResurrect: daysCompleted >= UNDERWORLD_CONFIG.DAYS_TO_RESURRECT,
       totalResurrections: progress.underworldResurrections ?? 0,
     };
+  },
+});
+
+// ============================================
+// Holiday Mode (Global Pause)
+// ============================================
+
+// Start holiday mode
+export const startHoliday = mutation({
+  args: {
+    userId: v.id('users'),
+    endDate: v.optional(v.string()), // Optional auto-end date "YYYY-MM-DD"
+  },
+  handler: async (ctx, args) => {
+    await verifyAuth(ctx, args.userId);
+
+    const progress = await getOrCreateProgress(ctx, args.userId);
+    if (!progress) throw new Error('Failed to create progress');
+
+    const today = new Date().toISOString().split('T')[0];
+
+    await ctx.db.patch(progress._id, {
+      holidayMode: {
+        active: true,
+        startDate: today,
+        endDate: args.endDate,
+      },
+    });
+
+    return { success: true, startDate: today, endDate: args.endDate };
+  },
+});
+
+// End holiday mode
+export const endHoliday = mutation({
+  args: { userId: v.id('users') },
+  handler: async (ctx, args) => {
+    await verifyAuth(ctx, args.userId);
+
+    const progress = await getOrCreateProgress(ctx, args.userId);
+    if (!progress) throw new Error('Failed to create progress');
+
+    await ctx.db.patch(progress._id, {
+      holidayMode: undefined,
+    });
+
+    return { success: true };
+  },
+});
+
+// Get holiday status (also auto-ends if past endDate)
+export const getHolidayStatus = query({
+  args: { userId: v.id('users') },
+  handler: async (ctx, args) => {
+    const progress = await ctx.db
+      .query('userProgress')
+      .withIndex('by_user', (q) => q.eq('userId', args.userId))
+      .first();
+
+    if (!progress?.holidayMode?.active) {
+      return { active: false };
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+    const { startDate, endDate } = progress.holidayMode;
+
+    // Check if auto-end date has passed (queries can't mutate, so flag it)
+    if (endDate && today > endDate) {
+      return { active: false, expired: true, startDate, endDate };
+    }
+
+    return { active: true, startDate, endDate };
+  },
+});
+
+// Auto-end expired holiday (called from client when expired flag is detected)
+export const autoEndHoliday = mutation({
+  args: { userId: v.id('users') },
+  handler: async (ctx, args) => {
+    await verifyAuth(ctx, args.userId);
+
+    const progress = await ctx.db
+      .query('userProgress')
+      .withIndex('by_user', (q) => q.eq('userId', args.userId))
+      .first();
+
+    if (!progress?.holidayMode?.active) return { success: false };
+
+    const today = new Date().toISOString().split('T')[0];
+    const endDate = progress.holidayMode.endDate;
+
+    if (endDate && today > endDate) {
+      await ctx.db.patch(progress._id, { holidayMode: undefined });
+      return { success: true };
+    }
+
+    return { success: false };
   },
 });
 

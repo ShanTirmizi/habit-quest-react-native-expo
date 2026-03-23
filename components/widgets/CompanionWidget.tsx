@@ -99,6 +99,7 @@ const TOOL_BADGE_CONFIG: Record<string, { icon: keyof typeof Ionicons.glyphMap; 
   create_habits: { icon: 'checkmark-circle', label: 'Habit', color: '#4CAF50' },
   create_medicines: { icon: 'medkit', label: 'Medication', color: '#2196F3' },
   create_quests: { icon: 'flag', label: 'Quest', color: '#FF9800' },
+  toggle_holiday_mode: { icon: 'airplane', label: 'Holiday', color: '#9C27B0' },
 };
 
 interface CompanionWidgetProps {
@@ -598,7 +599,7 @@ export function CompanionWidget({
                 <View key={`${idx}-${i}`} style={[styles.toolBadge, { backgroundColor: `${config.color}15`, borderColor: `${config.color}30` }]}>
                   <Ionicons name={config.icon} size={12} color={config.color} />
                   <Text style={[styles.toolBadgeText, { color: config.color }]}>
-                    {config.label} added: {itemName}
+                    {tc.tool === 'toggle_holiday_mode' ? itemName : `${config.label} added: ${itemName}`}
                   </Text>
                 </View>
               ));

@@ -134,6 +134,10 @@ export default function DashboardScreen() {
   const progress = useQuery(api.progress.getProgress, userId ? { userId } : 'skip');
   const companion = useQuery(api.companions.getCompanion, userId ? { userId } : 'skip');
   const rawGoals = useQuery(api.goals.getGoals, userId ? { userId } : 'skip');
+  const holidayStatus = useQuery(api.progress.getHolidayStatus, userId ? { userId } : 'skip');
+  const startHolidayMutation = useMutation(api.progress.startHoliday);
+  const endHolidayMutation = useMutation(api.progress.endHoliday);
+  const autoEndHolidayMutation = useMutation(api.progress.autoEndHoliday);
 
   const activeGoals = useMemo(() => {
     if (!rawGoals) return [];
@@ -175,6 +179,16 @@ export default function DashboardScreen() {
         .catch(() => {});
     }
   }, [userId]);
+
+  // Holiday mode
+  const isOnHoliday = holidayStatus?.active === true;
+
+  // Auto-end expired holiday
+  useEffect(() => {
+    if (userId && holidayStatus?.expired) {
+      autoEndHolidayMutation({ userId }).catch(() => {});
+    }
+  }, [userId, holidayStatus?.expired]);
 
   const habits: Habit[] = useMemo(() => {
     if (!rawHabits) return [];
@@ -479,6 +493,22 @@ export default function DashboardScreen() {
     }
   }, [userId, addNoteMutation, showToast]);
 
+  const handleToggleHoliday = useCallback(async () => {
+    if (!userId) return;
+    try {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      if (isOnHoliday) {
+        await endHolidayMutation({ userId });
+        showToast('Welcome back! Streaks resumed', undefined, 'xp');
+      } else {
+        await startHolidayMutation({ userId });
+        showToast('Holiday mode on — streaks are safe!', undefined, 'hp');
+      }
+    } catch {
+      showToast('Failed to toggle holiday mode', undefined, 'error');
+    }
+  }, [userId, isOnHoliday, startHolidayMutation, endHolidayMutation, showToast]);
+
   const handleHibernate = useCallback(async (id: string) => {
     if (!userId) return;
     try {
@@ -640,6 +670,18 @@ export default function DashboardScreen() {
         </View>
         <View style={styles.topBarRight}>
           <Pressable
+            onPress={handleToggleHoliday}
+            style={({ pressed }) => [styles.settingsButton, pressed && { opacity: 0.9, transform: [{ scale: 0.97 }] }]}
+            accessibilityLabel={isOnHoliday ? "End holiday mode" : "Start holiday mode"}
+            accessibilityRole="button"
+          >
+            <Ionicons
+              name={isOnHoliday ? 'airplane' : 'airplane-outline'}
+              size={20}
+              color={isOnHoliday ? '#9C27B0' : colors.textSecondary}
+            />
+          </Pressable>
+          <Pressable
             onPress={() => router.push('/settings')}
             style={({ pressed }) => [styles.settingsButton, pressed && { opacity: 0.9, transform: [{ scale: 0.97 }] }]}
             accessibilityLabel="Settings"
@@ -761,6 +803,30 @@ export default function DashboardScreen() {
                 </View>
               </View>
             </View>
+          ) : null}
+
+          {/* Holiday Mode Banner */}
+          {isOnHoliday ? (
+            <Pressable
+              onPress={handleToggleHoliday}
+              style={({ pressed }) => [styles.holidayBanner, pressed && { opacity: 0.9 }]}
+            >
+              <View style={styles.holidayBannerContent}>
+                <View style={styles.holidayBannerLeft}>
+                  <Ionicons name="airplane" size={18} color="#9C27B0" />
+                  <View>
+                    <Text style={styles.holidayBannerTitle}>Holiday Mode Active</Text>
+                    <Text style={styles.holidayBannerSubtitle}>
+                      Streaks frozen, no HP damage
+                      {holidayStatus?.endDate ? ` \u00B7 Until ${format(parseISO(holidayStatus.endDate), 'MMM d')}` : ''}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.holidayEndBtn}>
+                  <Text style={styles.holidayEndBtnText}>End</Text>
+                </View>
+              </View>
+            </Pressable>
           ) : null}
 
           {/* Underworld Overlay */}
@@ -1418,6 +1484,52 @@ const createStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create
     gap: Spacing.sm,
     paddingTop: Spacing.xs,
   },
+  // ── Holiday Banner ──
+  holidayBanner: {
+    marginBottom: Spacing.sm,
+    borderRadius: Radius.lg,
+    backgroundColor: '#9C27B010',
+    borderWidth: 1,
+    borderColor: '#9C27B030',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+  },
+  holidayBannerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  holidayBannerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    flex: 1,
+  },
+  holidayBannerTitle: {
+    fontSize: FontSize.sm,
+    fontFamily: FontFamily.bold,
+    color: '#9C27B0',
+  },
+  holidayBannerSubtitle: {
+    fontSize: FontSize.xs,
+    fontFamily: FontFamily.regular,
+    color: colors.textSecondary,
+    marginTop: 1,
+  },
+  holidayEndBtn: {
+    backgroundColor: '#9C27B018',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 6,
+    borderRadius: Radius.full,
+    borderWidth: 1,
+    borderColor: '#9C27B040',
+  },
+  holidayEndBtnText: {
+    fontSize: FontSize.xs,
+    fontFamily: FontFamily.bold,
+    color: '#9C27B0',
+  },
+
   hibernateHeader: {
     flexDirection: 'row',
     alignItems: 'center',

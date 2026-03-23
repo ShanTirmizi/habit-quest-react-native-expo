@@ -90,6 +90,12 @@ export default defineSchema({
     lastMemoryExtractionDate: v.optional(v.string()), // "YYYY-MM-DD" - tracks last journal memory extraction
     memoryExtractionEntryCount: v.optional(v.number()), // Entries since last extraction
     lastPatternCheckDate: v.optional(v.string()), // "YYYY-MM-DD" - tracks last habit pattern detection
+    // Holiday Mode (global pause — streaks frozen, no HP damage)
+    holidayMode: v.optional(v.object({
+      active: v.boolean(),
+      startDate: v.string(),       // "YYYY-MM-DD"
+      endDate: v.optional(v.string()), // Optional auto-end date
+    })),
     // Medicine Gamification
     medicineStreak: v.optional(v.number()), // Consecutive days with 100% adherence
     lastMedicineStreakDate: v.optional(v.string()), // Last date counted for streak

@@ -570,7 +570,18 @@ export const getReflections = query({
   },
 });
 
-// Helper function to calculate streak
+// Helper to check if a date falls within a holiday range
+function isHolidayDate(
+  dateStr: string,
+  holidayMode?: { active: boolean; startDate: string; endDate?: string }
+): boolean {
+  if (!holidayMode?.active) return false;
+  if (dateStr < holidayMode.startDate) return false;
+  if (holidayMode.endDate && dateStr > holidayMode.endDate) return false;
+  return true;
+}
+
+// Helper function to calculate streak (skips holiday dates)
 async function calculateStreak(
   ctx: MutationCtx | QueryCtx,
   habitId: Id<'habits'>,
@@ -583,17 +594,37 @@ async function calculateStreak(
 
   const completedDates = new Set(completions.map((c: Doc<'habitCompletions'>) => c.completedDate));
 
+  // Get habit to find user, then check holiday mode
+  const habit = await ctx.db.get(habitId);
+  let holidayMode: { active: boolean; startDate: string; endDate?: string } | undefined;
+  if (habit) {
+    const progress = await ctx.db
+      .query('userProgress')
+      .withIndex('by_user', (q) => q.eq('userId', habit.userId))
+      .first();
+    holidayMode = progress?.holidayMode as typeof holidayMode;
+  }
+
   // Start from current date and count backwards
   let streak = 0;
   const checkDate = new Date(currentDate);
 
-  // If today is not completed, start from yesterday
-  if (!completedDates.has(currentDate)) {
+  // If today is not completed and not a holiday, start from yesterday
+  if (!completedDates.has(currentDate) && !isHolidayDate(currentDate, holidayMode)) {
     checkDate.setDate(checkDate.getDate() - 1);
   }
 
   while (true) {
     const dateStr = checkDate.toISOString().split('T')[0];
+
+    // Skip holiday dates — they don't count for or against streaks
+    if (isHolidayDate(dateStr, holidayMode)) {
+      checkDate.setDate(checkDate.getDate() - 1);
+      // Safety: don't skip more than 365 days of holiday
+      if (streak === 0 && new Date(currentDate).getTime() - checkDate.getTime() > 365 * 86400000) break;
+      continue;
+    }
+
     if (completedDates.has(dateStr)) {
       streak++;
       checkDate.setDate(checkDate.getDate() - 1);

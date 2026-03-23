@@ -194,6 +194,27 @@ const TOOLS = [
       required: ["quests"],
     },
   },
+  {
+    name: "toggle_holiday_mode",
+    description:
+      "Start or end holiday/vacation mode for the user. When active, all habit streaks are frozen (protected), no HP damage occurs for missed habits, and no XP is earned. Use when the user says they're going on holiday, vacation, trip, taking a break, or wants to pause their habits. Also use to end holiday mode when they say they're back.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        action: {
+          type: "string" as const,
+          enum: ["start", "end"],
+          description: "Whether to start or end holiday mode",
+        },
+        endDate: {
+          type: "string" as const,
+          description:
+            "Optional end date in YYYY-MM-DD format for auto-ending the holiday. Only used when action is 'start'. If the user says 'I'm away for a week', calculate the end date.",
+        },
+      },
+      required: ["action"],
+    },
+  },
 ];
 
 // ──────────────────────────────────────────────
@@ -233,7 +254,7 @@ Look for correlations in user data:
 - Journal themes (recurring blockers, unmet desires)
 
 ## Actions You Can Take
-You can create habits, medications, and quests for the user. Use your tools when the user asks you to add or create things.
+You can create habits, medications, and quests for the user. You can also toggle holiday/vacation mode. Use your tools when the user asks you to add or create things, or when they mention going on holiday/vacation/break.
 
 ### Guidelines for Actions:
 - Ask clarifying questions if critical info is missing (e.g., medication dosage, habit category)
@@ -244,6 +265,9 @@ You can create habits, medications, and quests for the user. Use your tools when
 - NEVER create items the user didn't ask for
 - If unsure about details, ASK rather than guess
 - When the user says "add my meds" or similar, infer schedule from context (e.g., "twice daily" = morning 08:00 + evening 20:00)
+- For holiday mode: if the user mentions a duration (e.g., "gone for a week", "back on March 30"), calculate the end date. If no duration mentioned, start without an end date (they'll end it manually).
+- When starting holiday mode, reassure them their streaks are safe
+- When ending holiday mode, welcome them back warmly
 
 ## Rules
 - NEVER give medical or mental health diagnoses
@@ -392,6 +416,23 @@ async function executeToolCall(
       return results.join("\n");
     }
 
+    case "toggle_holiday_mode": {
+      try {
+        if (toolInput.action === "start") {
+          const result = await ctx.runMutation(api.progress.startHoliday, {
+            userId,
+            endDate: toolInput.endDate,
+          });
+          return `Holiday mode activated! Start: ${result.startDate}${result.endDate ? `, Auto-end: ${result.endDate}` : " (no end date set — end manually)"}. Streaks are frozen and HP is protected.`;
+        } else {
+          await ctx.runMutation(api.progress.endHoliday, { userId });
+          return "Holiday mode ended. Welcome back! Streaks resume from where they left off.";
+        }
+      } catch (e: any) {
+        return `Failed to toggle holiday mode: ${e.message}`;
+      }
+    }
+
     default:
       return `Unknown tool: ${toolName}`;
   }
@@ -408,6 +449,8 @@ function extractItemNames(toolName: string, input: any): string[] {
       );
     case "create_quests":
       return (input.quests ?? []).map((q: any) => q.title);
+    case "toggle_holiday_mode":
+      return [input.action === "start" ? "Holiday mode activated" : "Holiday mode ended"];
     default:
       return [];
   }
@@ -469,6 +512,11 @@ export const sendMessage = action({
       ? `Level ${progress.level}, XP: ${progress.totalXp}, HP: ${progress.currentHp}/${progress.maxHp}`
       : "No progress yet";
 
+    // Holiday mode status
+    const holidayStatus = progress?.holidayMode?.active
+      ? `HOLIDAY MODE ACTIVE since ${progress.holidayMode.startDate}${progress.holidayMode.endDate ? ` (auto-ends ${progress.holidayMode.endDate})` : ""} — streaks frozen, no HP damage`
+      : null;
+
     // Journal summaries (last 5)
     const recentJournal = (journalEntries ?? []).slice(0, 5);
     const journalSummaries = recentJournal.map((j: any) => {
@@ -490,6 +538,7 @@ export const sendMessage = action({
       ...habitSummaries,
       "",
       `=== PROGRESS: ${progressSummary} ===`,
+      ...(holidayStatus ? [`\n=== ${holidayStatus} ===`] : []),
       "",
       "=== RECENT JOURNAL ===",
       journalSummaries.length > 0
