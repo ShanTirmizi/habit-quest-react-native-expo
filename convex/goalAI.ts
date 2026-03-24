@@ -457,7 +457,7 @@ Respond with ONLY valid JSON.`;
           "anthropic-version": "2023-06-01",
         },
         body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
+          model: "claude-sonnet-4-6-20250725",
           max_tokens: 500,
           system: QUESTIONS_SYSTEM_PROMPT,
           messages: [{ role: "user", content: userMessage }],
@@ -599,7 +599,7 @@ Please create a progressive habit plan to help achieve this goal. Remember:
           "anthropic-version": "2023-06-01",
         },
         body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
+          model: "claude-sonnet-4-6-20250725",
           max_tokens: 2000,
           system: HABITS_SYSTEM_PROMPT,
           messages: [{ role: "user", content: userMessage }],
