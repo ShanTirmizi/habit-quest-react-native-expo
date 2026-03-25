@@ -3,6 +3,8 @@ import { mutation, query, MutationCtx, QueryCtx } from './_generated/server';
 import { Id } from './_generated/dataModel';
 import { verifyAuth } from './lib/auth';
 import { HP_CONFIG, UNDERWORLD_CONFIG, MEDICINE_CONFIG, computeLevel } from './lib/constants';
+import { getGamificationOverrides } from './lib/neurodivergence';
+import { FEATURE_FLAGS } from './lib/featureFlags';
 
 // Helper to get or create user progress
 async function getOrCreateProgress(ctx: MutationCtx, userId: Id<'users'>) {
@@ -53,7 +55,15 @@ export const addXp = mutation({
     const progress = await getOrCreateProgress(ctx, args.userId);
     if (!progress) throw new Error('Failed to create progress');
 
-    const newTotalXp = progress.totalXp + args.amount;
+    // Apply ND effort-weighting when feature is enabled (e.g. depression users get 1.3x XP)
+    let adjustedAmount = args.amount;
+    if (FEATURE_FLAGS.neurodivergenceSupport) {
+      const user = await ctx.db.get(args.userId);
+      const ndOverrides = getGamificationOverrides(user?.neurodivergenceProfile ?? undefined);
+      adjustedAmount = Math.round(args.amount * ndOverrides.xpCompletionMultiplier);
+    }
+
+    const newTotalXp = progress.totalXp + adjustedAmount;
     const newLevel = computeLevel(newTotalXp);
     const leveledUp = newLevel > progress.level;
 
@@ -189,7 +199,13 @@ export const deductHp = mutation({
     const progress = await getOrCreateProgress(ctx, args.userId);
     if (!progress) throw new Error('Failed to create progress');
 
-    const damageAmount = args.amount ?? HP_CONFIG.MISSED_HABIT_DAMAGE;
+    const baseDamage = args.amount ?? HP_CONFIG.MISSED_HABIT_DAMAGE;
+    let damageAmount = baseDamage;
+    if (FEATURE_FLAGS.neurodivergenceSupport) {
+      const user = await ctx.db.get(args.userId);
+      const ndOverrides = getGamificationOverrides(user?.neurodivergenceProfile ?? undefined);
+      damageAmount = Math.round(baseDamage * ndOverrides.hpDamageMultiplier);
+    }
     let newHp = Math.max(progress.currentHp - damageAmount, 0);
     let fainted = false;
     let newLevel = progress.level;
@@ -311,8 +327,14 @@ export const checkMissedHabitsOnLogin = mutation({
       return { missedCount: 0, hpLost: 0, fainted: false, newHp: progress.currentHp };
     }
 
-    // Apply damage
-    const totalDamage = missedCount * HP_CONFIG.MISSED_HABIT_DAMAGE;
+    // Apply damage (reduced for depression/anxiety users when ND feature is enabled)
+    let damagePerHabit: number = HP_CONFIG.MISSED_HABIT_DAMAGE;
+    if (FEATURE_FLAGS.neurodivergenceSupport) {
+      const user = await ctx.db.get(args.userId);
+      const ndOverrides = getGamificationOverrides(user?.neurodivergenceProfile ?? undefined);
+      damagePerHabit = Math.round(HP_CONFIG.MISSED_HABIT_DAMAGE * ndOverrides.hpDamageMultiplier);
+    }
+    const totalDamage = missedCount * damagePerHabit;
     let newHp = Math.max(progress.currentHp - totalDamage, 0);
     let fainted = false;
     let newFaintCount = progress.faintCount;

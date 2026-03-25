@@ -3,6 +3,8 @@
 import { v } from "convex/values";
 import { action } from "./_generated/server";
 import { api, internal } from "./_generated/api";
+import { buildNdPromptEnrichment } from "./lib/neurodivergence";
+import { FEATURE_FLAGS } from "./lib/featureFlags";
 
 // ──────────────────────────────────────────────
 // Tool definitions for Claude tool_use
@@ -490,7 +492,7 @@ export const sendMessage = action({
     }
 
     // 1. Fetch context data in parallel
-    const [habits, progress, journalEntries, memories, recentMessages] =
+    const [habits, progress, journalEntries, memories, recentMessages, ndProfile] =
       await Promise.all([
         ctx.runQuery(api.habits.getHabits, { userId: args.userId }),
         ctx.runQuery(api.progress.getProgress, { userId: args.userId }),
@@ -500,6 +502,7 @@ export const sendMessage = action({
           userId: args.userId,
           limit: 20,
         }),
+        ctx.runQuery(api.users.getNdProfile, { userId: args.userId }),
       ]);
 
     // 2. Save user message
@@ -570,7 +573,11 @@ export const sendMessage = action({
       `Today: ${todayStr}`,
     ].join("\n");
 
-    const systemPrompt = `${CHAT_SYSTEM_PROMPT}${memoryContext}
+    const ndEnrichment = FEATURE_FLAGS.neurodivergenceSupport
+      ? buildNdPromptEnrichment(ndProfile ?? undefined)
+      : '';
+
+    const systemPrompt = `${CHAT_SYSTEM_PROMPT}${ndEnrichment}${memoryContext}
 
 ## Current User Context
 ${userContext}`;

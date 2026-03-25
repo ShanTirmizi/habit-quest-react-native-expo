@@ -2,6 +2,7 @@ import { v } from 'convex/values';
 import { mutation, query } from './_generated/server';
 import { getAuthUserId } from '@convex-dev/auth/server';
 import { Id } from './_generated/dataModel';
+import { verifyAuth } from './lib/auth';
 
 // Get current authenticated user
 // Convex Auth stores the user directly in the users table
@@ -184,6 +185,62 @@ export const deleteAllAiMemories = mutation({
       await ctx.db.delete(m._id);
     }
     return { deleted: memories.length };
+  },
+});
+
+// ── Neurodivergence Profile ──────────────────────────────────────────────
+
+const ndConditionValidator = v.union(
+  v.literal('adhd'), v.literal('autism'), v.literal('anxiety'),
+  v.literal('depression'), v.literal('dyslexia'),
+);
+
+export const updateNeurodivergenceProfile = mutation({
+  args: {
+    conditions: v.array(ndConditionValidator),
+    adhdSubtype: v.optional(v.union(
+      v.literal('inattentive'), v.literal('hyperactive-impulsive'), v.literal('combined'),
+    )),
+    supportNeeds: v.optional(v.array(v.string())),
+    medicationStatus: v.optional(v.union(
+      v.literal('medicated'), v.literal('unmedicated'), v.literal('prefer-not-to-say'),
+    )),
+    diagnosisType: v.optional(v.union(
+      v.literal('professional'), v.literal('self-identified'), v.literal('exploring'),
+    )),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error('Not authenticated');
+    await ctx.db.patch(userId as Id<'users'>, {
+      neurodivergenceProfile: {
+        conditions: args.conditions,
+        adhdSubtype: args.adhdSubtype,
+        supportNeeds: args.supportNeeds,
+        medicationStatus: args.medicationStatus,
+        diagnosisType: args.diagnosisType,
+      },
+    });
+  },
+});
+
+export const clearNeurodivergenceProfile = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error('Not authenticated');
+    await ctx.db.patch(userId as Id<'users'>, {
+      neurodivergenceProfile: undefined,
+    });
+  },
+});
+
+export const getNdProfile = query({
+  args: { userId: v.id('users') },
+  handler: async (ctx, args) => {
+    await verifyAuth(ctx, args.userId);
+    const user = await ctx.db.get(args.userId);
+    return user?.neurodivergenceProfile ?? null;
   },
 });
 

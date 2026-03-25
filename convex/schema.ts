@@ -24,6 +24,32 @@ export default defineSchema({
     healthDataConsent: v.optional(v.boolean()),
     aiProcessingEnabled: v.optional(v.boolean()), // defaults to true, user can opt out
     consentVersion: v.optional(v.string()), // e.g. "1.0"
+    // Neurodivergence profile — personalises AI coaching, gamification, and goals
+    neurodivergenceProfile: v.optional(v.object({
+      conditions: v.array(v.union(
+        v.literal('adhd'),
+        v.literal('autism'),
+        v.literal('anxiety'),
+        v.literal('depression'),
+        v.literal('dyslexia'),
+      )),
+      adhdSubtype: v.optional(v.union(
+        v.literal('inattentive'),
+        v.literal('hyperactive-impulsive'),
+        v.literal('combined'),
+      )),
+      supportNeeds: v.optional(v.array(v.string())),
+      medicationStatus: v.optional(v.union(
+        v.literal('medicated'),
+        v.literal('unmedicated'),
+        v.literal('prefer-not-to-say'),
+      )),
+      diagnosisType: v.optional(v.union(
+        v.literal('professional'),
+        v.literal('self-identified'),
+        v.literal('exploring'),
+      )),
+    })),
   })
     .index('by_external_id', ['externalId'])
     .index('email', ['email']),

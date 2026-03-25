@@ -3,6 +3,8 @@
 import { v } from "convex/values";
 import { action } from "./_generated/server";
 import { api } from "./_generated/api";
+import { buildNdPromptEnrichment } from "./lib/neurodivergence";
+import { FEATURE_FLAGS } from "./lib/featureFlags";
 
 // Fallback response when API fails or data is insufficient
 const FALLBACK_INSIGHTS = {
@@ -78,11 +80,12 @@ export const generateInsights = action({
   },
   handler: async (ctx, args) => {
     // 1. Fetch user data via ctx.runQuery
-    const [habits, progress, journalEntries, memories] = await Promise.all([
+    const [habits, progress, journalEntries, memories, ndProfile] = await Promise.all([
       ctx.runQuery(api.habits.getHabits, { userId: args.userId }),
       ctx.runQuery(api.progress.getProgress, { userId: args.userId }),
       ctx.runQuery(api.journal.getEntries, { userId: args.userId }),
       ctx.runQuery(api.chat.getMemories, { userId: args.userId }),
+      ctx.runQuery(api.users.getNdProfile, { userId: args.userId }),
     ]);
 
     // Take first 20 journal entries (already ordered desc)
@@ -227,6 +230,11 @@ RESPOND WITH VALID JSON ONLY (no markdown, no code fences):
   "todayFocus": "One clear sentence about what to prioritize today"
 }`;
 
+    const ndEnrichment = FEATURE_FLAGS.neurodivergenceSupport
+      ? buildNdPromptEnrichment(ndProfile ?? undefined)
+      : '';
+    const enrichedSystemPrompt = systemPrompt + ndEnrichment;
+
     // 4. Call the Anthropic API
     try {
       const response = await fetch("https://api.anthropic.com/v1/messages", {
@@ -239,7 +247,7 @@ RESPOND WITH VALID JSON ONLY (no markdown, no code fences):
         body: JSON.stringify({
           model: "claude-sonnet-4-6",
           max_tokens: 1500,
-          system: systemPrompt,
+          system: enrichedSystemPrompt,
           messages: [{ role: "user", content: userContext }],
         }),
       });

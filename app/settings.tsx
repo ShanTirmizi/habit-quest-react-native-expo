@@ -33,6 +33,9 @@ export default function SettingsScreen() {
   const { colors, isDark, toggleTheme } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
+  // Feature flags
+  const featureFlags = useQuery(api.featureFlags.getFlags);
+
   // Notification preferences
   const preferences = useQuery(api.notifications.getPreferences);
   const updatePreferences = useMutation(api.notifications.updatePreferences);
@@ -194,6 +197,22 @@ export default function SettingsScreen() {
             styles={styles}
           />
         </View>
+
+        {/* Section: Personalisation (behind feature flag) */}
+        {featureFlags?.neurodivergenceSupport && (
+          <>
+            <Text style={styles.sectionTitle}>PERSONALISATION</Text>
+            <View style={styles.sectionCard}>
+              <ChevronRow
+                icon="accessibility-outline"
+                label="Neurodivergence Support"
+                onPress={() => router.push('/personalisation')}
+                colors={colors}
+                styles={styles}
+              />
+            </View>
+          </>
+        )}
 
         {/* Section: Privacy & Data */}
         <Text style={styles.sectionTitle}>PRIVACY & DATA</Text>

@@ -520,3 +520,38 @@ export interface SuggestedPhase {
     newXpReward?: number;
   }[];
 }
+
+// ── Neurodivergence Profile ──────────────────────────────────────────────
+
+export type NdCondition = 'adhd' | 'autism' | 'anxiety' | 'depression' | 'dyslexia';
+export type AdhdSubtype = 'inattentive' | 'hyperactive-impulsive' | 'combined';
+export type MedicationStatus = 'medicated' | 'unmedicated' | 'prefer-not-to-say';
+export type DiagnosisType = 'professional' | 'self-identified' | 'exploring';
+
+export interface NeurodivergenceProfile {
+  conditions: NdCondition[];
+  adhdSubtype?: AdhdSubtype;
+  supportNeeds?: string[];
+  medicationStatus?: MedicationStatus;
+  diagnosisType?: DiagnosisType;
+}
+
+export const ND_CONDITION_CONFIG: Record<NdCondition, { label: string; icon: string; color: string; description: string }> = {
+  adhd: { label: 'ADHD', icon: 'flash-outline', color: '#FF6B2C', description: 'Attention, focus, and executive function' },
+  autism: { label: 'Autism', icon: 'color-filter-outline', color: '#00E5CC', description: 'Sensory processing and routine preferences' },
+  anxiety: { label: 'Anxiety', icon: 'pulse-outline', color: '#448AFF', description: 'Worry, perfectionism, and avoidance' },
+  depression: { label: 'Depression', icon: 'cloudy-outline', color: '#B388FF', description: 'Low energy, motivation, and mood' },
+  dyslexia: { label: 'Dyslexia', icon: 'book-outline', color: '#FFD740', description: 'Reading and text processing' },
+};
+
+export const ADHD_SUBTYPE_CONFIG: Record<AdhdSubtype, { label: string; description: string }> = {
+  inattentive: { label: 'Inattentive', description: 'Difficulty focusing, forgetfulness, losing track of tasks' },
+  'hyperactive-impulsive': { label: 'Hyperactive-Impulsive', description: 'Restlessness, impulsivity, difficulty waiting' },
+  combined: { label: 'Combined', description: 'Both inattentive and hyperactive-impulsive patterns' },
+};
+
+export const DIAGNOSIS_TYPE_CONFIG: Record<DiagnosisType, { label: string }> = {
+  professional: { label: 'Professionally diagnosed' },
+  'self-identified': { label: 'Self-identified' },
+  exploring: { label: 'Still exploring' },
+};

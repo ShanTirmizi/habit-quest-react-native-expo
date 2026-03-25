@@ -117,6 +117,10 @@ function ThemedApp() {
             options={{ animation: 'slide_from_right' }}
           />
           <Stack.Screen
+            name="personalisation"
+            options={{ animation: 'slide_from_right' }}
+          />
+          <Stack.Screen
             name="settings"
             options={{ animation: 'slide_from_right' }}
           />
