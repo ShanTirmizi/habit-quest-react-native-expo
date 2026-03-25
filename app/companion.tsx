@@ -712,7 +712,7 @@ export default function CompanionScreen() {
           placeholder={`Message ${companion.name}...`}
           placeholderTextColor={colors.textMuted}
           multiline
-          maxLength={500}
+          maxLength={5000}
           returnKeyType="default"
           blurOnSubmit={false}
         />

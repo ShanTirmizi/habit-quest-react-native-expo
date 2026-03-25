@@ -151,7 +151,7 @@ const ChatInputBar = React.memo(function ChatInputBar({
         placeholder={placeholder}
         placeholderTextColor={colors.textMuted}
         multiline
-        maxLength={500}
+        maxLength={5000}
         returnKeyType="default"
         blurOnSubmit={false}
       />
