@@ -30,6 +30,7 @@ import { useTheme } from '@/contexts/theme-context';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { BottomSheet, BottomSheetTextInput as TextInput } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
+import { ChatMarkdown } from '@/components/ui/ChatMarkdown';
 import { useToast } from '@/contexts/toast-context';
 import { useVoiceModeController } from '@/components/voice/VoiceModeOverlay';
 
@@ -534,11 +535,22 @@ export function CompanionWidget({
     }
   }, [voiceController.releaseMic]);
 
-  // Merge backend messages with any local (optimistic) ones not yet in backend.
-  // Memoized to avoid creating a new array on every render (voice state changes etc.)
+  // Merge backend messages with local (optimistic) ones.
+  // Deduplicate: if a local message's content already appears in the last N
+  // backend messages, skip it (it's been persisted and would show twice).
   const allMessages: ChatMessage[] = useMemo(() => {
     const backend = recentMessages ?? [];
-    return [...backend, ...localMessages];
+    if (localMessages.length === 0) return backend;
+
+    const recentBackendContents = new Set(
+      backend.slice(-localMessages.length * 2).map((m) => `${m.role}:${m.content}`)
+    );
+
+    const uniqueLocal = localMessages.filter(
+      (m) => !recentBackendContents.has(`${m.role}:${m.content}`)
+    );
+
+    return [...backend, ...uniqueLocal];
   }, [recentMessages, localMessages]);
 
   // ---- Copy message handler (long-press to copy full message) ----
@@ -714,12 +726,18 @@ export function CompanionWidget({
             </View>
           )}
           <View style={[styles.messageBubble, isUser ? styles.messageBubbleUser : styles.messageBubbleAssistant]}>
-            <Text
-              selectable
-              style={[styles.messageText, isUser ? styles.messageTextUser : styles.messageTextAssistant]}
-            >
-              {item.content}
-            </Text>
+            {isUser ? (
+              <Text style={[styles.messageText, styles.messageTextUser]}>
+                {item.content}
+              </Text>
+            ) : (
+              <ChatMarkdown
+                selectable
+                style={[styles.messageText, styles.messageTextAssistant]}
+              >
+                {item.content}
+              </ChatMarkdown>
+            )}
           </View>
         </Pressable>
         {/* Tool call badges — below the message row */}

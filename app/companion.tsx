@@ -32,6 +32,7 @@ import { useTheme } from '@/contexts/theme-context';
 import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/contexts/toast-context';
 import { Button } from '@/components/ui/Button';
+import { ChatMarkdown } from '@/components/ui/ChatMarkdown';
 import { useVoiceModeController } from '@/components/voice/VoiceModeOverlay';
 import { TextInput } from 'react-native';
 
@@ -385,11 +386,24 @@ export default function CompanionScreen() {
     }
   }, [chatInput, isSending, userId, sendMessageAction, saveMessageMutation, generateSageResponse]);
 
-  // Merge backend messages with local (optimistic) ones
-  const allMessages: ChatMessage[] = (() => {
+  // Merge backend messages with local (optimistic) ones.
+  // Deduplicate: if a local message's content already appears in the last N
+  // backend messages, skip it (it's been persisted and would show twice).
+  const allMessages: ChatMessage[] = useMemo(() => {
     const backend = recentMessages ?? [];
-    return [...backend, ...localMessages];
-  })();
+    if (localMessages.length === 0) return backend;
+
+    // Build a set of recent backend message contents for fast lookup
+    const recentBackendContents = new Set(
+      backend.slice(-localMessages.length * 2).map((m) => `${m.role}:${m.content}`)
+    );
+
+    const uniqueLocal = localMessages.filter(
+      (m) => !recentBackendContents.has(`${m.role}:${m.content}`)
+    );
+
+    return [...backend, ...uniqueLocal];
+  }, [recentMessages, localMessages]);
 
   // Loading state
   if (!userId || companion === undefined) {
@@ -565,9 +579,15 @@ export default function CompanionScreen() {
             </View>
           )}
           <View style={[styles.messageBubble, isUser ? styles.messageBubbleUser : styles.messageBubbleAssistant]}>
-            <Text style={[styles.messageText, isUser ? styles.messageTextUser : styles.messageTextAssistant]}>
-              {item.content}
-            </Text>
+            {isUser ? (
+              <Text style={[styles.messageText, styles.messageTextUser]}>
+                {item.content}
+              </Text>
+            ) : (
+              <ChatMarkdown style={[styles.messageText, styles.messageTextAssistant]}>
+                {item.content}
+              </ChatMarkdown>
+            )}
           </View>
         </View>
         {hasToolCalls && (
