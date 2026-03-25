@@ -1,11 +1,10 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
-import { BottomSheetTextInput as TextInput } from '@gorhom/bottom-sheet';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { FontSize, Spacing, Radius, FontFamily, getCategoryColors, type ThemeColors } from '@/constants/theme';
 import { useTheme } from '@/contexts/theme-context';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { BottomSheet, BottomSheetTextInput } from '@/components/ui/BottomSheet';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import type { Habit, HabitCategory, HabitFrequencyType, TimeOfDay } from '@/types';
@@ -139,7 +138,7 @@ export function AddHabitSheet({ visible, onClose, onAdd, existingHabits }: AddHa
             {CATEGORIES.map((cat) => (
               <Pressable
                 key={cat.value}
-                onPress={() => setCategory(cat.value)}
+                onPress={() => { Haptics.selectionAsync(); setCategory(cat.value); }}
                 style={[
                   styles.categoryChip,
                   category === cat.value && {
@@ -171,7 +170,7 @@ export function AddHabitSheet({ visible, onClose, onAdd, existingHabits }: AddHa
             {XP_OPTIONS.map((xp) => (
               <Pressable
                 key={xp}
-                onPress={() => setXpReward(xp)}
+                onPress={() => { Haptics.selectionAsync(); setXpReward(xp); }}
                 style={[
                   styles.xpChip,
                   xpReward === xp && styles.xpChipActive,
@@ -198,7 +197,7 @@ export function AddHabitSheet({ visible, onClose, onAdd, existingHabits }: AddHa
               {FREQUENCIES.map((freq) => (
                 <Pressable
                   key={freq.value}
-                  onPress={() => setFrequencyType(freq.value)}
+                  onPress={() => { Haptics.selectionAsync(); setFrequencyType(freq.value); }}
                   style={[
                     styles.freqChip,
                     frequencyType === freq.value && styles.freqChipActive,
@@ -250,7 +249,7 @@ export function AddHabitSheet({ visible, onClose, onAdd, existingHabits }: AddHa
             {TIME_OF_DAY.map((tod) => (
               <Pressable
                 key={tod.value}
-                onPress={() => setTimeOfDay(tod.value)}
+                onPress={() => { Haptics.selectionAsync(); setTimeOfDay(tod.value); }}
                 style={[
                   styles.todChip,
                   timeOfDay === tod.value && styles.todChipActive,
@@ -379,12 +378,13 @@ export function AddHabitSheet({ visible, onClose, onAdd, existingHabits }: AddHa
               <Text style={styles.blueprintSectionLabel}>If-Then Blueprint</Text>
               <View style={styles.blueprintField}>
                 <Text style={styles.blueprintKeyword}>IF</Text>
-                <TextInput
+                <BottomSheetTextInput
                   style={styles.blueprintInput}
                   value={trigger}
                   onChangeText={setTrigger}
                   placeholder="After morning coffee..."
                   placeholderTextColor={colors.textMuted}
+                  selectionColor={colors.primary}
                 />
               </View>
               <View style={styles.blueprintField}>
@@ -395,12 +395,13 @@ export function AddHabitSheet({ visible, onClose, onAdd, existingHabits }: AddHa
               </View>
               <View style={styles.blueprintField}>
                 <Text style={[styles.blueprintKeyword, { color: colors.info }]}>AT</Text>
-                <TextInput
+                <BottomSheetTextInput
                   style={styles.blueprintInput}
                   value={location}
                   onChangeText={setLocation}
                   placeholder="In the gym, at my desk..."
                   placeholderTextColor={colors.textMuted}
+                  selectionColor={colors.primary}
                 />
               </View>
               <Text style={styles.intentionHint}>
@@ -414,12 +415,13 @@ export function AddHabitSheet({ visible, onClose, onAdd, existingHabits }: AddHa
                 <Ionicons name="gift-outline" size={14} color={colors.accent} />
                 <Text style={styles.blueprintSectionLabel}>Reward Bundle</Text>
               </View>
-              <TextInput
+              <BottomSheetTextInput
                 style={styles.bundleInput}
                 value={rewardBundle}
                 onChangeText={setRewardBundle}
                 placeholder="e.g., Listen to podcast, watch a show..."
                 placeholderTextColor={colors.textMuted}
+                selectionColor={colors.primary}
               />
               <Text style={styles.intentionHint}>
                 Pair this habit with a reward you enjoy (Milkman, 2014)

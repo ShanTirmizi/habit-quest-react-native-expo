@@ -418,23 +418,33 @@ function AddQuestSheet({
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<QuestPriority>('medium');
 
-  const handleSubmit = () => {
-    if (!title.trim()) return;
-    onAdd({ title: title.trim(), description: description.trim() || undefined, priority });
+  const resetForm = useCallback(() => {
     setTitle('');
     setDescription('');
     setPriority('medium');
+  }, []);
+
+  const handleClose = useCallback(() => {
+    resetForm();
     onClose();
-  };
+  }, [resetForm, onClose]);
+
+  const handleSubmit = useCallback(() => {
+    if (!title.trim()) return;
+    onAdd({ title: title.trim(), description: description.trim() || undefined, priority });
+    resetForm();
+    onClose();
+  }, [title, description, priority, onAdd, onClose, resetForm]);
 
   return (
-    <BottomSheet visible={visible} onClose={onClose} title="New Quest">
+    <BottomSheet visible={visible} onClose={handleClose} title="New Quest">
       <View style={styles.addForm}>
         <Input
           label="Quest Title"
           value={title}
           onChangeText={setTitle}
           placeholder="What's your side quest?"
+          returnKeyType="next"
           bottomSheet
         />
         <Input
@@ -455,7 +465,10 @@ function AddQuestSheet({
               return (
                 <Pressable
                   key={p}
-                  onPress={() => setPriority(p)}
+                  onPress={() => {
+                    Haptics.selectionAsync();
+                    setPriority(p);
+                  }}
                   style={[
                     styles.priorityChip,
                     priority === p && {
@@ -478,7 +491,7 @@ function AddQuestSheet({
           </View>
         </View>
         <View style={styles.addFormFooter}>
-          <Button title="Cancel" variant="ghost" onPress={onClose} />
+          <Button title="Cancel" variant="ghost" onPress={handleClose} />
           <Button title="Create Quest" onPress={handleSubmit} disabled={!title.trim()} />
         </View>
       </View>

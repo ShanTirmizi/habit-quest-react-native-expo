@@ -25,9 +25,8 @@ import { GradientCard } from '@/components/ui/GradientCard';
 import { BadgePill } from '@/components/ui/BadgePill';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { BottomSheet, BottomSheetTextInput as BottomSheetTimeInput } from '@/components/ui/BottomSheet';
 import { Input } from '@/components/ui/Input';
-import { BottomSheetTextInput as TextInput } from '@gorhom/bottom-sheet';
 import { Button } from '@/components/ui/Button';
 import { ConcentricRings } from '@/components/ui/ConcentricRings';
 import { format, parseISO } from 'date-fns';
@@ -660,25 +659,7 @@ function AddMedicineSheet({
   const [customMinute, setCustomMinute] = useState('00');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = async () => {
-    if (!name.trim() || !dosage.trim() || isSubmitting) return;
-    setIsSubmitting(true);
-    const timeLabel = isCustomTime ? 'custom' : selectedSlot.value;
-    const timeValue = isCustomTime ? `${customHour.padStart(2, '0')}:${customMinute.padStart(2, '0')}` : selectedSlot.time;
-    try {
-      await onAdd(name, dosage, timeLabel, timeValue);
-      setName('');
-      setDosage('');
-      setSelectedSlot(TIME_SLOT_OPTIONS[0]);
-      setIsCustomTime(false);
-      setCustomHour('09');
-      setCustomMinute('00');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleClose = () => {
+  const resetForm = useCallback(() => {
     setName('');
     setDosage('');
     setSelectedSlot(TIME_SLOT_OPTIONS[0]);
@@ -686,8 +667,25 @@ function AddMedicineSheet({
     setCustomHour('09');
     setCustomMinute('00');
     setIsSubmitting(false);
+  }, []);
+
+  const handleSubmit = useCallback(async () => {
+    if (!name.trim() || !dosage.trim() || isSubmitting) return;
+    setIsSubmitting(true);
+    const timeLabel = isCustomTime ? 'custom' : selectedSlot.value;
+    const timeValue = isCustomTime ? `${customHour.padStart(2, '0')}:${customMinute.padStart(2, '0')}` : selectedSlot.time;
+    try {
+      await onAdd(name, dosage, timeLabel, timeValue);
+      resetForm();
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [name, dosage, isSubmitting, isCustomTime, selectedSlot, customHour, customMinute, onAdd, resetForm]);
+
+  const handleClose = useCallback(() => {
+    resetForm();
     onClose();
-  };
+  }, [resetForm, onClose]);
 
   return (
     <BottomSheet visible={visible} onClose={handleClose} title="Add Medicine">
@@ -697,6 +695,7 @@ function AddMedicineSheet({
           value={name}
           onChangeText={setName}
           placeholder="e.g., Metformin"
+          returnKeyType="next"
           bottomSheet
         />
         <Input
@@ -717,7 +716,11 @@ function AddMedicineSheet({
             return (
               <Pressable
                 key={option.value}
-                onPress={() => { setIsCustomTime(false); setSelectedSlot(option); }}
+                onPress={() => {
+                  Haptics.selectionAsync();
+                  setIsCustomTime(false);
+                  setSelectedSlot(option);
+                }}
                 style={[
                   styles.timeSlotChip,
                   isSelected && { borderColor: config?.color ?? colors.primary, backgroundColor: `${config?.color ?? colors.primary}15` },
@@ -739,7 +742,10 @@ function AddMedicineSheet({
             );
           })}
           <Pressable
-            onPress={() => setIsCustomTime(true)}
+            onPress={() => {
+              Haptics.selectionAsync();
+              setIsCustomTime(true);
+            }}
             style={[
               styles.timeSlotChip,
               isCustomTime && { borderColor: colors.primary, backgroundColor: `${colors.primary}15` },
@@ -755,10 +761,10 @@ function AddMedicineSheet({
         {isCustomTime && (
           <View style={styles.customTimeRow}>
             <View style={styles.customTimeInputWrap}>
-              <TextInput
+              <BottomSheetTimeInput
                 style={styles.customTimeInput}
                 value={customHour}
-                onChangeText={(t) => {
+                onChangeText={(t: string) => {
                   const num = t.replace(/[^0-9]/g, '').slice(0, 2);
                   if (num === '' || (parseInt(num) >= 0 && parseInt(num) <= 23)) setCustomHour(num);
                 }}
@@ -766,12 +772,13 @@ function AddMedicineSheet({
                 maxLength={2}
                 placeholder="HH"
                 placeholderTextColor={colors.textMuted}
+                selectionColor={colors.primary}
               />
               <Text style={styles.customTimeSeparator}>:</Text>
-              <TextInput
+              <BottomSheetTimeInput
                 style={styles.customTimeInput}
                 value={customMinute}
-                onChangeText={(t) => {
+                onChangeText={(t: string) => {
                   const num = t.replace(/[^0-9]/g, '').slice(0, 2);
                   if (num === '' || (parseInt(num) >= 0 && parseInt(num) <= 59)) setCustomMinute(num);
                 }}
@@ -779,6 +786,7 @@ function AddMedicineSheet({
                 maxLength={2}
                 placeholder="MM"
                 placeholderTextColor={colors.textMuted}
+                selectionColor={colors.primary}
               />
             </View>
             <Text style={styles.customTimeHint}>24-hour format</Text>
@@ -823,19 +831,26 @@ function EditMedicineSheet({
     }
   }, [medicine]);
 
-  const handleSave = () => {
+  const handleSave = useCallback(() => {
     if (!medicine || !name.trim() || !dosage.trim()) return;
     onSave(medicine.id, name.trim(), dosage.trim());
-  };
+  }, [medicine, name, dosage, onSave]);
+
+  const handleClose = useCallback(() => {
+    setName('');
+    setDosage('');
+    onClose();
+  }, [onClose]);
 
   return (
-    <BottomSheet visible={visible} onClose={onClose} title="Edit Medicine">
+    <BottomSheet visible={visible} onClose={handleClose} title="Edit Medicine">
       <View style={styles.addForm}>
         <Input
           label="Medicine Name"
           value={name}
           onChangeText={setName}
           placeholder="e.g., Metformin"
+          returnKeyType="next"
           bottomSheet
         />
         <Input
@@ -847,7 +862,7 @@ function EditMedicineSheet({
           bottomSheet
         />
         <View style={styles.addFormFooter}>
-          <Button title="Cancel" variant="ghost" onPress={onClose} />
+          <Button title="Cancel" variant="ghost" onPress={handleClose} />
           <Button
             title="Save"
             onPress={handleSave}

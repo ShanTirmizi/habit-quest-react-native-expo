@@ -7,7 +7,7 @@ import {
   Pressable,
   Dimensions,
 } from 'react-native';
-import { BottomSheetTextInput as TextInput } from '@gorhom/bottom-sheet';
+import { BottomSheetTextInput as SheetTextInput } from '@/components/ui/BottomSheet';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -395,7 +395,7 @@ export default function ChroniclesScreen() {
                   <View style={styles.gratitudeNumberCircle}>
                     <Text style={styles.gratitudeNumberText}>{i + 1}</Text>
                   </View>
-                  <TextInput
+                  <SheetTextInput
                     style={styles.gratitudeInput}
                     value={item.value}
                     onChangeText={item.setter}
@@ -414,7 +414,7 @@ export default function ChroniclesScreen() {
               Today's achievements (+{JOURNAL_XP.ACHIEVEMENTS_BONUS} XP)
             </Text>
             <View style={styles.achievementInputRow}>
-              <TextInput
+              <SheetTextInput
                 style={styles.achievementInput}
                 value={achievementInput}
                 onChangeText={setAchievementInput}
@@ -472,7 +472,7 @@ export default function ChroniclesScreen() {
             <Text style={styles.formLabel}>
               How could today be better? (+{JOURNAL_XP.IMPROVEMENT_BONUS} XP)
             </Text>
-            <TextInput
+            <SheetTextInput
               style={[styles.textArea, { minHeight: 60 }]}
               value={improvement}
               onChangeText={setImprovement}
@@ -488,7 +488,7 @@ export default function ChroniclesScreen() {
             <Text style={styles.formLabel}>
               Additional thoughts (+{JOURNAL_XP.THOUGHTS_BONUS} XP)
             </Text>
-            <TextInput
+            <SheetTextInput
               style={[styles.textArea, { minHeight: 80 }]}
               value={content}
               onChangeText={setContent}
