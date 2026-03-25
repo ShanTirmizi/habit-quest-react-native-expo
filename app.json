@@ -48,10 +48,14 @@
           "color": "#EB6D3A"
         }
       ],
-      ["expo-speech-recognition", {
-        "microphonePermission": "HabitQuest needs microphone access for voice conversations with Dr. Sage.",
-        "speechRecognitionPermission": "HabitQuest needs speech recognition to transcribe your voice."
-      }]
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "HabitQuest needs microphone access for voice conversations with Dr. Sage.",
+          "speechRecognitionPermission": "HabitQuest needs speech recognition to transcribe your voice."
+        }
+      ],
+      "expo-localization"
     ],
     "extra": {
       "router": {},

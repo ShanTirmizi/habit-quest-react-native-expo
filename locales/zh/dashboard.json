@@ -1,0 +1,74 @@
+{
+  "greeting.morning": "早上好",
+  "greeting.afternoon": "下午好",
+  "greeting.evening": "晚上好",
+  "defaultName": "冒险者",
+
+  "accessibility.openCompanion": "打开贤者博士伙伴",
+  "accessibility.chooseCompanion": "选择伙伴",
+  "accessibility.endHoliday": "结束假期模式",
+  "accessibility.startHoliday": "开启假期模式",
+  "accessibility.settings": "设置",
+  "accessibility.addHabit": "添加新习惯",
+
+  "stats.lvl": "等级",
+  "stats.xp": "XP",
+  "stats.hp": "HP",
+  "stats.done": "已完成",
+  "stats.streak": "连续",
+
+  "timeSection.morning": "早晨",
+  "timeSection.afternoon": "下午",
+  "timeSection.evening": "晚上",
+  "timeSection.anytime": "随时",
+
+  "badge.now": "现在",
+  "badge.upNext": "下一个",
+
+  "holiday.title": "假期模式已开启",
+  "holiday.subtitle": "连续打卡已冻结，不会扣 HP",
+  "holiday.subtitleUntil": "连续打卡已冻结，不会扣 HP · 截至 {{date}}",
+  "holiday.end": "结束",
+
+  "todaysHabits": "今日习惯",
+  "allHabits": "全部习惯",
+
+  "allDone.title": "全部完成！",
+  "allDone.text": "你已完成今天所有习惯，太棒了！",
+
+  "hibernating": "休眠中",
+
+  "goals.title": "目标",
+  "goals.seeAll": "查看全部",
+  "goals.setGoal": "设定目标",
+  "goals.daysLeft": "{{count}}天",
+  "goals.today": "今天",
+  "goals.overdue": "已逾期",
+
+  "emptyState.title": "还没有习惯",
+  "emptyState.description": "创建你的第一个习惯，开始你的旅程吧。积少成多，聚沙成塔！",
+  "emptyState.action": "创建第一个习惯",
+
+  "toast.habitDoneWithReward": "{{name}} 完成！奖励时间：{{reward}}",
+  "toast.habitCompleted": "{{name}} 已完成！",
+  "toast.toggleFailed": "切换习惯失败",
+  "toast.habitCreated": "习惯已创建！",
+  "toast.addFailed": "添加习惯失败",
+  "toast.habitDeleted": "习惯已删除",
+  "toast.deleteFailed": "删除习惯失败",
+  "toast.noteAdded": "笔记已添加",
+  "toast.noteFailed": "添加笔记失败",
+  "toast.habitUpdated": "习惯已更新！",
+  "toast.updateFailed": "更新习惯失败",
+  "toast.holidayEnded": "欢迎回来！连续打卡已恢复",
+  "toast.holidayStarted": "假期模式已开启——连续打卡安全啦！",
+  "toast.holidayFailed": "切换假期模式失败",
+  "toast.hibernated": "习惯已休眠",
+  "toast.hibernateFailed": "休眠失败",
+  "toast.reactivated": "习惯已重新激活！",
+  "toast.wakeFailed": "唤醒习惯失败",
+  "toast.streakFreezeUsed": "已使用连续打卡冻结！",
+  "toast.noFreezes": "没有可用的连续打卡冻结",
+  "toast.missedHabits": "漏掉 {{count}} 个习惯——扣除 {{hp}} HP",
+  "toast.missedHabits_other": "漏掉 {{count}} 个习惯——扣除 {{hp}} HP"
+}

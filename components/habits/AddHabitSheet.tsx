@@ -7,6 +7,7 @@ import { useTheme } from '@/contexts/theme-context';
 import { BottomSheet, BottomSheetTextInput } from '@/components/ui/BottomSheet';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
+import { useTranslation } from 'react-i18next';
 import type { Habit, HabitCategory, HabitFrequencyType, TimeOfDay } from '@/types';
 
 interface AddHabitSheetProps {
@@ -53,6 +54,7 @@ const DAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 const XP_OPTIONS = [10, 15, 20, 25];
 
 export function AddHabitSheet({ visible, onClose, onAdd, existingHabits }: AddHabitSheetProps) {
+  const { t } = useTranslation('habits');
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const categoryColors = useMemo(() => getCategoryColors(colors), [colors]);
@@ -121,19 +123,19 @@ export function AddHabitSheet({ visible, onClose, onAdd, existingHabits }: AddHa
   };
 
   return (
-    <BottomSheet visible={visible} onClose={onClose} title="New Habit">
+    <BottomSheet visible={visible} onClose={onClose} title={t('sheetTitle')}>
       <View style={styles.form}>
         <Input
-          label="Habit Name"
+          label={t('habitName.label')}
           value={name}
           onChangeText={setName}
-          placeholder="e.g., Morning run, Read 30 minutes..."
+          placeholder={t('habitName.placeholder')}
           bottomSheet
         />
 
         {/* Category */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Category</Text>
+          <Text style={styles.sectionLabel}>{t('category.label')}</Text>
           <View style={styles.optionRow}>
             {CATEGORIES.map((cat) => (
               <Pressable
@@ -156,7 +158,7 @@ export function AddHabitSheet({ visible, onClose, onAdd, existingHabits }: AddHa
                     },
                   ]}
                 >
-                  {cat.label}
+                  {t(`category.${cat.value}`)}
                 </Text>
               </Pressable>
             ))}
@@ -165,7 +167,7 @@ export function AddHabitSheet({ visible, onClose, onAdd, existingHabits }: AddHa
 
         {/* XP Reward */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>XP Reward</Text>
+          <Text style={styles.sectionLabel}>{t('xpReward.label')}</Text>
           <View style={styles.optionRow}>
             {XP_OPTIONS.map((xp) => (
               <Pressable
@@ -182,7 +184,7 @@ export function AddHabitSheet({ visible, onClose, onAdd, existingHabits }: AddHa
                     xpReward === xp && styles.xpChipTextActive,
                   ]}
                 >
-                  {xp} XP
+                  {t('xpReward.value', { xp })}
                 </Text>
               </Pressable>
             ))}
@@ -191,7 +193,7 @@ export function AddHabitSheet({ visible, onClose, onAdd, existingHabits }: AddHa
 
         {/* Frequency */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Frequency</Text>
+          <Text style={styles.sectionLabel}>{t('frequency.label')}</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View style={styles.optionRow}>
               {FREQUENCIES.map((freq) => (
@@ -209,7 +211,7 @@ export function AddHabitSheet({ visible, onClose, onAdd, existingHabits }: AddHa
                       frequencyType === freq.value && styles.freqChipTextActive,
                     ]}
                   >
-                    {freq.label}
+                    {t(`frequency.${freq.value}`)}
                   </Text>
                 </Pressable>
               ))}
@@ -244,7 +246,7 @@ export function AddHabitSheet({ visible, onClose, onAdd, existingHabits }: AddHa
 
         {/* Time of Day */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Time of Day</Text>
+          <Text style={styles.sectionLabel}>{t('timeOfDay.label')}</Text>
           <View style={styles.optionRow}>
             {TIME_OF_DAY.map((tod) => (
               <Pressable
@@ -262,7 +264,7 @@ export function AddHabitSheet({ visible, onClose, onAdd, existingHabits }: AddHa
                     timeOfDay === tod.value && styles.todLabelActive,
                   ]}
                 >
-                  {tod.label}
+                  {t(`timeOfDay.${tod.value}`)}
                 </Text>
               </Pressable>
             ))}
@@ -274,7 +276,7 @@ export function AddHabitSheet({ visible, onClose, onAdd, existingHabits }: AddHa
           <View style={styles.section}>
             <View style={styles.chainHeader}>
               <Ionicons name="link-outline" size={14} color={colors.textSecondary} />
-              <Text style={styles.sectionLabel}>Chain After</Text>
+              <Text style={styles.sectionLabel}>{t('chainAfter.label')}</Text>
             </View>
             <Pressable
               onPress={() => {
@@ -291,8 +293,8 @@ export function AddHabitSheet({ visible, onClose, onAdd, existingHabits }: AddHa
                 numberOfLines={1}
               >
                 {chainedToHabitId
-                  ? `After: ${existingHabits.find((h) => h.id === chainedToHabitId)?.name || 'Unknown'}`
-                  : 'None — standalone habit'}
+                  ? t('chainAfter.selected', { name: existingHabits.find((h) => h.id === chainedToHabitId)?.name || t('chainAfter.unknownName') })
+                  : t('chainAfter.none')}
               </Text>
               <Ionicons
                 name={showChainPicker ? 'chevron-up' : 'chevron-down'}
@@ -316,7 +318,7 @@ export function AddHabitSheet({ visible, onClose, onAdd, existingHabits }: AddHa
                     {!chainedToHabitId ? <View style={styles.chainRadioDot} /> : null}
                   </View>
                   <Text style={[styles.chainOptionText, !chainedToHabitId && { color: colors.foreground }]}>
-                    None — standalone habit
+                    {t('chainAfter.none')}
                   </Text>
                 </Pressable>
 
@@ -350,7 +352,7 @@ export function AddHabitSheet({ visible, onClose, onAdd, existingHabits }: AddHa
             ) : null}
 
             <Text style={styles.chainHint}>
-              Habit stacking: do this right after another habit
+              {t('chainAfter.hint')}
             </Text>
           </View>
         ) : null}
@@ -362,7 +364,7 @@ export function AddHabitSheet({ visible, onClose, onAdd, existingHabits }: AddHa
         >
           <View style={styles.advancedToggleLeft}>
             <Ionicons name="flash-outline" size={16} color={colors.textSecondary} />
-            <Text style={styles.advancedText}>Supercharge</Text>
+            <Text style={styles.advancedText}>{t('supercharge.label')}</Text>
           </View>
           <Ionicons
             name={showAdvanced ? 'chevron-up' : 'chevron-down'}
@@ -375,37 +377,37 @@ export function AddHabitSheet({ visible, onClose, onAdd, existingHabits }: AddHa
           <View style={styles.advancedSection}>
             {/* If-Then Blueprint */}
             <View style={styles.blueprintBuilder}>
-              <Text style={styles.blueprintSectionLabel}>If-Then Blueprint</Text>
+              <Text style={styles.blueprintSectionLabel}>{t('supercharge.ifThen.label')}</Text>
               <View style={styles.blueprintField}>
-                <Text style={styles.blueprintKeyword}>IF</Text>
+                <Text style={styles.blueprintKeyword}>{t('supercharge.ifThen.if')}</Text>
                 <BottomSheetTextInput
                   style={styles.blueprintInput}
                   value={trigger}
                   onChangeText={setTrigger}
-                  placeholder="After morning coffee..."
+                  placeholder={t('supercharge.ifThen.triggerPlaceholder')}
                   placeholderTextColor={colors.textMuted}
                   selectionColor={colors.primary}
                 />
               </View>
               <View style={styles.blueprintField}>
-                <Text style={[styles.blueprintKeyword, { color: colors.success }]}>THEN</Text>
+                <Text style={[styles.blueprintKeyword, { color: colors.success }]}>{t('supercharge.ifThen.then')}</Text>
                 <Text style={styles.blueprintHabitName} numberOfLines={1}>
-                  {name || 'Your habit'}
+                  {name || t('supercharge.ifThen.yourHabit')}
                 </Text>
               </View>
               <View style={styles.blueprintField}>
-                <Text style={[styles.blueprintKeyword, { color: colors.info }]}>AT</Text>
+                <Text style={[styles.blueprintKeyword, { color: colors.info }]}>{t('supercharge.ifThen.at')}</Text>
                 <BottomSheetTextInput
                   style={styles.blueprintInput}
                   value={location}
                   onChangeText={setLocation}
-                  placeholder="In the gym, at my desk..."
+                  placeholder={t('supercharge.ifThen.locationPlaceholder')}
                   placeholderTextColor={colors.textMuted}
                   selectionColor={colors.primary}
                 />
               </View>
               <Text style={styles.intentionHint}>
-                If-then plans increase follow-through by 2-3x (Gollwitzer, 1999)
+                {t('supercharge.ifThen.hint')}
               </Text>
             </View>
 
@@ -413,18 +415,18 @@ export function AddHabitSheet({ visible, onClose, onAdd, existingHabits }: AddHa
             <View style={styles.bundleSection}>
               <View style={styles.bundleLabelRow}>
                 <Ionicons name="gift-outline" size={14} color={colors.accent} />
-                <Text style={styles.blueprintSectionLabel}>Reward Bundle</Text>
+                <Text style={styles.blueprintSectionLabel}>{t('supercharge.reward.label')}</Text>
               </View>
               <BottomSheetTextInput
                 style={styles.bundleInput}
                 value={rewardBundle}
                 onChangeText={setRewardBundle}
-                placeholder="e.g., Listen to podcast, watch a show..."
+                placeholder={t('supercharge.reward.placeholder')}
                 placeholderTextColor={colors.textMuted}
                 selectionColor={colors.primary}
               />
               <Text style={styles.intentionHint}>
-                Pair this habit with a reward you enjoy (Milkman, 2014)
+                {t('supercharge.reward.hint')}
               </Text>
             </View>
           </View>
@@ -433,7 +435,7 @@ export function AddHabitSheet({ visible, onClose, onAdd, existingHabits }: AddHa
         {/* Submit */}
         <View style={styles.footer}>
           <Button
-            title="Cancel"
+            title={t('button.cancel')}
             variant="ghost"
             onPress={() => {
               resetForm();
@@ -441,7 +443,7 @@ export function AddHabitSheet({ visible, onClose, onAdd, existingHabits }: AddHa
             }}
           />
           <Button
-            title="Create Habit"
+            title={t('button.create')}
             onPress={handleAdd}
             disabled={!name.trim()}
           />

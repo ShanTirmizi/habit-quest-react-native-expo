@@ -1,0 +1,88 @@
+{
+  "headerTitle": "贤者博士",
+
+  "sageResponse": {
+    "0": "继续加油！每一小步都在通往更大目标的路上。",
+    "1": "我注意到你最近很努力，坚持就是超能力！",
+    "2": "记住，进步并不总是一条直线。你比自己想象的做得更好。",
+    "3": "来聊聊吧！你今天对自己的习惯感觉怎么样？",
+    "4": "你对自我提升的执着让我深受鼓舞，让我们保持这份势头！",
+    "5": "有时候最难的就是迈出第一步。而你已经在这里了！",
+    "6": "我相信你。你培养的每一个习惯都在塑造一个更强的自己。",
+    "7": "停下来想想你已经走了多远吧，你值得这份认可。",
+    "8": "挑战只是伪装了的机遇。你在想什么呢？",
+    "9": "你来这里打卡这件事本身，就已经说明了很多。"
+  },
+
+  "toolBadge": {
+    "habit": "习惯",
+    "medication": "药物",
+    "quest": "任务",
+    "holiday": "假期",
+    "added": "已添加{{label}}：{{item}}"
+  },
+
+  "fallback": {
+    "helpStruggle": "我理解你的感受。挫折是成长的一部分。具体什么让你觉得困难呢？有时候拆解问题会有帮助。",
+    "happyGreat": "太棒了！积极的势头是很有力量的。最近什么事情进展顺利呢？",
+    "tiredExhausted": "休息是旅途的一部分，而不是绕路。今天可以放轻松一些，对自己温柔点。",
+    "habitRoutine": "培养习惯就像锻炼肌肉——持续练习就会越来越强。哪怕一小步也很重要！",
+    "motivation": "动力来了又走，但自律会一直在。话说回来，重新找到你的「为什么」可以重新点燃那团火。是什么让你开始的呢？",
+    "hello": "你好呀！很高兴见到你。你的冒险之旅今天怎么样？"
+  },
+
+  "voiceFallback": {
+    "helpStruggle": "我理解。具体什么让你觉得困难呢？",
+    "happyGreat": "太好了！什么事情进展顺利呢？",
+    "tiredExhausted": "休息也是旅途的一部分，今天对自己温柔一点。",
+    "default": "谢谢分享！今天我能怎么帮你打理习惯呢？"
+  },
+
+  "tab": {
+    "info": "信息",
+    "chat": "聊天"
+  },
+
+  "info": {
+    "stage": "阶段",
+    "xp": "XP",
+    "speciesLabel": "阶段 {{stage}} {{species}}",
+    "unclaimedGifts": "{{count}} 个未领取的礼物！",
+    "unclaimedGifts_other": "{{count}} 个未领取的礼物！",
+    "namePlaceholder": "新名字……",
+    "save": "保存",
+    "renameCompanion": "重命名伙伴",
+    "unclaimedGiftsTitle": "未领取的礼物",
+    "claim": "领取"
+  },
+
+  "cta": {
+    "title": "选择你的伙伴",
+    "subtitle": "一位忠实的伙伴陪你踏上冒险之旅。它会对你的进展做出反应，随你升级而进化，还会给你带来礼物！",
+    "summonButton": "召唤伙伴"
+  },
+
+  "chat": {
+    "emptyTitle": "和 {{name}} 聊天",
+    "emptySubtitle": "寻求建议、分享进展，或者打个招呼吧！",
+    "thinking": "{{name}} 正在思考……",
+    "inputPlaceholder": "给 {{name}} 发消息……",
+    "holdToSpeak": "长按说话"
+  },
+
+  "voice": {
+    "listening": "聆听中……",
+    "thinking": "{{name}} 正在思考……",
+    "speaking": "{{name}} 正在说话……"
+  },
+
+  "toast": {
+    "companionJoined": "伙伴已加入你的冒险！",
+    "failedSummon": "召唤伙伴失败",
+    "companionRenamed": "伙伴已改名！",
+    "failedRename": "改名失败",
+    "giftClaimed": "礼物已领取：{{giftType}}！",
+    "failedClaimGift": "领取礼物失败",
+    "messageCopied": "消息已复制"
+  }
+}

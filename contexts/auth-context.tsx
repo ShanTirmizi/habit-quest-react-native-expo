@@ -13,6 +13,7 @@ interface User {
   hasCompletedOnboarding?: boolean;
   privacyPolicyAccepted?: boolean;
   aiProcessingEnabled?: boolean;
+  locale?: string;
 }
 
 interface AuthContextValue {

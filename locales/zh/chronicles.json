@@ -1,0 +1,74 @@
+{
+  "title": "日记",
+  "subtitle": {
+    "entry": "{{count}} 篇日记",
+    "entry_other": "{{count}} 篇日记",
+    "journaledToday": "今天已写日记",
+    "noEntryYet": "今天还没写"
+  },
+
+  "gratitudePrompt": {
+    "0": "今天什么让你微笑了？",
+    "1": "最近谁帮助了你？",
+    "2": "你注意到了什么美好的事物？",
+    "3": "你今天有什么小小的胜利？",
+    "4": "你在期待什么？"
+  },
+
+  "mood": {
+    "great": "很棒",
+    "good": "不错",
+    "okay": "还行",
+    "rough": "不太好"
+  },
+
+  "form": {
+    "howFeeling": "你今天感觉怎么样？",
+    "gratitudeLabel": "我感恩的3件事",
+    "achievementsLabel": "今日成就 (+{{xp}} XP)",
+    "achievementPlaceholder": "你完成了什么？",
+    "improvementLabel": "今天怎样可以更好？(+{{xp}} XP)",
+    "improvementPlaceholder": "一个可以改进的地方……",
+    "thoughtsLabel": "其他想法 (+{{xp}} XP)",
+    "thoughtsPlaceholder": "自由记录想法、灵感、感受……",
+    "xpEarned": "获得 XP",
+    "xpValue": "+{{xp}} XP",
+    "cancel": "取消",
+    "saving": "保存中……",
+    "updateEntry": "更新日记",
+    "saveEntry": "保存日记"
+  },
+
+  "sheet": {
+    "editTitle": "编辑 {{date}} 的日记",
+    "editTitleToday": "编辑今天的日记",
+    "todayTitle": "今日反思"
+  },
+
+  "today": {
+    "label": "今天",
+    "reflected": "已反思",
+    "achievements": "成就",
+    "words": "{{count}} 字",
+    "tapToEdit": "点击编辑"
+  },
+
+  "pastEntries": {
+    "title": "过往日记",
+    "noGratitudes": "没有感恩记录",
+    "achievements": "成就",
+    "improvement": "改进",
+    "thoughts": "想法"
+  },
+
+  "emptyState": {
+    "title": "你的日记等你来写",
+    "description": "开始写日记来记录心情、练习感恩，还能获得 XP。写3条感恩只需要2分钟。",
+    "actionLabel": "写第一篇日记"
+  },
+
+  "toast": {
+    "failedSave": "保存日记失败",
+    "failedUpdate": "更新日记失败"
+  }
+}

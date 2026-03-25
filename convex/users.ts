@@ -188,6 +188,26 @@ export const deleteAllAiMemories = mutation({
   },
 });
 
+// ── Locale ───────────────────────────────────────────────────────────────
+
+export const updateLocale = mutation({
+  args: { locale: v.string() },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error('Not authenticated');
+    await ctx.db.patch(userId as Id<'users'>, { locale: args.locale });
+  },
+});
+
+export const getUserLocale = query({
+  args: { userId: v.id('users') },
+  handler: async (ctx, args) => {
+    await verifyAuth(ctx, args.userId);
+    const user = await ctx.db.get(args.userId);
+    return user?.locale ?? 'en';
+  },
+});
+
 // ── Neurodivergence Profile ──────────────────────────────────────────────
 
 const ndConditionValidator = v.union(

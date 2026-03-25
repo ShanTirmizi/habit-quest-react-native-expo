@@ -14,6 +14,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useMutation, useQuery } from 'convex/react';
+import { useTranslation } from 'react-i18next';
 import { api } from '@/convex/_generated/api';
 import { useTheme } from '@/contexts/theme-context';
 import { FontSize, Spacing, Radius, FontFamily, Shadows, type ThemeColors } from '@/constants/theme';
@@ -25,6 +26,7 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function OnboardingScreen() {
   const { colors } = useTheme();
+  const { t } = useTranslation('onboarding');
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   const SLIDES = useMemo(() => [
@@ -32,27 +34,24 @@ export default function OnboardingScreen() {
       id: '1',
       icon: 'flame' as const,
       iconColor: colors.accent,
-      title: 'Build Powerful Habits',
-      description:
-        'Create daily habits, track streaks, and earn XP for every completion. Small steps lead to extraordinary results.',
+      title: t('slide1.title'),
+      description: t('slide1.description'),
     },
     {
       id: '2',
       icon: 'trophy' as const,
       iconColor: colors.primary,
-      title: 'Level Up & Compete',
-      description:
-        'Gain experience points, level up your character, defeat weekly bosses, and unlock achievements along the way.',
+      title: t('slide2.title'),
+      description: t('slide2.description'),
     },
     {
       id: '3',
       icon: 'compass' as const,
       iconColor: colors.secondary,
-      title: 'Meet Dr. Sage',
-      description:
-        'Your AI companion provides personalized coaching, tracks your patterns, and helps you overcome challenges.',
+      title: t('slide3.title'),
+      description: t('slide3.description'),
     },
-  ], [colors]);
+  ], [colors, t]);
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showNdStep, setShowNdStep] = useState(false);
@@ -135,7 +134,7 @@ export default function OnboardingScreen() {
       <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
         <View style={styles.header}>
           <Pressable onPress={handleComplete} style={styles.skipButton}>
-            <Text style={styles.skipText}>Skip</Text>
+            <Text style={styles.skipText}>{t('skip')}</Text>
           </Pressable>
         </View>
 
@@ -147,12 +146,12 @@ export default function OnboardingScreen() {
             <View style={[styles.iconCircle, { width: 80, height: 80, borderRadius: 40, marginBottom: Spacing.lg }]}>
               <Ionicons name="accessibility-outline" size={36} color={colors.primary} />
             </View>
-            <Text style={styles.ndTitle}>Personalise your experience</Text>
+            <Text style={styles.ndTitle}>{t('ndStep.title')}</Text>
             <Text style={styles.ndSubtitle}>
-              Do any of these apply to you? This helps Dr. Sage give better, research-backed advice tailored to how your brain works.
+              {t('ndStep.subtitle')}
             </Text>
             <Text style={styles.ndPrivacy}>
-              Optional — you can change this anytime in Settings
+              {t('ndStep.privacy')}
             </Text>
           </View>
 
@@ -178,10 +177,10 @@ export default function OnboardingScreen() {
                   />
                   <View style={styles.ndChipTextWrap}>
                     <Text style={[styles.ndChipLabel, isSelected && { color: config.color }]}>
-                      {config.label}
+                      {t(`nd.${condition}`)}
                     </Text>
                     <Text style={styles.ndChipDesc} numberOfLines={1}>
-                      {config.description}
+                      {t(`nd.${condition}.description`)}
                     </Text>
                   </View>
                   {isSelected && (
@@ -195,7 +194,7 @@ export default function OnboardingScreen() {
           {/* ADHD Subtype — conditional */}
           {selectedConditions.includes('adhd') && (
             <View style={styles.ndSection}>
-              <Text style={styles.ndSectionTitle}>ADHD Type</Text>
+              <Text style={styles.ndSectionTitle}>{t('adhdType.title')}</Text>
               <View style={styles.ndOptionRow}>
                 {(Object.keys(ADHD_SUBTYPE_CONFIG) as AdhdSubtype[]).map((subtype) => {
                   const config = ADHD_SUBTYPE_CONFIG[subtype];
@@ -210,10 +209,10 @@ export default function OnboardingScreen() {
                       ]}
                     >
                       <Text style={[styles.ndOptionLabel, isSelected && { color: ND_CONDITION_CONFIG.adhd.color }]}>
-                        {config.label}
+                        {t(`adhdType.${subtype}`)}
                       </Text>
                       <Text style={styles.ndOptionDesc} numberOfLines={2}>
-                        {config.description}
+                        {t(`adhdType.${subtype}.description`)}
                       </Text>
                     </Pressable>
                   );
@@ -225,7 +224,7 @@ export default function OnboardingScreen() {
           {/* Diagnosis type — conditional on any selection */}
           {selectedConditions.length > 0 && (
             <View style={styles.ndSection}>
-              <Text style={styles.ndSectionTitle}>How would you describe this?</Text>
+              <Text style={styles.ndSectionTitle}>{t('diagnosisType.title')}</Text>
               <View style={styles.ndOptionRow}>
                 {(Object.keys(DIAGNOSIS_TYPE_CONFIG) as DiagnosisType[]).map((dtype) => {
                   const config = DIAGNOSIS_TYPE_CONFIG[dtype];
@@ -240,7 +239,7 @@ export default function OnboardingScreen() {
                       ]}
                     >
                       <Text style={[styles.ndOptionLabel, isSelected && { color: colors.primary }]}>
-                        {config.label}
+                        {t(`diagnosisType.${dtype}`)}
                       </Text>
                     </Pressable>
                   );
@@ -252,7 +251,7 @@ export default function OnboardingScreen() {
 
         <View style={styles.bottom}>
           <Button
-            title={selectedConditions.length > 0 ? 'Continue' : 'Skip — None Apply'}
+            title={selectedConditions.length > 0 ? t('ndStep.continue') : t('ndStep.skipNone')}
             onPress={handleSaveNdProfile}
             size="lg"
             fullWidth
@@ -268,7 +267,7 @@ export default function OnboardingScreen() {
     <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       <View style={styles.header}>
         <Pressable onPress={handleComplete} style={styles.skipButton}>
-          <Text style={styles.skipText}>Skip</Text>
+          <Text style={styles.skipText}>{t('skip')}</Text>
         </Pressable>
       </View>
 
@@ -302,7 +301,7 @@ export default function OnboardingScreen() {
         </View>
 
         <Button
-          title={isLastSlide ? 'Next' : 'Next'}
+          title={t('next')}
           onPress={handleNext}
           size="lg"
           fullWidth

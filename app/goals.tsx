@@ -19,6 +19,7 @@ import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import type { Id, Doc } from '@/convex/_generated/dataModel';
 import { useAuth } from '@/contexts/auth-context';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/contexts/theme-context';
 import { FontSize, Spacing, Radius, FontFamily, Shadows, type ThemeColors } from '@/constants/theme';
 import { GradientCard } from '@/components/ui/GradientCard';
@@ -70,6 +71,7 @@ export default function GoalsScreen() {
   const router = useRouter();
   const { userId } = useAuth();
   const { colors, isDark } = useTheme();
+  const { t } = useTranslation('goals');
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
 
   const { showToast } = useToast();
@@ -112,34 +114,34 @@ export default function GoalsScreen() {
 
     if (hasLinkedHabits) {
       Alert.alert(
-        'Delete Goal',
-        `"${goal.title}" has linked habits. What would you like to do?`,
+        t('delete.title'),
+        t('delete.confirmLinked', { title: goal.title }),
         [
-          { text: 'Cancel', style: 'cancel' },
+          { text: t('delete.cancel'), style: 'cancel' },
           {
-            text: 'Keep Habits',
+            text: t('delete.keepHabits'),
             onPress: async () => {
               if (!userId) return;
               try {
                 await deleteGoalMutation({ goalId: goal.id as Id<'goals'>, userId, deleteLinkedHabits: false });
                 setSelectedGoal(null);
-                showToast('Goal deleted', undefined, 'hp');
+                showToast(t('toast.deleted'), undefined, 'hp');
               } catch {
-                showToast('Failed to delete goal', undefined, 'error');
+                showToast(t('toast.deleteFailed'), undefined, 'error');
               }
             },
           },
           {
-            text: 'Delete All',
+            text: t('delete.deleteAll'),
             style: 'destructive',
             onPress: async () => {
               if (!userId) return;
               try {
                 await deleteGoalMutation({ goalId: goal.id as Id<'goals'>, userId, deleteLinkedHabits: true });
                 setSelectedGoal(null);
-                showToast('Goal and linked habits deleted', undefined, 'hp');
+                showToast(t('toast.deletedWithHabits'), undefined, 'hp');
               } catch {
-                showToast('Failed to delete goal', undefined, 'error');
+                showToast(t('toast.deleteFailed'), undefined, 'error');
               }
             },
           },
@@ -147,21 +149,21 @@ export default function GoalsScreen() {
       );
     } else {
       Alert.alert(
-        'Delete Goal',
-        `Are you sure you want to delete "${goal.title}"?`,
+        t('delete.title'),
+        t('delete.confirmSimple', { title: goal.title }),
         [
-          { text: 'Cancel', style: 'cancel' },
+          { text: t('delete.cancel'), style: 'cancel' },
           {
-            text: 'Delete',
+            text: t('delete.delete'),
             style: 'destructive',
             onPress: async () => {
               if (!userId) return;
               try {
                 await deleteGoalMutation({ goalId: goal.id as Id<'goals'>, userId });
                 setSelectedGoal(null);
-                showToast('Goal deleted', undefined, 'hp');
+                showToast(t('toast.deleted'), undefined, 'hp');
               } catch {
-                showToast('Failed to delete goal', undefined, 'error');
+                showToast(t('toast.deleteFailed'), undefined, 'error');
               }
             },
           },
@@ -184,9 +186,9 @@ export default function GoalsScreen() {
       });
       // Update selected goal locally
       setSelectedGoal((prev) => prev ? { ...prev, ...updates } : null);
-      showToast('Goal updated', undefined, 'xp');
+      showToast(t('toast.updated'), undefined, 'xp');
     } catch {
-      showToast('Failed to update goal', undefined, 'error');
+      showToast(t('toast.updateFailed'), undefined, 'error');
     }
   }, [userId, updateGoalMutation, showToast]);
 
@@ -200,9 +202,9 @@ export default function GoalsScreen() {
         status,
       });
       setSelectedGoal((prev) => prev ? { ...prev, status } : null);
-      showToast(`Goal marked as ${GOAL_STATUS_CONFIG[status].label.toLowerCase()}`, undefined, 'xp');
+      showToast(t('toast.statusUpdated', { status: GOAL_STATUS_CONFIG[status].label.toLowerCase() }), undefined, 'xp');
     } catch {
-      showToast('Failed to update status', undefined, 'error');
+      showToast(t('toast.statusFailed'), undefined, 'error');
     }
   }, [userId, updateGoalStatusMutation, showToast]);
 
@@ -212,8 +214,8 @@ export default function GoalsScreen() {
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.header}>
           <View>
-            <Text style={styles.title}>Goals</Text>
-            <Text style={styles.subtitle}>Loading...</Text>
+            <Text style={styles.title}>{t('title')}</Text>
+            <Text style={styles.subtitle}>{t('loading')}</Text>
           </View>
         </View>
         <View style={{ paddingHorizontal: Spacing.lg, gap: Spacing.md }}>
@@ -240,13 +242,13 @@ export default function GoalsScreen() {
           <Ionicons name="chevron-back" size={24} color={colors.foreground} />
         </Pressable>
         <View style={styles.headerLeft}>
-          <Text style={styles.title}>Goals</Text>
+          <Text style={styles.title}>{t('title')}</Text>
           <View style={styles.badgeRow}>
             <View style={styles.activeBadge}>
-              <Text style={styles.activeBadgeText}>{activeCount} active</Text>
+              <Text style={styles.activeBadgeText}>{t('activeCount', { count: activeCount })}</Text>
             </View>
             <View style={styles.achievedBadge}>
-              <Text style={styles.achievedBadgeText}>{achievedCount} achieved</Text>
+              <Text style={styles.achievedBadgeText}>{t('achievedCount', { count: achievedCount })}</Text>
             </View>
           </View>
         </View>
@@ -270,7 +272,7 @@ export default function GoalsScreen() {
       >
         {(['all', 'active', 'achieved', 'paused'] as FilterValue[]).map((f) => {
           const isActive = filter === f;
-          const label = f === 'all' ? 'All' : GOAL_STATUS_CONFIG[f as GoalStatus]?.label || f;
+          const label = f === 'all' ? t('filterAll') : GOAL_STATUS_CONFIG[f as GoalStatus]?.label || f;
           return (
             <Pressable
               key={f}
@@ -303,9 +305,9 @@ export default function GoalsScreen() {
         {filteredGoals.length === 0 ? (
           <EmptyState
             icon="flag-outline"
-            title="No goals yet"
-            description="Set meaningful goals and let AI generate habits to help you achieve them."
-            actionLabel="Create Goal"
+            title={t('empty.title')}
+            description={t('empty.description')}
+            actionLabel={t('empty.action')}
             onAction={() => setShowAddSheet(true)}
           />
         ) : (
@@ -367,7 +369,7 @@ export default function GoalsScreen() {
                       ),
                     };
                   });
-                  showToast('Milestone uncompleted', undefined, 'hp');
+                  showToast(t('toast.milestoneUncompleted'), undefined, 'hp');
                 } else {
                   // Complete it
                   await completeMilestoneMutation({
@@ -386,10 +388,10 @@ export default function GoalsScreen() {
                       ),
                     };
                   });
-                  showToast('Milestone completed!', undefined, 'xp');
+                  showToast(t('toast.milestoneCompleted'), undefined, 'xp');
                 }
               } catch {
-                showToast('Failed to update milestone', undefined, 'error');
+                showToast(t('toast.milestoneFailed'), undefined, 'error');
               }
             }}
             colors={colors}
@@ -410,6 +412,7 @@ const GOAL_CARD_BG_MAP: Record<string, string> = {
 };
 
 function GoalCard({ goal, onPress, colors, styles, isDark }: { goal: Goal; onPress: () => void; colors: ThemeColors; styles: ReturnType<typeof createStyles>; isDark: boolean }) {
+  const { t } = useTranslation('goals');
   const categoryConfig = GOAL_CATEGORY_CONFIG[goal.category];
   const statusConfig = GOAL_STATUS_CONFIG[goal.status];
   const daysRemaining = differenceInDays(parseISO(goal.targetDate), new Date());
@@ -439,7 +442,7 @@ function GoalCard({ goal, onPress, colors, styles, isDark }: { goal: Goal; onPre
             height={4}
           />
           <Text style={styles.goalMilestones}>
-            {completedMilestones}/{totalMilestones} milestones
+            {t('card.milestonesProgress', { completed: completedMilestones, total: totalMilestones })}
           </Text>
         </View>
       ) : null}
@@ -453,7 +456,7 @@ function GoalCard({ goal, onPress, colors, styles, isDark }: { goal: Goal; onPre
           isDark && daysRemaining < 14 && { color: colors.warning },
           isDark && daysRemaining < 0 && { color: colors.danger },
         ]}>
-          {daysRemaining > 0 ? `${daysRemaining}d left` : daysRemaining === 0 ? 'Today!' : 'Overdue'}
+          {daysRemaining > 0 ? t('card.daysLeft', { count: daysRemaining }) : daysRemaining === 0 ? t('card.today') : t('card.overdue')}
         </Text>
       </View>
     </GradientCard>
@@ -503,6 +506,7 @@ function GoalDetail({
   styles: ReturnType<typeof createStyles>;
   isDark: boolean;
 }) {
+  const { t } = useTranslation('goals');
   const categoryConfig = GOAL_CATEGORY_CONFIG[goal.category];
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(goal.title);
@@ -544,7 +548,7 @@ function GoalDetail({
             color={isEditing ? colors.success : colors.primary}
           />
           <Text style={[styles.detailActionText, { color: isEditing ? colors.success : colors.primary }]}>
-            {isEditing ? 'Save' : 'Edit'}
+            {isEditing ? t('detail.save') : t('detail.edit')}
           </Text>
         </Pressable>
 
@@ -554,7 +558,7 @@ function GoalDetail({
             style={({ pressed }) => [styles.detailActionBtn, pressed && { opacity: 0.7 }]}
           >
             <Ionicons name="close" size={16} color={colors.textMuted} />
-            <Text style={[styles.detailActionText, { color: colors.textMuted }]}>Cancel</Text>
+            <Text style={[styles.detailActionText, { color: colors.textMuted }]}>{t('detail.cancel')}</Text>
           </Pressable>
         ) : null}
 
@@ -568,28 +572,28 @@ function GoalDetail({
           style={({ pressed }) => [styles.detailActionBtn, styles.detailDeleteBtn, pressed && { opacity: 0.7 }]}
         >
           <Ionicons name="trash-outline" size={16} color={colors.danger} />
-          <Text style={[styles.detailActionText, { color: colors.danger }]}>Delete</Text>
+          <Text style={[styles.detailActionText, { color: colors.danger }]}>{t('detail.delete')}</Text>
         </Pressable>
       </View>
 
       {/* Editable title & description */}
       {isEditing ? (
         <View style={styles.editSection}>
-          <Text style={styles.editLabel}>Title</Text>
+          <Text style={styles.editLabel}>{t('detail.editTitleLabel')}</Text>
           <TextInput
             value={editTitle}
             onChangeText={setEditTitle}
             style={styles.editInput}
             placeholderTextColor={colors.textMuted}
-            placeholder="Goal title"
+            placeholder={t('detail.editTitlePlaceholder')}
           />
-          <Text style={styles.editLabel}>Description</Text>
+          <Text style={styles.editLabel}>{t('detail.editDescLabel')}</Text>
           <TextInput
             value={editDescription}
             onChangeText={setEditDescription}
             style={[styles.editInput, styles.editInputMultiline]}
             placeholderTextColor={colors.textMuted}
-            placeholder="Goal description (optional)"
+            placeholder={t('detail.editDescPlaceholder')}
             multiline
             numberOfLines={3}
           />
@@ -600,7 +604,7 @@ function GoalDetail({
 
       {/* Status selector */}
       <View style={styles.statusSection}>
-        <Text style={styles.detailSectionTitle}>Status</Text>
+        <Text style={styles.detailSectionTitle}>{t('detail.status')}</Text>
         <View style={styles.statusRow}>
           {(['active', 'achieved', 'paused', 'abandoned'] as GoalStatus[]).map((s) => {
             const config = GOAL_STATUS_CONFIG[s];
@@ -635,21 +639,21 @@ function GoalDetail({
 
       <View style={styles.detailMeta}>
         <View style={styles.detailMetaItem}>
-          <Text style={styles.detailMetaLabel}>Category</Text>
+          <Text style={styles.detailMetaLabel}>{t('detail.category')}</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
             <Ionicons name={categoryConfig.icon as keyof typeof Ionicons.glyphMap} size={14} color={categoryConfig.color} />
             <Text style={[styles.detailMetaValue, { color: categoryConfig.color }]}>{categoryConfig.label}</Text>
           </View>
         </View>
         <View style={styles.detailMetaItem}>
-          <Text style={styles.detailMetaLabel}>Target Date</Text>
+          <Text style={styles.detailMetaLabel}>{t('detail.targetDate')}</Text>
           <Text style={styles.detailMetaValue}>
             {format(parseISO(goal.targetDate), 'MMM d, yyyy')}
           </Text>
         </View>
         {goal.currentLevel ? (
           <View style={styles.detailMetaItem}>
-            <Text style={styles.detailMetaLabel}>Level</Text>
+            <Text style={styles.detailMetaLabel}>{t('detail.level')}</Text>
             <Text style={styles.detailMetaValue}>
               {goal.currentLevel.charAt(0).toUpperCase() + goal.currentLevel.slice(1)}
             </Text>
@@ -660,7 +664,7 @@ function GoalDetail({
       {/* Linked Habits */}
       {linkedHabits.length > 0 ? (
         <View style={styles.linkedHabitsSection}>
-          <Text style={styles.detailSectionTitle}>Linked Habits</Text>
+          <Text style={styles.detailSectionTitle}>{t('detail.linkedHabits')}</Text>
           {linkedHabits.map((habit) => {
             const habitColor = HABIT_CATEGORY_COLORS[habit.category] ?? colors.primary;
             const habitIcon = HABIT_CATEGORY_ICONS[habit.category] ?? 'ellipse';
@@ -691,7 +695,7 @@ function GoalDetail({
       {/* Milestones */}
       {goal.milestones && goal.milestones.length > 0 ? (
         <View style={styles.milestonesSection}>
-          <Text style={styles.detailSectionTitle}>Milestones</Text>
+          <Text style={styles.detailSectionTitle}>{t('detail.milestones')}</Text>
           {goal.milestones.map((m) => (
             <Pressable
               key={m.id}
@@ -716,7 +720,7 @@ function GoalDetail({
                 </Text>
                 <Text style={styles.milestoneDate}>
                   {m.completed && m.completedAt
-                    ? `Completed ${format(parseISO(m.completedAt), 'MMM d, yyyy')}`
+                    ? t('detail.completedDate', { date: format(parseISO(m.completedAt), 'MMM d, yyyy') })
                     : format(parseISO(m.targetDate), 'MMM d, yyyy')
                   }
                 </Text>
@@ -729,7 +733,7 @@ function GoalDetail({
       {/* Check-ins */}
       {goal.checkIns && goal.checkIns.length > 0 ? (
         <View style={styles.checkInsSection}>
-          <Text style={styles.detailSectionTitle}>Check-ins</Text>
+          <Text style={styles.detailSectionTitle}>{t('detail.checkIns')}</Text>
           {goal.checkIns.map((ci, i) => (
             <View key={i} style={styles.checkInItem}>
               <Text style={styles.checkInDate}>{format(parseISO(ci.date), 'MMM d')}</Text>

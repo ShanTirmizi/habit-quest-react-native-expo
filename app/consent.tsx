@@ -10,6 +10,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation } from 'convex/react';
+import { useTranslation } from 'react-i18next';
 import { api } from '@/convex/_generated/api';
 import { useTheme } from '@/contexts/theme-context';
 import { FontSize, Spacing, Radius, FontFamily, Shadows, type ThemeColors } from '@/constants/theme';
@@ -19,6 +20,7 @@ export default function ConsentScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { colors } = useTheme();
+  const { t } = useTranslation('auth');
   const styles = useMemo(() => createStyles(colors), [colors]);
   const acceptConsent = useMutation(api.users.acceptConsent);
 
@@ -54,9 +56,9 @@ export default function ConsentScreen() {
           <View style={styles.iconWrap}>
             <Ionicons name="shield-checkmark" size={40} color={colors.primary} />
           </View>
-          <Text style={styles.title}>Your Privacy Matters</Text>
+          <Text style={styles.title}>{t('consent.title')}</Text>
           <Text style={styles.subtitle}>
-            Before you start, please review how we handle your data.
+            {t('consent.subtitle')}
           </Text>
         </View>
 
@@ -70,22 +72,22 @@ export default function ConsentScreen() {
           </View>
           <View style={styles.consentTextWrap}>
             <Text style={styles.consentLabel}>
-              I agree to the{' '}
+              {t('consent.privacyLabel')}{' '}
               <Text
                 style={styles.link}
                 onPress={() => router.push('/privacy-policy')}
               >
-                Privacy Policy
+                {t('privacyPolicy')}
               </Text>
-              {' '}and{' '}
+              {' '}{t('consent.privacyAnd')}{' '}
               <Text
                 style={styles.link}
                 onPress={() => router.push('/terms-of-service')}
               >
-                Terms of Service
+                {t('termsOfService')}
               </Text>
             </Text>
-            <Text style={styles.required}>Required</Text>
+            <Text style={styles.required}>{t('consent.required')}</Text>
           </View>
         </Pressable>
 
@@ -99,12 +101,12 @@ export default function ConsentScreen() {
           </View>
           <View style={styles.consentTextWrap}>
             <Text style={styles.consentLabel}>
-              I consent to the processing of health-related data (medicine tracking, health habits)
+              {t('consent.healthLabel')}
             </Text>
             <Text style={styles.consentSub}>
-              Required to use medicine tracking features. Your health data is encrypted and never sold.
+              {t('consent.healthSub')}
             </Text>
-            <Text style={styles.required}>Required</Text>
+            <Text style={styles.required}>{t('consent.required')}</Text>
           </View>
         </Pressable>
 
@@ -118,25 +120,25 @@ export default function ConsentScreen() {
           </View>
           <View style={styles.consentTextWrap}>
             <Text style={styles.consentLabel}>
-              Enable AI-powered features (coaching, journal analysis, memory extraction)
+              {t('consent.aiLabel')}
             </Text>
             <Text style={styles.consentSub}>
-              Your data is sent to Anthropic for AI processing but is never used to train AI models. You can change this later in Settings.
+              {t('consent.aiSub')}
             </Text>
-            <Text style={styles.optional}>Optional</Text>
+            <Text style={styles.optional}>{t('consent.optional')}</Text>
           </View>
         </Pressable>
 
         <View style={styles.infoBox}>
           <Ionicons name="information-circle-outline" size={18} color={colors.textSecondary} />
           <Text style={styles.infoText}>
-            You can export or delete all your data at any time from Settings. We process data under GDPR Article 6(1)(a) — your explicit consent.
+            {t('consent.infoText')}
           </Text>
         </View>
 
         <View style={styles.buttonWrap}>
           <Button
-            title={loading ? 'Saving...' : 'Continue'}
+            title={loading ? t('consent.saving') : t('consent.continue')}
             onPress={handleContinue}
             disabled={!canContinue || loading}
             fullWidth

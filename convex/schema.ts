@@ -18,6 +18,7 @@ export default defineSchema({
     // For anonymous users during migration
     isAnonymous: v.optional(v.boolean()),
     hasCompletedOnboarding: v.optional(v.boolean()),
+    locale: v.optional(v.string()), // 'en' | 'zh', defaults to 'en'
     // GDPR consent
     privacyPolicyAccepted: v.optional(v.boolean()),
     privacyPolicyAcceptedAt: v.optional(v.string()),

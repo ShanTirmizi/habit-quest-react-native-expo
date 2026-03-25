@@ -22,21 +22,17 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/contexts/toast-context';
+import { useTranslation } from 'react-i18next';
 import type { JournalEntry, JournalMood } from '@/types';
 import { MOOD_CONFIG, JOURNAL_XP } from '@/types';
 
-const GRATITUDE_PROMPTS = [
-  'What made you smile today?',
-  'Who helped you recently?',
-  "What's something beautiful you noticed?",
-  "What's a small win you had?",
-  'What are you looking forward to?',
-];
+const GRATITUDE_PROMPT_KEYS = Array.from({ length: 5 }, (_, i) => `gratitudePrompt.${i}`);
 
 export default function ChroniclesScreen() {
   const insets = useSafeAreaInsets();
   const { userId } = useAuth();
   const { showToast } = useToast();
+  const { t } = useTranslation('chronicles');
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [isWriting, setIsWriting] = useState(false);
@@ -131,7 +127,7 @@ export default function ChroniclesScreen() {
       setContent('');
       setSelectedMood(null);
     } catch (err) {
-      showToast('Failed to save entry', undefined, 'error');
+      showToast(t('toast.failedSave'), undefined, 'error');
     } finally {
       setSaving(false);
     }
@@ -164,7 +160,7 @@ export default function ChroniclesScreen() {
       setContent('');
       setSelectedMood(null);
     } catch (err) {
-      showToast('Failed to update entry', undefined, 'error');
+      showToast(t('toast.failedUpdate'), undefined, 'error');
     } finally {
       setSaving(false);
     }
@@ -184,9 +180,10 @@ export default function ChroniclesScreen() {
   }, []);
 
   const prompts = useMemo(() => {
-    const shuffled = [...GRATITUDE_PROMPTS].sort(() => Math.random() - 0.5);
+    const resolved = GRATITUDE_PROMPT_KEYS.map((key) => t(key));
+    const shuffled = [...resolved].sort(() => Math.random() - 0.5);
     return shuffled.slice(0, 3);
-  }, []);
+  }, [t]);
 
   const isLoading = rawEntries === undefined;
 
@@ -199,9 +196,9 @@ export default function ChroniclesScreen() {
       {/* ── Header ── */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Text style={styles.title}>Chronicle</Text>
+          <Text style={styles.title}>{t('title')}</Text>
           <Text style={styles.subtitle}>
-            {entries.length} {entries.length === 1 ? 'entry' : 'entries'} · {hasEntryToday ? 'Journaled today' : 'No entry yet'}
+            {t('subtitle.entry', { count: entries.length })} · {hasEntryToday ? t('subtitle.journaledToday') : t('subtitle.noEntryYet')}
           </Text>
         </View>
         {!isWriting && !isEditing ? (
@@ -249,9 +246,9 @@ export default function ChroniclesScreen() {
                     color={todayMoodColor}
                   />
                   <View style={{ marginLeft: Spacing.sm }}>
-                    <Text style={styles.featuredLabel}>Today</Text>
+                    <Text style={styles.featuredLabel}>{t('today.label')}</Text>
                     <Text style={[styles.featuredMoodText, { color: todayMoodColor }]}>
-                      {todayEntry.mood ? MOOD_CONFIG[todayEntry.mood].label : 'Reflected'}
+                      {todayEntry.mood ? t(`mood.${todayEntry.mood}`) : t('today.reflected')}
                     </Text>
                   </View>
                 </View>
@@ -275,7 +272,7 @@ export default function ChroniclesScreen() {
 
               {todayEntry.achievements && todayEntry.achievements.length > 0 && (
                 <View style={styles.featuredAchievements}>
-                  <Text style={styles.featuredAchievementsLabel}>Achievements</Text>
+                  <Text style={styles.featuredAchievementsLabel}>{t('today.achievements')}</Text>
                   {todayEntry.achievements.map((a, i) => (
                     <View key={i} style={styles.featuredAchievementRow}>
                       <Ionicons name="trophy-outline" size={12} color={colors.accent} />
@@ -287,10 +284,10 @@ export default function ChroniclesScreen() {
 
               <View style={styles.featuredFooter}>
                 <Text style={styles.featuredFooterText}>
-                  {todayEntry.wordCount} words
+                  {t('today.words', { count: todayEntry.wordCount })}
                 </Text>
                 <View style={styles.featuredFooterRight}>
-                  <Text style={styles.tapToEditText}>Tap to edit</Text>
+                  <Text style={styles.tapToEditText}>{t('today.tapToEdit')}</Text>
                   <View style={styles.featuredXpBadge}>
                     <Ionicons name="flash" size={12} color={colors.accent} />
                     <Text style={styles.featuredXpText}>+{todayEntry.xpAwarded} XP</Text>
@@ -303,7 +300,7 @@ export default function ChroniclesScreen() {
           {/* ── Past Entries ── */}
           {pastEntries.length > 0 && !isWriting && !isEditing ? (
             <View style={styles.pastSection}>
-              <Text style={styles.pastSectionTitle}>Past Entries</Text>
+              <Text style={styles.pastSectionTitle}>{t('pastEntries.title')}</Text>
               <View style={styles.pastList}>
                 {pastEntries.map((entry, i) => (
                     <PastEntryCard key={entry.id} entry={entry} onEdit={handleStartEditing} colors={colors} styles={styles} />
@@ -316,9 +313,9 @@ export default function ChroniclesScreen() {
           {entries.length === 0 && !isWriting ? (
             <EmptyState
               icon="book-outline"
-              title="Your chronicles await"
-              description="Start journaling to track your mood, practice gratitude, and earn XP. Writing just 3 gratitudes takes 2 minutes."
-              actionLabel="Write First Entry"
+              title={t('emptyState.title')}
+              description={t('emptyState.description')}
+              actionLabel={t('emptyState.actionLabel')}
               onAction={() => setIsWriting(true)}
             />
           ) : null}
@@ -332,13 +329,15 @@ export default function ChroniclesScreen() {
         visible={isWriting || isEditing}
         onClose={() => { setIsWriting(false); setIsEditing(false); setEditingEntry(null); }}
         title={isEditing && editingEntry
-          ? `Edit ${editingEntry.entryDate ? format(parseISO(editingEntry.entryDate), 'MMM d') : "Today's"} Entry`
-          : "Today's Reflection"}
+          ? (editingEntry.entryDate
+              ? t('sheet.editTitle', { date: format(parseISO(editingEntry.entryDate), 'MMM d') })
+              : t('sheet.editTitleToday'))
+          : t('sheet.todayTitle')}
       >
         <View style={styles.writeForm}>
           {/* Mood Selection */}
           <View style={styles.moodSection}>
-            <Text style={styles.formLabel}>How are you feeling?</Text>
+            <Text style={styles.formLabel}>{t('form.howFeeling')}</Text>
             <View style={styles.moodRow}>
               {(Object.keys(MOOD_CONFIG) as JournalMood[]).map((mood) => {
                 const config = MOOD_CONFIG[mood];
@@ -374,7 +373,7 @@ export default function ChroniclesScreen() {
                         isSelected && { color: config.color },
                       ]}
                     >
-                      {config.label}
+                      {t(`mood.${mood}`)}
                     </Text>
                   </Pressable>
                 );
@@ -384,7 +383,7 @@ export default function ChroniclesScreen() {
 
           {/* Gratitudes */}
           <View style={styles.gratitudeSection}>
-            <Text style={styles.formLabel}>3 things I&apos;m grateful for</Text>
+            <Text style={styles.formLabel}>{t('form.gratitudeLabel')}</Text>
             <View style={styles.gratitudeInputs}>
               {[
                 { value: gratitude1, setter: setGratitude1, placeholder: prompts[0] },
@@ -411,14 +410,14 @@ export default function ChroniclesScreen() {
           {/* Achievements */}
           <View style={styles.section}>
             <Text style={styles.formLabel}>
-              Today's achievements (+{JOURNAL_XP.ACHIEVEMENTS_BONUS} XP)
+              {t('form.achievementsLabel', { xp: JOURNAL_XP.ACHIEVEMENTS_BONUS })}
             </Text>
             <View style={styles.achievementInputRow}>
               <SheetTextInput
                 style={styles.achievementInput}
                 value={achievementInput}
                 onChangeText={setAchievementInput}
-                placeholder="What did you accomplish?"
+                placeholder={t('form.achievementPlaceholder')}
                 placeholderTextColor={colors.textMuted}
                 selectionColor={colors.primary}
                 onSubmitEditing={() => {
@@ -470,13 +469,13 @@ export default function ChroniclesScreen() {
           {/* Improvement */}
           <View style={styles.section}>
             <Text style={styles.formLabel}>
-              How could today be better? (+{JOURNAL_XP.IMPROVEMENT_BONUS} XP)
+              {t('form.improvementLabel', { xp: JOURNAL_XP.IMPROVEMENT_BONUS })}
             </Text>
             <SheetTextInput
               style={[styles.textArea, { minHeight: 60 }]}
               value={improvement}
               onChangeText={setImprovement}
-              placeholder="One thing I could improve..."
+              placeholder={t('form.improvementPlaceholder')}
               placeholderTextColor={colors.textMuted}
               selectionColor={colors.primary}
               multiline
@@ -486,13 +485,13 @@ export default function ChroniclesScreen() {
           {/* Additional Thoughts */}
           <View style={styles.section}>
             <Text style={styles.formLabel}>
-              Additional thoughts (+{JOURNAL_XP.THOUGHTS_BONUS} XP)
+              {t('form.thoughtsLabel', { xp: JOURNAL_XP.THOUGHTS_BONUS })}
             </Text>
             <SheetTextInput
               style={[styles.textArea, { minHeight: 80 }]}
               value={content}
               onChangeText={setContent}
-              placeholder="Free-form reflections, ideas, feelings..."
+              placeholder={t('form.thoughtsPlaceholder')}
               placeholderTextColor={colors.textMuted}
               selectionColor={colors.primary}
               multiline
@@ -501,8 +500,8 @@ export default function ChroniclesScreen() {
 
           {/* XP Preview */}
           <View style={styles.xpPreview}>
-            <Text style={styles.xpPreviewLabel}>XP Earned</Text>
-            <Text style={styles.xpPreviewValue}>+{calculateXp()} XP</Text>
+            <Text style={styles.xpPreviewLabel}>{t('form.xpEarned')}</Text>
+            <Text style={styles.xpPreviewValue}>{t('form.xpValue', { xp: calculateXp() })}</Text>
           </View>
 
           {/* Actions */}
@@ -511,7 +510,7 @@ export default function ChroniclesScreen() {
               onPress={() => { setIsWriting(false); setIsEditing(false); setEditingEntry(null); }}
               style={({ pressed }) => [styles.cancelBtn, pressed && { opacity: 0.9, transform: [{ scale: 0.97 }] }]}
             >
-              <Text style={styles.cancelBtnText}>Cancel</Text>
+              <Text style={styles.cancelBtnText}>{t('form.cancel')}</Text>
             </Pressable>
             <Pressable
               onPress={isEditing ? handleUpdateEntry : handleSaveEntry}
@@ -523,7 +522,7 @@ export default function ChroniclesScreen() {
               ]}
             >
               <Text style={styles.saveBtnText}>
-                {saving ? 'Saving...' : isEditing ? 'Update Entry' : 'Save Entry'}
+                {saving ? t('form.saving') : isEditing ? t('form.updateEntry') : t('form.saveEntry')}
               </Text>
             </Pressable>
           </View>
@@ -545,6 +544,7 @@ function PastEntryCard({
   colors: ThemeColors;
   styles: ReturnType<typeof createStyles>;
 }) {
+  const { t } = useTranslation('chronicles');
   const [expanded, setExpanded] = useState(false);
 
   const dateStr = entry.entryDate
@@ -592,7 +592,7 @@ function PastEntryCard({
         </View>
         {entry.achievements && entry.achievements.length > 0 ? (
           <View style={styles.expandedBlock}>
-            <Text style={styles.expandedBlockLabel}>Achievements</Text>
+            <Text style={styles.expandedBlockLabel}>{t('pastEntries.achievements')}</Text>
             {entry.achievements.map((a, i) => (
               <Text key={i} style={styles.expandedBlockText}>
                 {i + 1}. {a}
@@ -602,13 +602,13 @@ function PastEntryCard({
         ) : null}
         {entry.improvement ? (
           <View style={styles.expandedBlock}>
-            <Text style={styles.expandedBlockLabel}>Improvement</Text>
+            <Text style={styles.expandedBlockLabel}>{t('pastEntries.improvement')}</Text>
             <Text style={styles.expandedBlockText}>{entry.improvement}</Text>
           </View>
         ) : null}
         {entry.content ? (
           <View style={styles.expandedBlock}>
-            <Text style={styles.expandedBlockLabel}>Thoughts</Text>
+            <Text style={styles.expandedBlockLabel}>{t('pastEntries.thoughts')}</Text>
             <Text style={styles.expandedBlockText}>{entry.content}</Text>
           </View>
         ) : null}
@@ -635,7 +635,7 @@ function PastEntryCard({
       </View>
       <View style={styles.pastCardBottom}>
         <Text style={styles.pastCardPreview} numberOfLines={1}>
-          {entry.gratitudes[0] || 'No gratitudes'}
+          {entry.gratitudes[0] || t('pastEntries.noGratitudes')}
         </Text>
         <View style={styles.pastCardXp}>
           <Ionicons name="flash" size={10} color={colors.accent} />

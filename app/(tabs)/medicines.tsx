@@ -9,6 +9,7 @@ import {
   Animated,
   Alert,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useToast } from '@/contexts/toast-context';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -64,6 +65,7 @@ export default function MedicinesScreen() {
   const { userId } = useAuth();
   const { showToast } = useToast();
   const { colors, isDark } = useTheme();
+  const { t } = useTranslation('medicines');
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const [tab, setTab] = useState('today');
   const [showAddSheet, setShowAddSheet] = useState(false);
@@ -150,7 +152,7 @@ export default function MedicinesScreen() {
           date: todayDate,
         });
       } catch (error) {
-        showToast('Failed to mark medicine as taken', undefined, 'error');
+        showToast(t('toast.markTakenFailed'), undefined, 'error');
       }
     },
     [userId, scheduleData, markTakenMutation, todayDate]
@@ -169,7 +171,7 @@ export default function MedicinesScreen() {
           date: todayDate,
         });
       } catch (error) {
-        showToast('Failed to mark medicine as skipped', undefined, 'error');
+        showToast(t('toast.markSkippedFailed'), undefined, 'error');
       }
     },
     [userId, scheduleData, markSkippedMutation, todayDate]
@@ -200,7 +202,7 @@ export default function MedicinesScreen() {
         }
         setShowAddSheet(false);
       } catch (error) {
-        showToast('Failed to add medicine', undefined, 'error');
+        showToast(t('toast.addFailed'), undefined, 'error');
       }
     },
     [userId, addMedicineMutation]
@@ -210,19 +212,19 @@ export default function MedicinesScreen() {
     (medicineId: string, medicineName: string) => {
       if (!userId) return;
       Alert.alert(
-        'Delete Medicine',
-        `Are you sure you want to delete "${medicineName}"? This will also delete all its history.`,
+        t('deleteAlert.title'),
+        t('deleteAlert.message', { name: medicineName }),
         [
-          { text: 'Cancel', style: 'cancel' },
+          { text: t('deleteAlert.cancel'), style: 'cancel' },
           {
-            text: 'Delete',
+            text: t('deleteAlert.delete'),
             style: 'destructive',
             onPress: async () => {
               try {
                 await deleteMedicineMutation({ medicineId: medicineId as any, userId });
-                showToast('Medicine deleted');
+                showToast(t('toast.deleted'));
               } catch {
-                showToast('Failed to delete medicine', undefined, 'error');
+                showToast(t('toast.deleteFailed'), undefined, 'error');
               }
             },
           },
@@ -238,9 +240,9 @@ export default function MedicinesScreen() {
       try {
         await updateMedicineMutation({ medicineId: medicineId as any, userId, name, dosage });
         setEditingMedicine(null);
-        showToast('Medicine updated');
+        showToast(t('toast.updated'));
       } catch {
-        showToast('Failed to update medicine', undefined, 'error');
+        showToast(t('toast.updateFailed'), undefined, 'error');
       }
     },
     [userId, updateMedicineMutation, showToast]
@@ -253,9 +255,9 @@ export default function MedicinesScreen() {
         medicineName,
         undefined,
         [
-          { text: 'Edit', onPress: () => setEditingMedicine({ id: medicineId, name: medicineName, dosage }) },
-          { text: 'Delete', style: 'destructive', onPress: () => handleDeleteMedicine(medicineId, medicineName) },
-          { text: 'Cancel', style: 'cancel' },
+          { text: t('longPressAlert.edit'), onPress: () => setEditingMedicine({ id: medicineId, name: medicineName, dosage }) },
+          { text: t('longPressAlert.delete'), style: 'destructive', onPress: () => handleDeleteMedicine(medicineId, medicineName) },
+          { text: t('longPressAlert.cancel'), style: 'cancel' },
         ]
       );
     },
@@ -265,7 +267,7 @@ export default function MedicinesScreen() {
   if (!userId) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }, styles.centered]}>
-        <Text style={styles.signInText}>Please sign in to view your medicines.</Text>
+        <Text style={styles.signInText}>{t('signIn')}</Text>
       </View>
     );
   }
@@ -279,9 +281,9 @@ export default function MedicinesScreen() {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Text style={styles.title}>Medicines</Text>
+          <Text style={styles.title}>{t('title')}</Text>
           <BadgePill
-            label={`${medicineStreak} day streak`}
+            label={t('streakBadge', { count: medicineStreak })}
             color={colors.accent}
             size="sm"
           />
@@ -301,9 +303,9 @@ export default function MedicinesScreen() {
           strokeWidth={8}
           trackColor={colors.border}
           rings={[
-            { progress: stats.percentage, color: colors.primary, label: 'Adherence' },
-            { progress: takenProgress, color: colors.secondary, label: 'Taken' },
-            { progress: streakProgress, color: colors.accent, label: 'Streak' },
+            { progress: stats.percentage, color: colors.primary, label: t('ring.adherence') },
+            { progress: takenProgress, color: colors.secondary, label: t('ring.taken') },
+            { progress: streakProgress, color: colors.accent, label: t('ring.streak') },
           ]}
         >
           <Text style={styles.ringsCenterNumber}>{stats.percentage}%</Text>
@@ -311,15 +313,15 @@ export default function MedicinesScreen() {
         <View style={styles.ringsLegend}>
           <View style={styles.legendItem}>
             <View style={[styles.legendDot, { backgroundColor: colors.primary }]} />
-            <Text style={styles.legendLabel}>Adherence</Text>
+            <Text style={styles.legendLabel}>{t('ring.adherence')}</Text>
           </View>
           <View style={styles.legendItem}>
             <View style={[styles.legendDot, { backgroundColor: colors.secondary }]} />
-            <Text style={styles.legendLabel}>Taken</Text>
+            <Text style={styles.legendLabel}>{t('ring.taken')}</Text>
           </View>
           <View style={styles.legendItem}>
             <View style={[styles.legendDot, { backgroundColor: colors.accent }]} />
-            <Text style={styles.legendLabel}>Streak</Text>
+            <Text style={styles.legendLabel}>{t('ring.streak')}</Text>
           </View>
         </View>
       </View>
@@ -328,8 +330,8 @@ export default function MedicinesScreen() {
       <View style={styles.tabContainer}>
         <SegmentedControl
           segments={[
-            { label: 'Today', value: 'today' },
-            { label: 'History', value: 'history' },
+            { label: t('tab.today'), value: 'today' },
+            { label: t('tab.history'), value: 'history' },
           ]}
           selectedValue={tab}
           onValueChange={(value) => {
@@ -365,9 +367,9 @@ export default function MedicinesScreen() {
             scheduleData.length === 0 ? (
               <EmptyState
                 icon="medical-outline"
-                title="No medicines scheduled"
-                description="Add your medications to track adherence and earn XP for staying on schedule."
-                actionLabel="Add Medicine"
+                title={t('emptyState.title')}
+                description={t('emptyState.description')}
+                actionLabel={t('emptyState.actionLabel')}
                 onAction={() => setShowAddSheet(true)}
               />
             ) : (
@@ -384,7 +386,7 @@ export default function MedicinesScreen() {
                           <View style={[styles.slotDot, { backgroundColor: config.color }]} />
                           <Ionicons name={config.icon} size={16} color={config.color} />
                           <Text style={[styles.slotLabel, { color: config.color }]}>
-                            {config.label}
+                            {t(`timeSlot.${baseSlot}`)}
                           </Text>
                           <Text style={styles.slotTime}>
                             {items[0] ? formatMedicineTime(items[0].scheduledTime) : ''}
@@ -463,6 +465,7 @@ function MedicineCard({
   colors: ThemeColors;
   styles: ReturnType<typeof createStyles>;
 }) {
+  const { t } = useTranslation('medicines');
   const isTaken = item.status === 'taken';
   const isSkipped = item.status === 'skipped';
   const isPending = item.status === 'pending';
@@ -495,11 +498,11 @@ function MedicineCard({
         {isTaken ? (
           <View style={styles.takenBadge}>
             <Ionicons name="checkmark-circle" size={24} color={colors.success} />
-            <Text style={styles.takenText}>Taken</Text>
+            <Text style={styles.takenText}>{t('card.taken')}</Text>
           </View>
         ) : isSkipped ? (
           <View style={styles.skippedBadge}>
-            <Text style={styles.skippedText}>Skipped</Text>
+            <Text style={styles.skippedText}>{t('card.skipped')}</Text>
           </View>
         ) : (
           <View style={styles.actionButtons}>
@@ -543,6 +546,7 @@ function MedicineHistoryView({
   styles: ReturnType<typeof createStyles>;
   isDark: boolean;
 }) {
+  const { t } = useTranslation('medicines');
   const grouped = useMemo(() => {
     if (!history) return null;
     const medicineLookup = new Map<string, string>();
@@ -562,7 +566,7 @@ function MedicineHistoryView({
     for (const item of history) {
       if (!byDate[item.date]) byDate[item.date] = [];
       byDate[item.date].push({
-        medicineName: medicineLookup.get(item.medicineId) || 'Unknown',
+        medicineName: medicineLookup.get(item.medicineId) || t('history.unknownMedicine'),
         time: formatMedicineTime(item.scheduledTime),
         status: item.status,
         xp: item.xpAwarded ?? 0,
@@ -586,8 +590,8 @@ function MedicineHistoryView({
     return (
       <EmptyState
         icon="time-outline"
-        title="No history yet"
-        description="Your medicine history will appear here once you start tracking."
+        title={t('history.emptyTitle')}
+        description={t('history.emptyDescription')}
       />
     );
   }
@@ -625,7 +629,7 @@ function MedicineHistoryView({
                   <Text style={styles.historyMedTime}>{item.time}</Text>
                 </View>
                 {item.xp > 0 ? (
-                  <Text style={styles.historyXp}>+{item.xp} XP</Text>
+                  <Text style={styles.historyXp}>{t('historyXp', { xp: item.xp })}</Text>
                 ) : null}
               </View>
             ))}
@@ -651,6 +655,7 @@ function AddMedicineSheet({
   styles: ReturnType<typeof createStyles>;
   timeSlotConfig: Record<string, { icon: keyof typeof Ionicons.glyphMap; label: string; color: string }>;
 }) {
+  const { t } = useTranslation('medicines');
   const [name, setName] = useState('');
   const [dosage, setDosage] = useState('');
   const [selectedSlot, setSelectedSlot] = useState(TIME_SLOT_OPTIONS[0]);
@@ -688,27 +693,27 @@ function AddMedicineSheet({
   }, [resetForm, onClose]);
 
   return (
-    <BottomSheet visible={visible} onClose={handleClose} title="Add Medicine">
+    <BottomSheet visible={visible} onClose={handleClose} title={t('addSheet.title')}>
       <View style={styles.addForm}>
         <Input
-          label="Medicine Name"
+          label={t('form.medicineName')}
           value={name}
           onChangeText={setName}
-          placeholder="e.g., Metformin"
+          placeholder={t('form.medicineNamePlaceholder')}
           returnKeyType="next"
           bottomSheet
         />
         <Input
-          label="Dosage"
+          label={t('form.dosage')}
           value={dosage}
           onChangeText={setDosage}
-          placeholder="e.g., 500mg"
+          placeholder={t('form.dosagePlaceholder')}
           containerStyle={{ marginTop: Spacing.md }}
           bottomSheet
         />
 
         {/* Time Slot Selector */}
-        <Text style={styles.timeSlotLabelText}>Schedule</Text>
+        <Text style={styles.timeSlotLabelText}>{t('form.schedule')}</Text>
         <View style={styles.timeSlotRow}>
           {TIME_SLOT_OPTIONS.map((option) => {
             const isSelected = !isCustomTime && selectedSlot.value === option.value;
@@ -733,7 +738,7 @@ function AddMedicineSheet({
                     isSelected && { color: config?.color ?? colors.primary, fontFamily: FontFamily.semibold },
                   ]}
                 >
-                  {option.label}
+                  {t(`timeSlot.${option.value}`)}
                 </Text>
                 <Text style={[styles.timeSlotChipTime, isSelected && { color: config?.color ?? colors.primary }]}>
                   {formatMedicineTime(option.time)}
@@ -753,7 +758,7 @@ function AddMedicineSheet({
           >
             <Ionicons name="time-outline" size={14} color={isCustomTime ? colors.primary : colors.textMuted} />
             <Text style={[styles.timeSlotChipText, isCustomTime && { color: colors.primary, fontFamily: FontFamily.semibold }]}>
-              Custom
+              {t('timeSlot.custom')}
             </Text>
           </Pressable>
         </View>
@@ -789,14 +794,14 @@ function AddMedicineSheet({
                 selectionColor={colors.primary}
               />
             </View>
-            <Text style={styles.customTimeHint}>24-hour format</Text>
+            <Text style={styles.customTimeHint}>{t('form.customTimeHint')}</Text>
           </View>
         )}
 
         <View style={styles.addFormFooter}>
-          <Button title="Cancel" variant="ghost" onPress={handleClose} />
+          <Button title={t('form.cancel')} variant="ghost" onPress={handleClose} />
           <Button
-            title={isSubmitting ? 'Adding...' : 'Add Medicine'}
+            title={isSubmitting ? t('form.adding') : t('form.addMedicine')}
             onPress={handleSubmit}
             disabled={!name.trim() || !dosage.trim() || isSubmitting}
           />
@@ -821,6 +826,7 @@ function EditMedicineSheet({
   colors: ThemeColors;
   styles: ReturnType<typeof createStyles>;
 }) {
+  const { t } = useTranslation('medicines');
   const [name, setName] = useState('');
   const [dosage, setDosage] = useState('');
 
@@ -843,28 +849,28 @@ function EditMedicineSheet({
   }, [onClose]);
 
   return (
-    <BottomSheet visible={visible} onClose={handleClose} title="Edit Medicine">
+    <BottomSheet visible={visible} onClose={handleClose} title={t('editSheet.title')}>
       <View style={styles.addForm}>
         <Input
-          label="Medicine Name"
+          label={t('form.medicineName')}
           value={name}
           onChangeText={setName}
-          placeholder="e.g., Metformin"
+          placeholder={t('form.medicineNamePlaceholder')}
           returnKeyType="next"
           bottomSheet
         />
         <Input
-          label="Dosage"
+          label={t('form.dosage')}
           value={dosage}
           onChangeText={setDosage}
-          placeholder="e.g., 500mg"
+          placeholder={t('form.dosagePlaceholder')}
           containerStyle={{ marginTop: Spacing.md }}
           bottomSheet
         />
         <View style={styles.addFormFooter}>
-          <Button title="Cancel" variant="ghost" onPress={handleClose} />
+          <Button title={t('form.cancel')} variant="ghost" onPress={handleClose} />
           <Button
-            title="Save"
+            title={t('editSheet.save')}
             onPress={handleSave}
             disabled={!name.trim() || !dosage.trim()}
           />

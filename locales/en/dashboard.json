@@ -1,0 +1,74 @@
+{
+  "greeting.morning": "Good morning",
+  "greeting.afternoon": "Good afternoon",
+  "greeting.evening": "Good evening",
+  "defaultName": "Adventurer",
+
+  "accessibility.openCompanion": "Open Dr. Sage companion",
+  "accessibility.chooseCompanion": "Choose companion",
+  "accessibility.endHoliday": "End holiday mode",
+  "accessibility.startHoliday": "Start holiday mode",
+  "accessibility.settings": "Settings",
+  "accessibility.addHabit": "Add new habit",
+
+  "stats.lvl": "LVL",
+  "stats.xp": "XP",
+  "stats.hp": "HP",
+  "stats.done": "DONE",
+  "stats.streak": "STREAK",
+
+  "timeSection.morning": "Morning",
+  "timeSection.afternoon": "Afternoon",
+  "timeSection.evening": "Evening",
+  "timeSection.anytime": "Anytime",
+
+  "badge.now": "NOW",
+  "badge.upNext": "UP NEXT",
+
+  "holiday.title": "Holiday Mode Active",
+  "holiday.subtitle": "Streaks frozen, no HP damage",
+  "holiday.subtitleUntil": "Streaks frozen, no HP damage \u00b7 Until {{date}}",
+  "holiday.end": "End",
+
+  "todaysHabits": "Today's Habits",
+  "allHabits": "All habits",
+
+  "allDone.title": "All Done!",
+  "allDone.text": "You've completed all habits for today. Amazing work!",
+
+  "hibernating": "Hibernating",
+
+  "goals.title": "Goals",
+  "goals.seeAll": "See all",
+  "goals.setGoal": "Set a Goal",
+  "goals.daysLeft": "{{count}}d",
+  "goals.today": "Today",
+  "goals.overdue": "Overdue",
+
+  "emptyState.title": "No habits yet",
+  "emptyState.description": "Start your journey by creating your first habit. Small steps lead to big changes!",
+  "emptyState.action": "Create First Habit",
+
+  "toast.habitDoneWithReward": "{{name}} done! Time for: {{reward}}",
+  "toast.habitCompleted": "{{name}} completed!",
+  "toast.toggleFailed": "Failed to toggle habit",
+  "toast.habitCreated": "Habit created!",
+  "toast.addFailed": "Failed to add habit",
+  "toast.habitDeleted": "Habit deleted",
+  "toast.deleteFailed": "Failed to delete habit",
+  "toast.noteAdded": "Note added",
+  "toast.noteFailed": "Failed to add note",
+  "toast.habitUpdated": "Habit updated!",
+  "toast.updateFailed": "Failed to update habit",
+  "toast.holidayEnded": "Welcome back! Streaks resumed",
+  "toast.holidayStarted": "Holiday mode on \u2014 streaks are safe!",
+  "toast.holidayFailed": "Failed to toggle holiday mode",
+  "toast.hibernated": "Habit hibernated",
+  "toast.hibernateFailed": "Failed to hibernate",
+  "toast.reactivated": "Habit reactivated!",
+  "toast.wakeFailed": "Failed to wake habit",
+  "toast.streakFreezeUsed": "Streak freeze used!",
+  "toast.noFreezes": "No streak freezes available",
+  "toast.missedHabits": "Missed {{count}} habit \u2014 lost {{hp}} HP",
+  "toast.missedHabits_other": "Missed {{count}} habits \u2014 lost {{hp}} HP"
+}

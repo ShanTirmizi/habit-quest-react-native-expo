@@ -25,12 +25,16 @@ import {
   type ThemeColors,
 } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
+import { useTranslation } from 'react-i18next';
+import { SUPPORTED_LOCALES, LOCALE_DISPLAY_NAMES, type SupportedLocale } from '@/lib/i18n';
+import i18n from '@/lib/i18n';
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user, signOut } = useAuth();
   const { colors, isDark, toggleTheme } = useTheme();
+  const { t } = useTranslation('settings');
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   // Feature flags
@@ -51,6 +55,9 @@ export default function SettingsScreen() {
   const exportData = useQuery(api.users.exportUserData, exportRequested ? {} : "skip");
   const aiEnabled = user?.aiProcessingEnabled !== false; // defaults to true
 
+  // Locale
+  const updateLocale = useMutation(api.users.updateLocale);
+
   // Account deletion
   const deleteAccount = useMutation(api.accountDeletion.deleteAccount);
 
@@ -68,21 +75,21 @@ export default function SettingsScreen() {
 
   const handleDeleteAccount = () => {
     Alert.alert(
-      'Delete Account',
-      'Are you sure? This will permanently delete your account and all data.',
+      t('account.deleteAccountTitle'),
+      t('account.deleteAccountMessage'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common:cancel'), style: 'cancel' },
         {
-          text: 'Delete',
+          text: t('common:delete'),
           style: 'destructive',
           onPress: () => {
             Alert.alert(
-              'Final Confirmation',
-              'This cannot be undone. Are you absolutely sure you want to delete your account?',
+              t('account.finalConfirmationTitle'),
+              t('account.finalConfirmationMessage'),
               [
-                { text: 'Cancel', style: 'cancel' },
+                { text: t('common:cancel'), style: 'cancel' },
                 {
-                  text: 'Delete Forever',
+                  text: t('account.deleteForever'),
                   style: 'destructive',
                   onPress: async () => {
                     try {
@@ -91,8 +98,8 @@ export default function SettingsScreen() {
                       router.replace('/(auth)/login');
                     } catch {
                       Alert.alert(
-                        'Error',
-                        'Failed to delete account. Please try again.'
+                        t('common:error'),
+                        t('account.deleteError'),
                       );
                     }
                   },
@@ -122,7 +129,7 @@ export default function SettingsScreen() {
             color={colors.foreground}
           />
         </Pressable>
-        <Text style={styles.headerTitle}>Settings</Text>
+        <Text style={styles.headerTitle}>{t('title')}</Text>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -142,24 +149,24 @@ export default function SettingsScreen() {
             </View>
             <View style={styles.profileInfo}>
               <Text style={styles.profileName}>
-                {user?.name ?? 'User'}
+                {user?.name ?? t('profile.defaultName')}
               </Text>
               <Text style={styles.profileEmail}>
                 {user?.email ?? ''}
               </Text>
             </View>
             <View style={styles.badge}>
-              <Text style={styles.badgeText}>Member</Text>
+              <Text style={styles.badgeText}>{t('profile.badge')}</Text>
             </View>
           </View>
         </View>
 
         {/* Section 2: Notifications */}
-        <Text style={styles.sectionTitle}>NOTIFICATIONS</Text>
+        <Text style={styles.sectionTitle}>{t('sections.notifications')}</Text>
         <View style={styles.sectionCard}>
           <ToggleRow
             icon="sunny-outline"
-            label="Morning reminders"
+            label={t('notifications.morning')}
             value={morningReminder}
             onValueChange={(v) => handleToggle('morningReminder', v)}
             colors={colors}
@@ -168,7 +175,7 @@ export default function SettingsScreen() {
           <View style={styles.divider} />
           <ToggleRow
             icon="partly-sunny-outline"
-            label="Afternoon reminders"
+            label={t('notifications.afternoon')}
             value={afternoonReminder}
             onValueChange={(v) => handleToggle('afternoonReminder', v)}
             colors={colors}
@@ -177,7 +184,7 @@ export default function SettingsScreen() {
           <View style={styles.divider} />
           <ToggleRow
             icon="moon-outline"
-            label="Evening reminders"
+            label={t('notifications.evening')}
             value={eveningReminder}
             onValueChange={(v) => handleToggle('eveningReminder', v)}
             colors={colors}
@@ -186,11 +193,11 @@ export default function SettingsScreen() {
         </View>
 
         {/* Section: Appearance */}
-        <Text style={styles.sectionTitle}>APPEARANCE</Text>
+        <Text style={styles.sectionTitle}>{t('sections.appearance')}</Text>
         <View style={styles.sectionCard}>
           <ToggleRow
             icon={isDark ? 'moon' : 'sunny'}
-            label={isDark ? 'Dark Mode' : 'Light Mode'}
+            label={isDark ? t('appearance.darkMode') : t('appearance.lightMode')}
             value={isDark}
             onValueChange={() => toggleTheme()}
             colors={colors}
@@ -198,14 +205,49 @@ export default function SettingsScreen() {
           />
         </View>
 
+        {/* Section: Language */}
+        <Text style={styles.sectionTitle}>{t('sections.language')}</Text>
+        <View style={styles.sectionCard}>
+          {SUPPORTED_LOCALES.map((locale, index) => (
+            <React.Fragment key={locale}>
+              {index > 0 && <View style={styles.divider} />}
+              <Pressable
+                style={styles.row}
+                onPress={() => {
+                  i18n.changeLanguage(locale);
+                  updateLocale({ locale });
+                }}
+              >
+                <View style={styles.rowLeft}>
+                  <Ionicons
+                    name="globe-outline"
+                    size={20}
+                    color={colors.textSecondary}
+                  />
+                  <Text style={styles.rowLabel}>
+                    {LOCALE_DISPLAY_NAMES[locale]}
+                  </Text>
+                </View>
+                {i18n.language === locale && (
+                  <Ionicons
+                    name="checkmark-circle"
+                    size={22}
+                    color={colors.primary}
+                  />
+                )}
+              </Pressable>
+            </React.Fragment>
+          ))}
+        </View>
+
         {/* Section: Personalisation (behind feature flag) */}
         {featureFlags?.neurodivergenceSupport && (
           <>
-            <Text style={styles.sectionTitle}>PERSONALISATION</Text>
+            <Text style={styles.sectionTitle}>{t('sections.personalisation')}</Text>
             <View style={styles.sectionCard}>
               <ChevronRow
                 icon="accessibility-outline"
-                label="Neurodivergence Support"
+                label={t('personalisation.neurodivergence')}
                 onPress={() => router.push('/personalisation')}
                 colors={colors}
                 styles={styles}
@@ -215,11 +257,11 @@ export default function SettingsScreen() {
         )}
 
         {/* Section: Privacy & Data */}
-        <Text style={styles.sectionTitle}>PRIVACY & DATA</Text>
+        <Text style={styles.sectionTitle}>{t('sections.privacy')}</Text>
         <View style={styles.sectionCard}>
           <ToggleRow
             icon="sparkles-outline"
-            label="AI Learning"
+            label={t('privacy.aiLearning')}
             value={aiEnabled}
             onValueChange={(v) => updateAiProcessing({ enabled: v })}
             colors={colors}
@@ -230,16 +272,19 @@ export default function SettingsScreen() {
             style={styles.row}
             onPress={() => {
               Alert.alert(
-                'Delete AI Memories',
-                'This will permanently delete all AI-extracted insights about you. AI features will start fresh.',
+                t('privacy.deleteAiMemoriesTitle'),
+                t('privacy.deleteAiMemoriesMessage'),
                 [
-                  { text: 'Cancel', style: 'cancel' },
+                  { text: t('common:cancel'), style: 'cancel' },
                   {
-                    text: 'Delete',
+                    text: t('common:delete'),
                     style: 'destructive',
                     onPress: async () => {
                       const result = await deleteAiMemories();
-                      Alert.alert('Done', `Deleted ${result.deleted} AI memories.`);
+                      Alert.alert(
+                        t('privacy.deleteAiMemoriesDone'),
+                        t('privacy.deleteAiMemoriesDoneMessage', { count: result.deleted }),
+                      );
                     },
                   },
                 ]
@@ -248,7 +293,7 @@ export default function SettingsScreen() {
           >
             <View style={styles.rowLeft}>
               <Ionicons name="trash-outline" size={20} color={colors.textSecondary} />
-              <Text style={styles.rowLabel}>Delete AI Memories</Text>
+              <Text style={styles.rowLabel}>{t('privacy.deleteAiMemories')}</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
           </Pressable>
@@ -258,38 +303,38 @@ export default function SettingsScreen() {
             onPress={async () => {
               if (!exportRequested) {
                 setExportRequested(true);
-                Alert.alert('Preparing', 'Your data export is being prepared. Press the button again in a moment.');
+                Alert.alert(t('privacy.exportPreparing'), t('privacy.exportPreparingMessage'));
                 return;
               }
               if (!exportData) {
-                Alert.alert('Loading', 'Your data is still loading. Please try again in a moment.');
+                Alert.alert(t('privacy.exportLoading'), t('privacy.exportLoadingMessage'));
                 return;
               }
               try {
                 const json = JSON.stringify(exportData, null, 2);
                 await Share.share({
                   message: json,
-                  title: 'HabitQuest Data Export',
+                  title: t('privacy.exportTitle'),
                 });
               } catch {
-                Alert.alert('Error', 'Failed to export data. Please try again.');
+                Alert.alert(t('common:error'), t('privacy.exportError'));
               }
             }}
           >
             <View style={styles.rowLeft}>
               <Ionicons name="download-outline" size={20} color={colors.textSecondary} />
-              <Text style={styles.rowLabel}>Export My Data</Text>
+              <Text style={styles.rowLabel}>{t('privacy.exportData')}</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
           </Pressable>
         </View>
 
         {/* Section 3: Legal */}
-        <Text style={styles.sectionTitle}>LEGAL</Text>
+        <Text style={styles.sectionTitle}>{t('sections.legal')}</Text>
         <View style={styles.sectionCard}>
           <ChevronRow
             icon="shield-checkmark-outline"
-            label="Privacy Policy"
+            label={t('legal.privacyPolicy')}
             onPress={() => router.push('/privacy-policy')}
             colors={colors}
             styles={styles}
@@ -297,7 +342,7 @@ export default function SettingsScreen() {
           <View style={styles.divider} />
           <ChevronRow
             icon="document-text-outline"
-            label="Terms of Service"
+            label={t('legal.termsOfService')}
             onPress={() => router.push('/terms-of-service')}
             colors={colors}
             styles={styles}
@@ -305,7 +350,7 @@ export default function SettingsScreen() {
         </View>
 
         {/* Section 4: Account Actions */}
-        <Text style={styles.sectionTitle}>ACCOUNT</Text>
+        <Text style={styles.sectionTitle}>{t('sections.account')}</Text>
         <View style={styles.sectionCard}>
           <Pressable style={styles.row} onPress={handleSignOut}>
             <View style={styles.rowLeft}>
@@ -315,7 +360,7 @@ export default function SettingsScreen() {
                 color={colors.danger}
               />
               <Text style={[styles.rowLabel, { color: colors.danger }]}>
-                Sign Out
+                {t('account.signOut')}
               </Text>
             </View>
           </Pressable>
@@ -333,7 +378,7 @@ export default function SettingsScreen() {
                   { color: colors.danger, fontFamily: FontFamily.semibold },
                 ]}
               >
-                Delete Account
+                {t('account.deleteAccount')}
               </Text>
             </View>
           </Pressable>
@@ -341,7 +386,7 @@ export default function SettingsScreen() {
 
         {/* Section 6: Footer */}
         <Text style={styles.versionText}>
-          HabitQuest v{Constants.expoConfig?.version ?? '1.0.0'}
+          {t('version', { version: Constants.expoConfig?.version ?? '1.0.0' })}
         </Text>
       </ScrollView>
     </View>

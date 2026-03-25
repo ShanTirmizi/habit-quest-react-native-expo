@@ -9,6 +9,7 @@ import {
   RefreshControl,
   Animated,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useToast } from '@/contexts/toast-context';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -32,6 +33,7 @@ export default function QuestsScreen() {
   const { userId } = useAuth();
   const { showToast } = useToast();
   const { colors, isDark } = useTheme();
+  const { t } = useTranslation('quests');
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const [showAddSheet, setShowAddSheet] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -69,7 +71,7 @@ export default function QuestsScreen() {
       try {
         await completeQuestMutation({ questId: id as any, userId });
       } catch (error) {
-        showToast('Failed to complete quest', undefined, 'error');
+        showToast(t('toast.completeFailed'), undefined, 'error');
       }
     },
     [userId, completeQuestMutation, showToast]
@@ -79,19 +81,19 @@ export default function QuestsScreen() {
     (id: string) => {
       if (!userId) return;
       Alert.alert(
-        'Delete Quest',
-        'Are you sure you want to delete this quest? This cannot be undone.',
+        t('deleteAlert.title'),
+        t('deleteAlert.message'),
         [
-          { text: 'Cancel', style: 'cancel' },
+          { text: t('deleteAlert.cancel'), style: 'cancel' },
           {
-            text: 'Delete',
+            text: t('deleteAlert.delete'),
             style: 'destructive',
             onPress: async () => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               try {
                 await deleteQuestMutation({ questId: id as any, userId });
               } catch (error) {
-                showToast('Failed to delete quest', undefined, 'error');
+                showToast(t('toast.deleteFailed'), undefined, 'error');
               }
             },
           },
@@ -107,7 +109,7 @@ export default function QuestsScreen() {
       try {
         await uncompleteQuestMutation({ questId: id as any, userId });
       } catch (error) {
-        showToast('Failed to undo quest', undefined, 'error');
+        showToast(t('toast.undoFailed'), undefined, 'error');
       }
     },
     [userId, uncompleteQuestMutation, showToast]
@@ -127,7 +129,7 @@ export default function QuestsScreen() {
           questType: 'ongoing',
         });
       } catch (error) {
-        showToast('Failed to create quest', undefined, 'error');
+        showToast(t('toast.createFailed'), undefined, 'error');
       }
     },
     [userId, addQuestMutation, showToast]
@@ -140,13 +142,13 @@ export default function QuestsScreen() {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Text style={styles.title}>Quests</Text>
+          <Text style={styles.title}>{t('title')}</Text>
           <View style={styles.badgeRow}>
             <View style={styles.activeBadge}>
-              <Text style={styles.activeBadgeText}>{pendingQuests.length} active</Text>
+              <Text style={styles.activeBadgeText}>{t('badge.active', { count: pendingQuests.length })}</Text>
             </View>
             <View style={styles.completedBadge}>
-              <Text style={styles.completedBadgeText}>{completedQuests.length} completed</Text>
+              <Text style={styles.completedBadgeText}>{t('badge.completed', { count: completedQuests.length })}</Text>
             </View>
           </View>
         </View>
@@ -189,9 +191,9 @@ export default function QuestsScreen() {
           {quests.length === 0 ? (
             <EmptyState
               icon="shield-outline"
-              title="No quests yet"
-              description="Side quests are one-off tasks that earn bonus XP. Create your first quest!"
-              actionLabel="Create Quest"
+              title={t('emptyState.title')}
+              description={t('emptyState.description')}
+              actionLabel={t('emptyState.actionLabel')}
               onAction={() => setShowAddSheet(true)}
             />
           ) : (
@@ -229,7 +231,7 @@ export default function QuestsScreen() {
                     ]}
                   >
                     <Text style={styles.completedHeaderText}>
-                      COMPLETED ({completedQuests.length})
+                      {t('completedHeader', { count: completedQuests.length })}
                     </Text>
                     <Ionicons
                       name={completedExpanded ? 'chevron-up' : 'chevron-down'}
@@ -293,6 +295,7 @@ function ActiveQuestCard({
   styles: ReturnType<typeof createStyles>;
   isDark: boolean;
 }) {
+  const { t } = useTranslation('quests');
   const priorityConfig = QUEST_PRIORITY_CONFIG[quest.priority];
   const btnScale = useRef(new Animated.Value(1)).current;
   const cardBg = !isDark ? PRIORITY_CARD_COLORS_LIGHT[quest.priority] : undefined;
@@ -335,7 +338,7 @@ function ActiveQuestCard({
           <Text style={styles.priorityBadgeInlineText}>{priorityConfig.label}</Text>
         </View>
         <View style={styles.xpBadge}>
-          <Text style={styles.xpBadgeText}>+{quest.xpReward} XP</Text>
+          <Text style={styles.xpBadgeText}>{t('xpBadge', { xp: quest.xpReward })}</Text>
         </View>
       </View>
 
@@ -349,7 +352,7 @@ function ActiveQuestCard({
           ]}
         >
           <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" style={{ marginRight: 6 }} />
-          <Text style={styles.completeButtonText}>Complete</Text>
+          <Text style={styles.completeButtonText}>{t('completeButton')}</Text>
         </Pressable>
       </Animated.View>
     </GradientCard>
@@ -371,6 +374,7 @@ function CompletedQuestRow({
   colors: ThemeColors;
   styles: ReturnType<typeof createStyles>;
 }) {
+  const { t } = useTranslation('quests');
   return (
     <View style={styles.completedRow}>
       <Text style={styles.completedRowTitle} numberOfLines={1}>
@@ -378,7 +382,7 @@ function CompletedQuestRow({
       </Text>
       <View style={styles.completedRowRight}>
         <View style={styles.completedXpBadge}>
-          <Text style={styles.completedXpText}>+{quest.xpReward} XP</Text>
+          <Text style={styles.completedXpText}>{t('xpBadge', { xp: quest.xpReward })}</Text>
         </View>
         <Pressable
           onPress={() => onUncomplete(quest.id)}
@@ -414,6 +418,7 @@ function AddQuestSheet({
   colors: ThemeColors;
   styles: ReturnType<typeof createStyles>;
 }) {
+  const { t } = useTranslation('quests');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<QuestPriority>('medium');
@@ -437,28 +442,28 @@ function AddQuestSheet({
   }, [title, description, priority, onAdd, onClose, resetForm]);
 
   return (
-    <BottomSheet visible={visible} onClose={handleClose} title="New Quest">
+    <BottomSheet visible={visible} onClose={handleClose} title={t('addSheet.title')}>
       <View style={styles.addForm}>
         <Input
-          label="Quest Title"
+          label={t('form.questTitle')}
           value={title}
           onChangeText={setTitle}
-          placeholder="What's your side quest?"
+          placeholder={t('form.questTitlePlaceholder')}
           returnKeyType="next"
           bottomSheet
         />
         <Input
-          label="Description (optional)"
+          label={t('form.descriptionLabel')}
           value={description}
           onChangeText={setDescription}
-          placeholder="Add some details..."
+          placeholder={t('form.descriptionPlaceholder')}
           multiline
           numberOfLines={2}
           containerStyle={{ marginTop: Spacing.md }}
           bottomSheet
         />
         <View style={styles.prioritySection}>
-          <Text style={styles.priorityLabel}>Priority</Text>
+          <Text style={styles.priorityLabel}>{t('form.priority')}</Text>
           <View style={styles.priorityRow}>
             {(['low', 'medium', 'high'] as QuestPriority[]).map((p) => {
               const config = QUEST_PRIORITY_CONFIG[p];
@@ -483,7 +488,7 @@ function AddQuestSheet({
                       priority === p && { color: config.color },
                     ]}
                   >
-                    {config.label} ({config.xp} XP)
+                    {t('form.priorityChip', { label: config.label, xp: config.xp })}
                   </Text>
                 </Pressable>
               );
@@ -491,8 +496,8 @@ function AddQuestSheet({
           </View>
         </View>
         <View style={styles.addFormFooter}>
-          <Button title="Cancel" variant="ghost" onPress={handleClose} />
-          <Button title="Create Quest" onPress={handleSubmit} disabled={!title.trim()} />
+          <Button title={t('form.cancel')} variant="ghost" onPress={handleClose} />
+          <Button title={t('form.createQuest')} onPress={handleSubmit} disabled={!title.trim()} />
         </View>
       </View>
     </BottomSheet>

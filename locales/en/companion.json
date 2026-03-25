@@ -1,0 +1,88 @@
+{
+  "headerTitle": "Dr. Sage",
+
+  "sageResponse": {
+    "0": "Keep up the great work! Every small step counts toward your bigger goals.",
+    "1": "I've noticed your dedication lately. Consistency is the real superpower!",
+    "2": "Remember, progress isn't always linear. You're doing better than you think.",
+    "3": "What a great time to check in! How are you feeling about your habits today?",
+    "4": "Your commitment to self-improvement inspires me. Let's keep this momentum going!",
+    "5": "Sometimes the hardest part is just showing up. And here you are!",
+    "6": "I believe in you. Every habit you build is shaping a stronger version of yourself.",
+    "7": "Take a moment to appreciate how far you've come. You deserve that recognition.",
+    "8": "Challenges are just opportunities in disguise. What's on your mind?",
+    "9": "The fact that you're here, checking in, already says a lot about your character."
+  },
+
+  "toolBadge": {
+    "habit": "Habit",
+    "medication": "Medication",
+    "quest": "Quest",
+    "holiday": "Holiday",
+    "added": "{{label}} added: {{item}}"
+  },
+
+  "fallback": {
+    "helpStruggle": "I hear you. Struggles are a natural part of growth. What specifically feels challenging right now? Sometimes breaking it down helps.",
+    "happyGreat": "That's wonderful to hear! Positive momentum is powerful. What's been going well for you?",
+    "tiredExhausted": "Rest is part of the journey, not a detour from it. Consider taking a lighter day today and being gentle with yourself.",
+    "habitRoutine": "Building habits is like building a muscle -- it gets stronger with consistent practice. Even small reps count!",
+    "motivation": "Motivation comes and goes, but discipline stays. That said, reconnecting with your 'why' can reignite that spark. What got you started?",
+    "hello": "Hello there! Great to see you. How's your quest going today?"
+  },
+
+  "voiceFallback": {
+    "helpStruggle": "I hear you. What specifically feels challenging right now?",
+    "happyGreat": "That's wonderful! What's been going well?",
+    "tiredExhausted": "Rest is part of the journey. Be gentle with yourself today.",
+    "default": "Thanks for sharing! How can I help you with your habits today?"
+  },
+
+  "tab": {
+    "info": "Info",
+    "chat": "Chat"
+  },
+
+  "info": {
+    "stage": "Stage",
+    "xp": "XP",
+    "speciesLabel": "Stage {{stage}} {{species}}",
+    "unclaimedGifts": "{{count}} unclaimed gift!",
+    "unclaimedGifts_other": "{{count}} unclaimed gifts!",
+    "namePlaceholder": "New name...",
+    "save": "Save",
+    "renameCompanion": "Rename companion",
+    "unclaimedGiftsTitle": "Unclaimed Gifts",
+    "claim": "Claim"
+  },
+
+  "cta": {
+    "title": "Choose Your Companion",
+    "subtitle": "A loyal friend to join your quest. They'll react to your progress, evolve as you level up, and bring you gifts!",
+    "summonButton": "Summon Companion"
+  },
+
+  "chat": {
+    "emptyTitle": "Chat with {{name}}",
+    "emptySubtitle": "Ask for advice, share your progress, or just say hello!",
+    "thinking": "{{name}} is thinking...",
+    "inputPlaceholder": "Message {{name}}...",
+    "holdToSpeak": "Hold to speak"
+  },
+
+  "voice": {
+    "listening": "Listening...",
+    "thinking": "{{name}} is thinking...",
+    "speaking": "{{name}} is speaking..."
+  },
+
+  "toast": {
+    "companionJoined": "Companion joined your quest!",
+    "failedSummon": "Failed to summon companion",
+    "companionRenamed": "Companion renamed!",
+    "failedRename": "Failed to rename companion",
+    "giftClaimed": "Gift claimed: {{giftType}}!",
+    "failedClaimGift": "Failed to claim gift",
+    "messageCopied": "Message copied"
+  }
+}

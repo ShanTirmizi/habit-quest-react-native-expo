@@ -32,8 +32,24 @@ import { ThemeProvider, useTheme } from '@/contexts/theme-context';
 import { ToastProvider } from '@/contexts/toast-context';
 import { XpToast } from '@/components/ui/XpToast';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
+import { I18nextProvider } from 'react-i18next';
+import i18n, { detectDeviceLocale } from '@/lib/i18n';
 
 SplashScreen.preventAutoHideAsync();
+
+/** Syncs the user's saved locale preference to i18next on load */
+function LocaleSync() {
+  const { user } = useAuth();
+
+  useEffect(() => {
+    const target = user?.locale ?? detectDeviceLocale();
+    if (i18n.language !== target) {
+      i18n.changeLanguage(target);
+    }
+  }, [user?.locale]);
+
+  return null;
+}
 
 function AuthGate({ children }: { children: React.ReactNode }) {
   const { isLoading, isAuthenticated, user } = useAuth();
@@ -73,7 +89,12 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     );
   }
 
-  return <>{children}</>;
+  return (
+    <>
+      <LocaleSync />
+      {children}
+    </>
+  );
 }
 
 function ThemedApp() {
@@ -162,6 +183,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ConvexProvider>
         <AuthProvider>
+          <I18nextProvider i18n={i18n}>
           <ThemeProvider>
             <BottomSheetModalProvider>
               <SafeAreaProvider>
@@ -173,6 +195,7 @@ export default function RootLayout() {
               </SafeAreaProvider>
             </BottomSheetModalProvider>
           </ThemeProvider>
+          </I18nextProvider>
         </AuthProvider>
       </ConvexProvider>
     </GestureHandlerRootView>

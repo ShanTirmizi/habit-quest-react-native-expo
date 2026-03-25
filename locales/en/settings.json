@@ -1,0 +1,58 @@
+{
+  "title": "Settings",
+  "profile": {
+    "defaultName": "User",
+    "badge": "Member"
+  },
+  "sections": {
+    "notifications": "NOTIFICATIONS",
+    "appearance": "APPEARANCE",
+    "language": "LANGUAGE",
+    "personalisation": "PERSONALISATION",
+    "privacy": "PRIVACY & DATA",
+    "legal": "LEGAL",
+    "account": "ACCOUNT"
+  },
+  "notifications": {
+    "morning": "Morning reminders",
+    "afternoon": "Afternoon reminders",
+    "evening": "Evening reminders"
+  },
+  "appearance": {
+    "darkMode": "Dark Mode",
+    "lightMode": "Light Mode"
+  },
+  "personalisation": {
+    "neurodivergence": "Neurodivergence Support"
+  },
+  "privacy": {
+    "aiLearning": "AI Learning",
+    "deleteAiMemories": "Delete AI Memories",
+    "deleteAiMemoriesTitle": "Delete AI Memories",
+    "deleteAiMemoriesMessage": "This will permanently delete all AI-extracted insights about you. AI features will start fresh.",
+    "deleteAiMemoriesDone": "Done",
+    "deleteAiMemoriesDoneMessage": "Deleted {{count}} AI memories.",
+    "exportData": "Export My Data",
+    "exportPreparing": "Preparing",
+    "exportPreparingMessage": "Your data export is being prepared. Press the button again in a moment.",
+    "exportLoading": "Loading",
+    "exportLoadingMessage": "Your data is still loading. Please try again in a moment.",
+    "exportTitle": "HabitQuest Data Export",
+    "exportError": "Failed to export data. Please try again."
+  },
+  "legal": {
+    "privacyPolicy": "Privacy Policy",
+    "termsOfService": "Terms of Service"
+  },
+  "account": {
+    "signOut": "Sign Out",
+    "deleteAccount": "Delete Account",
+    "deleteAccountTitle": "Delete Account",
+    "deleteAccountMessage": "Are you sure? This will permanently delete your account and all data.",
+    "finalConfirmationTitle": "Final Confirmation",
+    "finalConfirmationMessage": "This cannot be undone. Are you absolutely sure you want to delete your account?",
+    "deleteForever": "Delete Forever",
+    "deleteError": "Failed to delete account. Please try again."
+  },
+  "version": "HabitQuest v{{version}}"
+}

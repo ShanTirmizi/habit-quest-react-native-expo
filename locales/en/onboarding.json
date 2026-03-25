@@ -1,0 +1,58 @@
+{
+  "skip": "Skip",
+
+  "slide1.title": "Build Powerful Habits",
+  "slide1.description": "Create daily habits, track streaks, and earn XP for every completion. Small steps lead to extraordinary results.",
+  "slide2.title": "Level Up & Compete",
+  "slide2.description": "Gain experience points, level up your character, defeat weekly bosses, and unlock achievements along the way.",
+  "slide3.title": "Meet Dr. Sage",
+  "slide3.description": "Your AI companion provides personalized coaching, tracks your patterns, and helps you overcome challenges.",
+
+  "next": "Next",
+
+  "ndStep.title": "Personalise your experience",
+  "ndStep.subtitle": "Do any of these apply to you? This helps Dr. Sage give better, research-backed advice tailored to how your brain works.",
+  "ndStep.privacy": "Optional — you can change this anytime in Settings",
+  "ndStep.continue": "Continue",
+  "ndStep.skipNone": "Skip — None Apply",
+
+  "nd.adhd": "ADHD",
+  "nd.adhd.description": "Attention, focus, and executive function",
+  "nd.autism": "Autism",
+  "nd.autism.description": "Sensory processing and routine preferences",
+  "nd.anxiety": "Anxiety",
+  "nd.anxiety.description": "Worry, perfectionism, and avoidance",
+  "nd.depression": "Depression",
+  "nd.depression.description": "Low energy, motivation, and mood",
+  "nd.dyslexia": "Dyslexia",
+  "nd.dyslexia.description": "Reading and text processing",
+
+  "adhdType.title": "ADHD Type",
+  "adhdType.inattentive": "Inattentive",
+  "adhdType.inattentive.description": "Difficulty focusing, forgetfulness, losing track of tasks",
+  "adhdType.hyperactive-impulsive": "Hyperactive-Impulsive",
+  "adhdType.hyperactive-impulsive.description": "Restlessness, impulsivity, difficulty waiting",
+  "adhdType.combined": "Combined",
+  "adhdType.combined.description": "Both inattentive and hyperactive-impulsive patterns",
+
+  "diagnosisType.title": "How would you describe this?",
+  "diagnosisType.professional": "Professionally diagnosed",
+  "diagnosisType.self-identified": "Self-identified",
+  "diagnosisType.exploring": "Still exploring",
+
+  "personalisation.headerTitle": "Personalisation",
+  "personalisation.sectionDesc": "Select any conditions that apply to you. This personalises Dr. Sage's coaching style, goal suggestions, and gamification to work with your brain, not against it.",
+  "personalisation.privacyNote": "This data is only used for AI personalisation and is never shared.",
+  "personalisation.clearProfile": "Clear profile",
+  "personalisation.saving": "Saving...",
+  "personalisation.save": "Save",
+
+  "personalisation.clearAlert.title": "Clear profile?",
+  "personalisation.clearAlert.message": "This will remove your neurodivergence profile. Dr. Sage will use default coaching.",
+  "personalisation.clearAlert.cancel": "Cancel",
+  "personalisation.clearAlert.clear": "Clear",
+
+  "personalisation.toast.updated": "Profile updated",
+  "personalisation.toast.cleared": "Profile cleared",
+  "personalisation.toast.failed": "Failed to save"
+}

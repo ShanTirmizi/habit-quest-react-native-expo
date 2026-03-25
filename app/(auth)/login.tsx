@@ -15,6 +15,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { makeRedirectUri } from 'expo-auth-session';
 import { openAuthSessionAsync } from 'expo-web-browser';
 import * as AppleAuthentication from 'expo-apple-authentication';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/contexts/theme-context';
 import { FontSize, Spacing, Radius, FontFamily, Shadows, type ThemeColors } from '@/constants/theme';
 import { Input } from '@/components/ui/Input';
@@ -28,6 +29,7 @@ export default function LoginScreen() {
   const router = useRouter();
   const { signIn } = useAuth();
   const { colors } = useTheme();
+  const { t } = useTranslation('auth');
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [email, setEmail] = useState('');
@@ -49,14 +51,14 @@ export default function LoginScreen() {
       router.replace('/(tabs)');
     } catch (err: any) {
       const raw = err?.message || '';
-      let message = 'Something went wrong. Please try again.';
+      let message = t('error.generic');
       if (raw.includes('InvalidAccountId') || raw.includes('InvalidSecret')) {
-        message = 'Incorrect email or password. Please try again.';
+        message = t('error.invalidCredentials');
       } else if (raw.includes('AccountAlreadyExists')) {
-        message = 'An account with this email already exists. Try signing in instead.';
+        message = t('error.accountExists');
       }
       Alert.alert(
-        mode === 'login' ? 'Sign In Failed' : 'Sign Up Failed',
+        mode === 'login' ? t('error.signInFailed') : t('error.signUpFailed'),
         message
       );
     } finally {
@@ -93,8 +95,8 @@ export default function LoginScreen() {
     } catch (err: any) {
       if (err.code !== 'ERR_REQUEST_CANCELED') {
         Alert.alert(
-          'Apple Sign In Failed',
-          err?.message || 'Something went wrong. Please try again.'
+          t('error.appleFailed'),
+          err?.message || t('error.generic')
         );
       }
     } finally {
@@ -125,8 +127,8 @@ export default function LoginScreen() {
       router.replace('/(tabs)');
     } catch (err: any) {
       Alert.alert(
-        'Google Sign In Failed',
-        err?.message || 'Something went wrong. Please try again.'
+        t('error.googleFailed'),
+        err?.message || t('error.generic')
       );
     } finally {
       setGoogleLoading(false);
@@ -150,50 +152,50 @@ export default function LoginScreen() {
             />
             <Ionicons name="shield-half" size={36} color={colors.primary} />
           </View>
-          <Text style={styles.appName}>HabitQuest</Text>
-          <Text style={styles.tagline}>Level up your life, one habit at a time</Text>
+          <Text style={styles.appName}>{t('appName')}</Text>
+          <Text style={styles.tagline}>{t('tagline')}</Text>
         </View>
 
         {/* Auth Form */}
         <View style={styles.form}>
           {mode === 'signup' ? (
             <Input
-              label="Name"
+              label={t('nameLabel')}
               value={name}
               onChangeText={setName}
-              placeholder="Your name"
+              placeholder={t('namePlaceholder')}
               autoCapitalize="words"
             />
           ) : null}
 
           <Input
-            label="Email"
+            label={t('emailLabel')}
             value={email}
             onChangeText={setEmail}
-            placeholder="you@example.com"
+            placeholder={t('emailPlaceholder')}
             keyboardType="email-address"
             autoCapitalize="none"
             containerStyle={{ marginTop: mode === 'signup' ? Spacing.md : 0 }}
           />
 
           <Input
-            label="Password"
+            label={t('passwordLabel')}
             value={password}
             onChangeText={setPassword}
-            placeholder="••••••••"
+            placeholder={t('passwordPlaceholder')}
             secureTextEntry
             containerStyle={{ marginTop: Spacing.md }}
           />
 
           {mode === 'signup' && (
             <Text style={styles.consentNote}>
-              By creating an account, you agree to our{' '}
+              {t('consentNote')}{' '}
               <Text style={styles.consentLink} onPress={() => router.push('/privacy-policy')}>
-                Privacy Policy
+                {t('privacyPolicy')}
               </Text>
-              {' '}and{' '}
+              {' '}{t('and')}{' '}
               <Text style={styles.consentLink} onPress={() => router.push('/terms-of-service')}>
-                Terms of Service
+                {t('termsOfService')}
               </Text>
               .
             </Text>
@@ -201,7 +203,7 @@ export default function LoginScreen() {
 
           <View style={styles.mainButtonWrap}>
             <Button
-              title={mode === 'login' ? 'Sign In' : 'Create Account'}
+              title={mode === 'login' ? t('signIn') : t('createAccount')}
               onPress={handleEmailAuth}
               loading={loading}
               disabled={!email || !password}
@@ -213,7 +215,7 @@ export default function LoginScreen() {
           {/* Divider */}
           <View style={styles.divider}>
             <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>or</Text>
+            <Text style={styles.dividerText}>{t('or')}</Text>
             <View style={styles.dividerLine} />
           </View>
 
@@ -226,7 +228,7 @@ export default function LoginScreen() {
             >
               <Ionicons name="logo-apple" size={20} color="#FFFFFF" />
               <Text style={[styles.oauthText, { color: '#FFFFFF' }]}>
-                {appleLoading ? 'Connecting...' : 'Continue with Apple'}
+                {appleLoading ? t('connecting') : t('continueWithApple')}
               </Text>
             </Pressable>
           ) : null}
@@ -238,18 +240,18 @@ export default function LoginScreen() {
           >
             <Ionicons name="logo-google" size={20} color={colors.foreground} />
             <Text style={styles.oauthText}>
-              {googleLoading ? 'Connecting...' : 'Continue with Google'}
+              {googleLoading ? t('connecting') : t('continueWithGoogle')}
             </Text>
           </Pressable>
 
           {/* Toggle Mode */}
           <View style={styles.toggleRow}>
             <Text style={styles.toggleText}>
-              {mode === 'login' ? "Don't have an account?" : 'Already have an account?'}
+              {mode === 'login' ? t('noAccount') : t('hasAccount')}
             </Text>
             <Pressable onPress={() => setMode(mode === 'login' ? 'signup' : 'login')}>
               <Text style={styles.toggleLink}>
-                {mode === 'login' ? 'Sign Up' : 'Sign In'}
+                {mode === 'login' ? t('signUp') : t('signIn')}
               </Text>
             </Pressable>
           </View>
@@ -258,9 +260,9 @@ export default function LoginScreen() {
         {/* Features Preview */}
         <View style={styles.features}>
           {([
-            { icon: 'flame' as const, color: colors.accent, text: 'Track habits & build streaks' },
-            { icon: 'shield' as const, color: colors.primary, text: 'Defeat weekly bosses' },
-            { icon: 'compass' as const, color: colors.secondary, text: 'AI-powered insights' },
+            { icon: 'flame' as const, color: colors.accent, text: t('feature.habits') },
+            { icon: 'shield' as const, color: colors.primary, text: t('feature.bosses') },
+            { icon: 'compass' as const, color: colors.secondary, text: t('feature.insights') },
           ]).map((f, i) => (
             <View key={i} style={styles.featureItem}>
               <View style={[styles.featureIcon, { backgroundColor: f.color + '15' }]}>

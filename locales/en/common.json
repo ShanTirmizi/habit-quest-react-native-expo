@@ -1,0 +1,16 @@
+{
+  "cancel": "Cancel",
+  "save": "Save",
+  "delete": "Delete",
+  "ok": "OK",
+  "error": "Error",
+  "done": "Done",
+  "loading": "Loading",
+  "tabs": {
+    "dashboard": "Dashboard",
+    "medicines": "Medicines",
+    "chronicles": "Chronicle",
+    "quests": "Quests",
+    "insights": "Insights"
+  }
+}

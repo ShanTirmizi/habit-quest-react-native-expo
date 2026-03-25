@@ -5,6 +5,7 @@ import { action } from "./_generated/server";
 import { api } from "./_generated/api";
 import { buildNdPromptEnrichment } from "./lib/neurodivergence";
 import { FEATURE_FLAGS } from "./lib/featureFlags";
+import { buildLanguageDirective } from "./lib/locale";
 
 // Fallback response when API fails or data is insufficient
 const FALLBACK_INSIGHTS = {
@@ -80,12 +81,13 @@ export const generateInsights = action({
   },
   handler: async (ctx, args) => {
     // 1. Fetch user data via ctx.runQuery
-    const [habits, progress, journalEntries, memories, ndProfile] = await Promise.all([
+    const [habits, progress, journalEntries, memories, ndProfile, userLocale] = await Promise.all([
       ctx.runQuery(api.habits.getHabits, { userId: args.userId }),
       ctx.runQuery(api.progress.getProgress, { userId: args.userId }),
       ctx.runQuery(api.journal.getEntries, { userId: args.userId }),
       ctx.runQuery(api.chat.getMemories, { userId: args.userId }),
       ctx.runQuery(api.users.getNdProfile, { userId: args.userId }),
+      ctx.runQuery(api.users.getUserLocale, { userId: args.userId }),
     ]);
 
     // Take first 20 journal entries (already ordered desc)
@@ -233,7 +235,8 @@ RESPOND WITH VALID JSON ONLY (no markdown, no code fences):
     const ndEnrichment = FEATURE_FLAGS.neurodivergenceSupport
       ? buildNdPromptEnrichment(ndProfile ?? undefined)
       : '';
-    const enrichedSystemPrompt = systemPrompt + ndEnrichment;
+    const languageDirective = buildLanguageDirective(userLocale);
+    const enrichedSystemPrompt = languageDirective + systemPrompt + ndEnrichment;
 
     // 4. Call the Anthropic API
     try {

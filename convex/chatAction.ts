@@ -5,6 +5,7 @@ import { action } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 import { buildNdPromptEnrichment } from "./lib/neurodivergence";
 import { FEATURE_FLAGS } from "./lib/featureFlags";
+import { buildLanguageDirective } from "./lib/locale";
 
 // ──────────────────────────────────────────────
 // Tool definitions for Claude tool_use
@@ -492,7 +493,7 @@ export const sendMessage = action({
     }
 
     // 1. Fetch context data in parallel
-    const [habits, progress, journalEntries, memories, recentMessages, ndProfile] =
+    const [habits, progress, journalEntries, memories, recentMessages, ndProfile, userLocale] =
       await Promise.all([
         ctx.runQuery(api.habits.getHabits, { userId: args.userId }),
         ctx.runQuery(api.progress.getProgress, { userId: args.userId }),
@@ -503,6 +504,7 @@ export const sendMessage = action({
           limit: 20,
         }),
         ctx.runQuery(api.users.getNdProfile, { userId: args.userId }),
+        ctx.runQuery(api.users.getUserLocale, { userId: args.userId }),
       ]);
 
     // 2. Save user message
@@ -577,7 +579,9 @@ export const sendMessage = action({
       ? buildNdPromptEnrichment(ndProfile ?? undefined)
       : '';
 
-    const systemPrompt = `${CHAT_SYSTEM_PROMPT}${ndEnrichment}${memoryContext}
+    const languageDirective = buildLanguageDirective(userLocale);
+
+    const systemPrompt = `${languageDirective}${CHAT_SYSTEM_PROMPT}${ndEnrichment}${memoryContext}
 
 ## Current User Context
 ${userContext}`;

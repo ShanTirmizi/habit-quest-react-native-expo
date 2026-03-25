@@ -1,0 +1,16 @@
+{
+  "cancel": "取消",
+  "save": "保存",
+  "delete": "删除",
+  "ok": "确定",
+  "error": "错误",
+  "done": "完成",
+  "loading": "加载中",
+  "tabs": {
+    "dashboard": "仪表盘",
+    "medicines": "药物",
+    "chronicles": "日记",
+    "quests": "任务",
+    "insights": "洞察"
+  }
+}

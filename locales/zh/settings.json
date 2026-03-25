@@ -1,0 +1,58 @@
+{
+  "title": "设置",
+  "profile": {
+    "defaultName": "用户",
+    "badge": "会员"
+  },
+  "sections": {
+    "notifications": "通知",
+    "appearance": "外观",
+    "language": "语言",
+    "personalisation": "个性化",
+    "privacy": "隐私与数据",
+    "legal": "法律条款",
+    "account": "账户"
+  },
+  "notifications": {
+    "morning": "早间提醒",
+    "afternoon": "午间提醒",
+    "evening": "晚间提醒"
+  },
+  "appearance": {
+    "darkMode": "深色模式",
+    "lightMode": "浅色模式"
+  },
+  "personalisation": {
+    "neurodivergence": "神经多样性支持"
+  },
+  "privacy": {
+    "aiLearning": "AI 学习",
+    "deleteAiMemories": "删除 AI 记忆",
+    "deleteAiMemoriesTitle": "删除 AI 记忆",
+    "deleteAiMemoriesMessage": "这将永久删除 AI 提取的所有关于你的洞察。AI 功能将重新开始。",
+    "deleteAiMemoriesDone": "完成",
+    "deleteAiMemoriesDoneMessage": "已删除 {{count}} 条 AI 记忆。",
+    "exportData": "导出我的数据",
+    "exportPreparing": "准备中",
+    "exportPreparingMessage": "正在准备你的数据导出，请稍后再次点击按钮。",
+    "exportLoading": "加载中",
+    "exportLoadingMessage": "数据仍在加载中，请稍后再试。",
+    "exportTitle": "HabitQuest 数据导出",
+    "exportError": "导出数据失败，请重试。"
+  },
+  "legal": {
+    "privacyPolicy": "隐私政策",
+    "termsOfService": "服务条款"
+  },
+  "account": {
+    "signOut": "退出登录",
+    "deleteAccount": "删除账户",
+    "deleteAccountTitle": "删除账户",
+    "deleteAccountMessage": "确定要删除吗？这将永久删除你的账户和所有数据。",
+    "finalConfirmationTitle": "最终确认",
+    "finalConfirmationMessage": "此操作无法撤销。你确定要删除账户吗？",
+    "deleteForever": "永久删除",
+    "deleteError": "删除账户失败，请重试。"
+  },
+  "version": "HabitQuest v{{version}}"
+}

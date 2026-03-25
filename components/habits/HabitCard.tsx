@@ -25,6 +25,7 @@ import {
 } from '@/constants/theme';
 import { useTheme } from '@/contexts/theme-context';
 import type { Habit, HabitCategory, TimeOfDay } from '@/types';
+import { useTranslation } from 'react-i18next';
 import { BadgePill } from '@/components/ui/BadgePill';
 
 interface HabitCardProps {
@@ -54,6 +55,7 @@ const TIME_ICON_NAMES: Record<TimeOfDay, keyof typeof Ionicons.glyphMap | null> 
 const SWIPE_THRESHOLD = 70;
 
 export function HabitCard({ habit, isCompleted, onToggle, onPress, drag, isDragging, chainedToName, weeklyProgress, automaticityScore, isKeystone, hasChainFollowers, chainFollowerCount, isChainExpanded, onToggleChainPreview }: HabitCardProps) {
+  const { t } = useTranslation('habits');
   const { colors, isDark } = useTheme();
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const categoryColors = useMemo(() => getCategoryColors(colors), [colors]);
@@ -157,7 +159,9 @@ export function HabitCard({ habit, isCompleted, onToggle, onPress, drag, isDragg
       ]}
       accessibilityRole="checkbox"
       accessibilityState={{ checked: isCompleted }}
-      accessibilityLabel={`${habit.name}, ${habit.category}, ${habit.xpReward} XP${isCompleted ? ', completed' : ''}`}
+      accessibilityLabel={isCompleted
+        ? t('card.accessibilityCompleted', { name: habit.name, category: t(`category.${habit.category}`), xp: habit.xpReward })
+        : t('card.accessibility', { name: habit.name, category: t(`category.${habit.category}`), xp: habit.xpReward })}
     >
       {/* Main content row */}
       <View style={styles.contentRow}>
@@ -193,7 +197,7 @@ export function HabitCard({ habit, isCompleted, onToggle, onPress, drag, isDragg
 
           <View style={styles.metaRow}>
             <BadgePill
-              label={habit.category.charAt(0).toUpperCase() + habit.category.slice(1)}
+              label={t(`category.${habit.category}`)}
               color={badgeTextColor}
               bgColor={badgeBg}
               size="sm"
@@ -221,7 +225,7 @@ export function HabitCard({ habit, isCompleted, onToggle, onPress, drag, isDragg
               <View style={[styles.chainBadge, { backgroundColor: badgeBg }]}>
                 <Ionicons name="link" size={10} color={badgeTextColor} />
                 <Text style={[styles.chainBadgeText, { color: badgeTextColor }]} numberOfLines={1}>
-                  After {chainedToName}
+                  {t('card.after', { name: chainedToName })}
                 </Text>
               </View>
             ) : null}
@@ -240,7 +244,7 @@ export function HabitCard({ habit, isCompleted, onToggle, onPress, drag, isDragg
               >
                 <Ionicons name="git-branch-outline" size={10} color={badgeTextColor} />
                 <Text style={[styles.chainForwardText, { color: badgeTextColor }]}>
-                  {chainFollowerCount} next
+                  {t('card.next', { count: chainFollowerCount })}
                 </Text>
                 <Ionicons
                   name={isChainExpanded ? 'chevron-up' : 'chevron-down'}
@@ -279,7 +283,7 @@ export function HabitCard({ habit, isCompleted, onToggle, onPress, drag, isDragg
       {/* XP pill — top-right corner */}
       <View style={[styles.xpPill, { backgroundColor: isDark ? colors.primaryBg : 'rgba(255, 255, 255, 0.35)' }]}>
         <Text style={[styles.xpPillText, { color: isDark ? colors.primary : cardText }]}>
-          +{habit.xpReward} XP
+          {t('card.xp', { xp: habit.xpReward })}
         </Text>
       </View>
     </Pressable>

@@ -6,6 +6,7 @@ import {
   ScrollView,
   Pressable,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -177,6 +178,7 @@ export default function InsightsScreen() {
   const [tab, setTab] = useState<InsightsTab>('overview');
   const { userId } = useAuth();
   const { colors, isDark } = useTheme();
+  const { t } = useTranslation('insights');
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
 
   const progress = useQuery(
@@ -194,7 +196,7 @@ export default function InsightsScreen() {
   if (!userId) {
     return (
       <View style={[styles.container, styles.centered, { paddingTop: insets.top }]}>
-        <Text style={styles.loadingText}>Please sign in to view insights.</Text>
+        <Text style={styles.loadingText}>{t('signIn')}</Text>
       </View>
     );
   }
@@ -203,7 +205,7 @@ export default function InsightsScreen() {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.header}>
-          <Text style={styles.title}>Insights</Text>
+          <Text style={styles.title}>{t('title')}</Text>
         </View>
         <View style={{ paddingHorizontal: Spacing.lg, gap: Spacing.lg }}>
           <Skeleton width="30%" height={14} />
@@ -219,7 +221,7 @@ export default function InsightsScreen() {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>Insights</Text>
+        <Text style={styles.title}>{t('title')}</Text>
       </View>
 
       {/* Tab Chips */}
@@ -245,7 +247,7 @@ export default function InsightsScreen() {
                   color={isActive ? '#FFFFFF' : colors.textMuted}
                 />
                 <Text style={[styles.chipText, isActive ? styles.chipTextActive : styles.chipTextInactive]}>
-                  {chip.label}
+                  {t(`tab.${chip.value}`)}
                 </Text>
               </Pressable>
             );
@@ -294,6 +296,7 @@ interface OverviewTabProps {
 }
 
 function OverviewTab({ userId, progress, habits, colors, styles, isDark }: OverviewTabProps) {
+  const { t } = useTranslation('insights');
   const stats = useMemo(() => computeWeeklyStats(habits), [habits]);
   const CATEGORY_COLORS = useMemo(() => getCategoryColors(colors), [colors]);
 
@@ -357,7 +360,7 @@ function OverviewTab({ userId, progress, habits, colors, styles, isDark }: Overv
                 {bossData.name}
               </Text>
               {bossData.defeated ? (
-                <BadgePill label="DEFEATED" color={isDark ? colors.success : '#FFFFFF'} />
+                <BadgePill label={t('overview.defeated')} color={isDark ? colors.success : '#FFFFFF'} />
               ) : null}
             </View>
             <ProgressBar
@@ -377,17 +380,17 @@ function OverviewTab({ userId, progress, habits, colors, styles, isDark }: Overv
           <Text style={[styles.bossDamageNumber, { color: isDark ? colors.textSecondary : 'rgba(255,255,255,0.70)' }]}>
             {bossData.required}
           </Text>
-          <Text style={[styles.bossDamageLabel, !isDark && { color: 'rgba(255,255,255,0.70)' }]}>hits</Text>
+          <Text style={[styles.bossDamageLabel, !isDark && { color: 'rgba(255,255,255,0.70)' }]}>{t('overview.hits')}</Text>
         </View>
       </GradientCard>
 
       {/* ── Weekly Summary: 2x2 Bento Grid ── */}
-      <Text style={styles.sectionTitle}>Weekly Summary</Text>
+      <Text style={styles.sectionTitle}>{t('overview.weeklySummary')}</Text>
       <BentoGrid>
         <BentoCell index={0} height={100} style={!isDark ? { backgroundColor: colors.secondary } : undefined}>
           <OversizedMetric
             value={stats.rate}
-            label="Completion"
+            label={t('overview.completion')}
             color={isDark ? colors.secondary : '#FFFFFF'}
             labelColor={isDark ? undefined : 'rgba(255,255,255,0.75)'}
             suffix="%"
@@ -397,7 +400,7 @@ function OverviewTab({ userId, progress, habits, colors, styles, isDark }: Overv
         <BentoCell index={1} height={100} style={!isDark ? { backgroundColor: colors.primary } : undefined}>
           <OversizedMetric
             value={stats.xpEarned}
-            label="XP Earned"
+            label={t('overview.xpEarned')}
             color={isDark ? colors.primary : '#FFFFFF'}
             labelColor={isDark ? undefined : 'rgba(255,255,255,0.75)'}
             suffix="XP"
@@ -407,7 +410,7 @@ function OverviewTab({ userId, progress, habits, colors, styles, isDark }: Overv
         <BentoCell index={2} height={100} style={!isDark ? { backgroundColor: colors.accent } : undefined}>
           <OversizedMetric
             value={stats.completions}
-            label="Completions"
+            label={t('overview.completions')}
             color={isDark ? colors.accent : '#FFFFFF'}
             labelColor={isDark ? undefined : 'rgba(255,255,255,0.75)'}
             size="md"
@@ -416,7 +419,7 @@ function OverviewTab({ userId, progress, habits, colors, styles, isDark }: Overv
         <BentoCell index={3} height={100} style={!isDark ? { backgroundColor: colors.categoryLife } : undefined}>
           <OversizedMetric
             value={stats.bestDay}
-            label="Best Day"
+            label={t('overview.bestDay')}
             color={isDark ? undefined : '#FFFFFF'}
             labelColor={isDark ? undefined : 'rgba(255,255,255,0.75)'}
             size="md"
@@ -426,14 +429,14 @@ function OverviewTab({ userId, progress, habits, colors, styles, isDark }: Overv
 
       {/* ── Category Breakdown: Vertical Bar Chart ── */}
       <GradientCard style={!isDark ? { backgroundColor: colors.categoryCareerCard } : undefined}>
-        <Text style={[styles.cardTitle, !isDark && { color: '#FFFFFF' }]}>Categories</Text>
+        <Text style={[styles.cardTitle, !isDark && { color: '#FFFFFF' }]}>{t('overview.categories')}</Text>
         <View style={styles.barChart}>
           {(Object.entries(stats.categories) as [HabitCategory, number][]).map(([cat, rate], idx) => (
             <AnimatedBar
               key={cat}
               percentage={rate}
               color={CATEGORY_COLORS[cat]}
-              label={cat.charAt(0).toUpperCase() + cat.slice(1)}
+              label={t(`category.${cat}`)}
               delay={idx * 100}
               colors={colors}
               styles={styles}
@@ -504,6 +507,7 @@ function computeStreakStats(habits: Array<{ completedDates: string[] }>) {
 }
 
 function HistoryTab({ userId, habits, colors, styles, isDark }: HistoryTabProps) {
+  const { t } = useTranslation('insights');
   const weeks = 8;
   const days = 7;
 
@@ -560,7 +564,7 @@ function HistoryTab({ userId, habits, colors, styles, isDark }: HistoryTabProps)
     <View style={styles.tabContent}>
       {/* ── Heatmap Calendar ── */}
       <GradientCard style={!isDark ? { backgroundColor: colors.categoryHealthCard } : undefined}>
-        <Text style={[styles.cardTitle, !isDark && { color: '#FFFFFF' }]}>Completion Calendar</Text>
+        <Text style={[styles.cardTitle, !isDark && { color: '#FFFFFF' }]}>{t('history.completionCalendar')}</Text>
         {/* Month labels */}
         <View style={styles.heatMonthRow}>
           <View style={{ width: 22 }} />
@@ -610,14 +614,14 @@ function HistoryTab({ userId, habits, colors, styles, isDark }: HistoryTabProps)
         </View>
         {/* Legend */}
         <View style={styles.heatLegend}>
-          <Text style={styles.heatLegendText}>Less</Text>
+          <Text style={styles.heatLegendText}>{t('history.less')}</Text>
           {[0.08, 0.3, 0.6, 1].map((op) => (
             <View
               key={op}
               style={[styles.heatLegendDot, { backgroundColor: isDark ? colors.primary : '#FFFFFF', opacity: op }]}
             />
           ))}
-          <Text style={styles.heatLegendText}>More</Text>
+          <Text style={styles.heatLegendText}>{t('history.more')}</Text>
         </View>
       </GradientCard>
 
@@ -626,7 +630,7 @@ function HistoryTab({ userId, habits, colors, styles, isDark }: HistoryTabProps)
         <BentoCell index={0} height={100} style={!isDark ? { backgroundColor: colors.primary } : undefined}>
           <OversizedMetric
             value={streakStats.bestCurrentStreak}
-            label="Current Best"
+            label={t('history.currentBest')}
             color={isDark ? undefined : '#FFFFFF'}
             labelColor={isDark ? undefined : 'rgba(255,255,255,0.75)'}
             size="md"
@@ -635,7 +639,7 @@ function HistoryTab({ userId, habits, colors, styles, isDark }: HistoryTabProps)
         <BentoCell index={1} height={100} style={!isDark ? { backgroundColor: colors.accent } : undefined}>
           <OversizedMetric
             value={streakStats.longestEverStreak}
-            label="Longest Ever"
+            label={t('history.longestEver')}
             color={isDark ? colors.accent : '#FFFFFF'}
             labelColor={isDark ? undefined : 'rgba(255,255,255,0.75)'}
             size="md"
@@ -644,7 +648,7 @@ function HistoryTab({ userId, habits, colors, styles, isDark }: HistoryTabProps)
         <BentoCell index={2} height={100} style={!isDark ? { backgroundColor: colors.categoryMind } : undefined}>
           <OversizedMetric
             value={streakStats.activeStreaksCount}
-            label="Active Streaks"
+            label={t('history.activeStreaks')}
             color={isDark ? colors.primary : '#FFFFFF'}
             labelColor={isDark ? undefined : 'rgba(255,255,255,0.75)'}
             size="md"
@@ -653,7 +657,7 @@ function HistoryTab({ userId, habits, colors, styles, isDark }: HistoryTabProps)
         <BentoCell index={3} height={100} style={!isDark ? { backgroundColor: colors.categoryLife } : undefined}>
           <OversizedMetric
             value={streakStats.totalHabits}
-            label="Total Habits"
+            label={t('history.totalHabits')}
             color={isDark ? undefined : '#FFFFFF'}
             labelColor={isDark ? undefined : 'rgba(255,255,255,0.75)'}
             size="md"
@@ -679,6 +683,7 @@ interface AchievementsTabProps {
 }
 
 function AchievementsTab({ userId, progress, colors, styles, isDark }: AchievementsTabProps) {
+  const { t } = useTranslation('insights');
   const unlockedAchievementIds = new Set(progress?.achievements ?? []);
 
   const achievements = ACHIEVEMENT_DEFINITIONS.map((a) => ({
@@ -698,7 +703,7 @@ function AchievementsTab({ userId, progress, colors, styles, isDark }: Achieveme
       >
         <OversizedMetric
           value={unlocked}
-          label="Unlocked"
+          label={t('achievements.unlocked')}
           color={isDark ? colors.accent : '#FFFFFF'}
           labelColor={isDark ? undefined : 'rgba(255,255,255,0.75)'}
           suffix={`/${total}`}
@@ -739,7 +744,7 @@ function AchievementsTab({ userId, progress, colors, styles, isDark }: Achieveme
                 ]}
                 numberOfLines={1}
               >
-                {achievement.name}
+                {t(`achievement.${achievement.id}.name`)}
               </Text>
             </Pressable>
         ))}
@@ -763,6 +768,7 @@ interface GamificationTabProps {
 }
 
 function GamificationTab({ userId, progress, colors, styles, isDark }: GamificationTabProps) {
+  const { t } = useTranslation('insights');
   const unlockedSkillIds = new Set(
     (progress?.unlockedSkills ?? []).map((s) => s.skillId)
   );
@@ -789,7 +795,7 @@ function GamificationTab({ userId, progress, colors, styles, isDark }: Gamificat
 
   return (
     <View style={styles.tabContent}>
-      <Text style={styles.sectionTitle}>Skill Tree</Text>
+      <Text style={styles.sectionTitle}>{t('skills.skillTree')}</Text>
       {categories.map((cat) => {
         const catSkills = skills.filter((s) => s.category === cat);
         const catColor = categoryColors[cat];
@@ -799,7 +805,7 @@ function GamificationTab({ userId, progress, colors, styles, isDark }: Gamificat
             <View style={styles.skillCatHeader}>
               <View style={[styles.skillCatBar, { backgroundColor: isDark ? catColor : 'rgba(255,255,255,0.5)' }]} />
               <Text style={[styles.skillCatTitle, { color: isDark ? catColor : '#FFFFFF' }]}>
-                {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                {t(`category.${cat}`)}
               </Text>
             </View>
             <View style={styles.skillList}>
@@ -827,15 +833,15 @@ function GamificationTab({ userId, progress, colors, styles, isDark }: Gamificat
                           !skill.unlocked && isDark && { color: colors.textSecondary },
                         ]}
                       >
-                        {skill.name}
+                        {t(`skill.${skill.id}.name`)}
                       </Text>
-                      <Text style={styles.skillDesc}>{skill.description}</Text>
+                      <Text style={styles.skillDesc}>{t(`skill.${skill.id}.description`)}</Text>
                     </View>
                     {skill.unlocked ? (
                       <Ionicons name="checkmark-circle" size={22} color={isDark ? colors.success : '#FFFFFF'} />
                     ) : (
                       <View style={styles.skillCostBadge}>
-                        <Text style={styles.skillCostText}>{skill.xpCost} XP</Text>
+                        <Text style={styles.skillCostText}>{t('skill.xpCost', { xp: skill.xpCost })}</Text>
                       </View>
                     )}
                   </Pressable>

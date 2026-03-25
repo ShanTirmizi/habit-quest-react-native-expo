@@ -1,0 +1,66 @@
+{
+  "sheetTitle": "新习惯",
+  "habitName.label": "习惯名称",
+  "habitName.placeholder": "例如：晨跑、阅读30分钟……",
+
+  "category.label": "分类",
+  "category.health": "健康",
+  "category.career": "事业",
+  "category.mind": "心智",
+  "category.life": "生活",
+
+  "xpReward.label": "XP 奖励",
+  "xpReward.value": "{{xp}} XP",
+
+  "frequency.label": "频率",
+  "frequency.daily": "每天",
+  "frequency.weekdays": "工作日",
+  "frequency.weekends": "周末",
+  "frequency.custom": "自定义",
+  "frequency.timesPerWeek": "每周X次",
+
+  "timeOfDay.label": "时间段",
+  "timeOfDay.morning": "早晨",
+  "timeOfDay.afternoon": "下午",
+  "timeOfDay.evening": "晚上",
+  "timeOfDay.anytime": "随时",
+
+  "chainAfter.label": "链式习惯",
+  "chainAfter.selected": "紧接在：{{name}} 之后",
+  "chainAfter.unknownName": "未知",
+  "chainAfter.none": "无——独立习惯",
+  "chainAfter.hint": "习惯叠加：在另一个习惯之后立刻做这个",
+
+  "supercharge.label": "增强",
+  "supercharge.ifThen.label": "如果-那么蓝图",
+  "supercharge.ifThen.if": "如果",
+  "supercharge.ifThen.then": "那么",
+  "supercharge.ifThen.at": "在",
+  "supercharge.ifThen.triggerPlaceholder": "喝完早咖啡之后……",
+  "supercharge.ifThen.locationPlaceholder": "在健身房、在书桌前……",
+  "supercharge.ifThen.hint": "如果-那么计划可以将执行率提高 2-3 倍（Gollwitzer, 1999）",
+  "supercharge.ifThen.yourHabit": "你的习惯",
+
+  "supercharge.reward.label": "奖励搭配",
+  "supercharge.reward.placeholder": "例如：听播客、追剧……",
+  "supercharge.reward.hint": "将习惯与你喜欢的奖励搭配（Milkman, 2014）",
+
+  "button.cancel": "取消",
+  "button.create": "创建习惯",
+
+  "card.xp": "+{{xp}} XP",
+  "card.after": "接在 {{name}} 之后",
+  "card.next": "{{count}} 个后续",
+  "card.accessibility": "{{name}}，{{category}}，{{xp}} XP",
+  "card.accessibilityCompleted": "{{name}}，{{category}}，{{xp}} XP，已完成",
+
+  "days.sun": "日",
+  "days.mon": "一",
+  "days.tue": "二",
+  "days.wed": "三",
+  "days.thu": "四",
+  "days.fri": "五",
+  "days.sat": "六",
+
+  "timesPerWeek.label": "次/周"
+}

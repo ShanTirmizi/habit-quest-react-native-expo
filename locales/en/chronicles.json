@@ -1,0 +1,74 @@
+{
+  "title": "Chronicle",
+  "subtitle": {
+    "entry": "{{count}} entry",
+    "entry_other": "{{count}} entries",
+    "journaledToday": "Journaled today",
+    "noEntryYet": "No entry yet"
+  },
+
+  "gratitudePrompt": {
+    "0": "What made you smile today?",
+    "1": "Who helped you recently?",
+    "2": "What's something beautiful you noticed?",
+    "3": "What's a small win you had?",
+    "4": "What are you looking forward to?"
+  },
+
+  "mood": {
+    "great": "Great",
+    "good": "Good",
+    "okay": "Okay",
+    "rough": "Rough"
+  },
+
+  "form": {
+    "howFeeling": "How are you feeling?",
+    "gratitudeLabel": "3 things I'm grateful for",
+    "achievementsLabel": "Today's achievements (+{{xp}} XP)",
+    "achievementPlaceholder": "What did you accomplish?",
+    "improvementLabel": "How could today be better? (+{{xp}} XP)",
+    "improvementPlaceholder": "One thing I could improve...",
+    "thoughtsLabel": "Additional thoughts (+{{xp}} XP)",
+    "thoughtsPlaceholder": "Free-form reflections, ideas, feelings...",
+    "xpEarned": "XP Earned",
+    "xpValue": "+{{xp}} XP",
+    "cancel": "Cancel",
+    "saving": "Saving...",
+    "updateEntry": "Update Entry",
+    "saveEntry": "Save Entry"
+  },
+
+  "sheet": {
+    "editTitle": "Edit {{date}} Entry",
+    "editTitleToday": "Edit Today's Entry",
+    "todayTitle": "Today's Reflection"
+  },
+
+  "today": {
+    "label": "Today",
+    "reflected": "Reflected",
+    "achievements": "Achievements",
+    "words": "{{count}} words",
+    "tapToEdit": "Tap to edit"
+  },
+
+  "pastEntries": {
+    "title": "Past Entries",
+    "noGratitudes": "No gratitudes",
+    "achievements": "Achievements",
+    "improvement": "Improvement",
+    "thoughts": "Thoughts"
+  },
+
+  "emptyState": {
+    "title": "Your chronicles await",
+    "description": "Start journaling to track your mood, practice gratitude, and earn XP. Writing just 3 gratitudes takes 2 minutes.",
+    "actionLabel": "Write First Entry"
+  },
+
+  "toast": {
+    "failedSave": "Failed to save entry",
+    "failedUpdate": "Failed to update entry"
+  }
+}

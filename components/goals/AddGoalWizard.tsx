@@ -11,6 +11,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useAction, useMutation, useQuery } from 'convex/react';
+import { useTranslation } from 'react-i18next';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { useTheme } from '@/contexts/theme-context';
@@ -44,20 +45,18 @@ interface AddGoalWizardProps {
 
 type WizardStep = 'goal-input' | 'context' | 'generating' | 'review' | 'creating' | 'confirmation';
 
-const STEPS: { id: WizardStep; title: string; description: string }[] = [
-  { id: 'goal-input', title: 'Define Your Goal', description: 'What do you want to achieve?' },
-  { id: 'context', title: 'Your Context', description: 'Help us personalize your plan' },
-  { id: 'generating', title: 'Creating Plan', description: 'Dr. Sage is designing your habits' },
-  { id: 'review', title: 'Review Suggestions', description: 'Accept or modify habits' },
-  { id: 'creating', title: 'Setting Up', description: 'Creating your goal and habits' },
-  { id: 'confirmation', title: 'Ready to Start', description: 'Your goal is set up' },
-];
+const STEP_IDS: WizardStep[] = ['goal-input', 'context', 'generating', 'review', 'creating', 'confirmation'];
 
-const GOAL_LEVEL_CONFIG: Record<GoalLevel, { label: string; description: string }> = {
-  beginner: { label: 'Beginner', description: 'New to this' },
-  intermediate: { label: 'Intermediate', description: 'Some experience' },
-  advanced: { label: 'Advanced', description: 'Experienced' },
+const STEP_I18N_MAP: Record<WizardStep, { titleKey: string; descKey: string }> = {
+  'goal-input': { titleKey: 'wizard.steps.goalInput.title', descKey: 'wizard.steps.goalInput.description' },
+  context: { titleKey: 'wizard.steps.context.title', descKey: 'wizard.steps.context.description' },
+  generating: { titleKey: 'wizard.steps.generating.title', descKey: 'wizard.steps.generating.description' },
+  review: { titleKey: 'wizard.steps.review.title', descKey: 'wizard.steps.review.description' },
+  creating: { titleKey: 'wizard.steps.creating.title', descKey: 'wizard.steps.creating.description' },
+  confirmation: { titleKey: 'wizard.steps.confirmation.title', descKey: 'wizard.steps.confirmation.description' },
 };
+
+const GOAL_LEVEL_KEYS: GoalLevel[] = ['beginner', 'intermediate', 'advanced'];
 
 const TIME_OPTIONS = [15, 30, 45, 60];
 
@@ -284,6 +283,7 @@ const createCalendarStyles = (colors: ThemeColors) => StyleSheet.create({
 
 export function AddGoalWizard({ visible, onClose, userId }: AddGoalWizardProps) {
   const { colors } = useTheme();
+  const { t } = useTranslation('goals');
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { showToast } = useToast();
 
@@ -419,7 +419,7 @@ export function AddGoalWizard({ visible, onClose, userId }: AddGoalWizardProps) 
       setQuestionAnswers(initialAnswers);
     } catch (error) {
       console.error('Error fetching context questions:', error);
-      setQuestionsError('Failed to load questions. You can still proceed.');
+      setQuestionsError(t('wizard.questionsError'));
     } finally {
       setIsLoadingQuestions(false);
     }
@@ -520,7 +520,7 @@ export function AddGoalWizard({ visible, onClose, userId }: AddGoalWizardProps) 
 
     try {
       // 1. Convert milestones
-      setCreationProgress('Creating goal...');
+      setCreationProgress(t('wizard.creating.creatingGoal'));
       const goalMilestones = suggestedMilestones.map((m, index) => {
         const milestoneDate = new Date();
         milestoneDate.setDate(milestoneDate.getDate() + m.targetWeek * 7);
@@ -550,7 +550,7 @@ export function AddGoalWizard({ visible, onClose, userId }: AddGoalWizardProps) 
 
       for (let i = 0; i < acceptedHabits.length; i++) {
         const habit = acceptedHabits[i];
-        setCreationProgress(`Creating habit ${i + 1}/${acceptedHabits.length}...`);
+        setCreationProgress(t('wizard.creating.creatingHabit', { current: i + 1, total: acceptedHabits.length }));
 
         const habitId = await addHabitMutation({
           userId,
@@ -576,7 +576,7 @@ export function AddGoalWizard({ visible, onClose, userId }: AddGoalWizardProps) 
 
       // 4. Save phases with mapped habit IDs
       if (suggestedPhases.length > 0 && habitNameToIdMap.size > 0) {
-        setCreationProgress('Setting up phases...');
+        setCreationProgress(t('wizard.creating.settingUpPhases'));
         const phasesWithIds = suggestedPhases
           .map((phase) => ({
             weekStart: phase.weekStart,
@@ -609,7 +609,7 @@ export function AddGoalWizard({ visible, onClose, userId }: AddGoalWizardProps) 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error) {
       console.error('Error creating goal:', error);
-      showToast('Failed to create goal', undefined, 'error');
+      showToast(t('wizard.creating.failed'), undefined, 'error');
       setStep('review');
     } finally {
       setIsCreating(false);
@@ -636,25 +636,25 @@ export function AddGoalWizard({ visible, onClose, userId }: AddGoalWizardProps) 
   // ============================================
   // Step indicator progress
   // ============================================
-  const currentStepIndex = STEPS.findIndex((s) => s.id === step);
-  const visibleSteps = STEPS.filter((s) => s.id !== 'generating' && s.id !== 'creating');
+  const currentStepIndex = STEP_IDS.indexOf(step);
+  const visibleSteps = STEP_IDS.filter((s) => s !== 'generating' && s !== 'creating');
 
   // ============================================
   // Render
   // ============================================
 
   return (
-    <BottomSheet visible={visible} onClose={handleClose} title={STEPS.find((s) => s.id === step)?.title}>
+    <BottomSheet visible={visible} onClose={handleClose} title={t(STEP_I18N_MAP[step].titleKey)}>
       <View style={styles.container}>
         {/* Progress Indicator */}
         <View style={styles.progressRow}>
           {visibleSteps.map((s) => {
-            const actualIndex = STEPS.findIndex((st) => st.id === s.id);
+            const actualIndex = STEP_IDS.indexOf(s);
             const isActive = actualIndex === currentStepIndex;
             const isComplete = actualIndex < currentStepIndex;
             return (
               <View
-                key={s.id}
+                key={s}
                 style={[
                   styles.progressDot,
                   isActive && { backgroundColor: colors.primary },
@@ -666,7 +666,7 @@ export function AddGoalWizard({ visible, onClose, userId }: AddGoalWizardProps) 
         </View>
 
         <Text style={styles.stepDescription}>
-          {STEPS.find((s) => s.id === step)?.description}
+          {t(STEP_I18N_MAP[step].descKey)}
         </Text>
 
         {/* ============================================ */}
@@ -675,18 +675,18 @@ export function AddGoalWizard({ visible, onClose, userId }: AddGoalWizardProps) 
         {step === 'goal-input' && (
           <View style={styles.stepContent}>
             <Input
-              label="What's your goal?"
+              label={t('wizard.goalLabel')}
               value={title}
               onChangeText={setTitle}
-              placeholder="e.g., Run a 5K in under 30 minutes"
+              placeholder={t('wizard.goalPlaceholder')}
               bottomSheet
             />
 
             <Input
-              label="Why is this important? (optional)"
+              label={t('wizard.descriptionLabel')}
               value={description}
               onChangeText={setDescription}
-              placeholder="e.g., I want to improve my cardiovascular health"
+              placeholder={t('wizard.descriptionPlaceholder')}
               multiline
               numberOfLines={2}
               containerStyle={{ marginTop: Spacing.md }}
@@ -695,7 +695,7 @@ export function AddGoalWizard({ visible, onClose, userId }: AddGoalWizardProps) 
 
             {/* Category Selection */}
             <View style={styles.sectionContainer}>
-              <Text style={styles.formLabel}>Category</Text>
+              <Text style={styles.formLabel}>{t('wizard.categoryLabel')}</Text>
               <View style={styles.categoryGrid}>
                 {(Object.entries(GOAL_CATEGORY_CONFIG) as [GoalCategory, typeof GOAL_CATEGORY_CONFIG['fitness']][]).map(
                   ([cat, config]) => (
@@ -734,7 +734,7 @@ export function AddGoalWizard({ visible, onClose, userId }: AddGoalWizardProps) 
 
             {/* Target Date — Tap to expand calendar */}
             <View style={styles.sectionContainer}>
-              <Text style={styles.formLabel}>Timeline</Text>
+              <Text style={styles.formLabel}>{t('wizard.timelineLabel')}</Text>
               <Pressable
                 onPress={() => {
                   Haptics.selectionAsync();
@@ -746,7 +746,7 @@ export function AddGoalWizard({ visible, onClose, userId }: AddGoalWizardProps) 
                 <Text style={[styles.datePickerText, showCalendar && { color: colors.primary }]}>
                   {targetDate || getDefaultTargetDate()}
                 </Text>
-                <Text style={styles.datePickerWeeks}>{weeksRemaining}w</Text>
+                <Text style={styles.datePickerWeeks}>{t('wizard.weeksUnit', { count: weeksRemaining })}</Text>
                 <Ionicons name={showCalendar ? 'chevron-up' : 'chevron-down'} size={16} color={colors.textMuted} />
               </Pressable>
               {showCalendar && (
@@ -763,8 +763,8 @@ export function AddGoalWizard({ visible, onClose, userId }: AddGoalWizardProps) 
 
             {/* Footer */}
             <View style={styles.footer}>
-              <Button title="Cancel" variant="ghost" onPress={handleClose} />
-              <Button title="Next" onPress={goToContext} disabled={!isStep1Valid} />
+              <Button title={t('wizard.cancel')} variant="ghost" onPress={handleClose} />
+              <Button title={t('wizard.next')} onPress={goToContext} disabled={!isStep1Valid} />
             </View>
           </View>
         )}
@@ -776,10 +776,10 @@ export function AddGoalWizard({ visible, onClose, userId }: AddGoalWizardProps) 
           <View style={styles.stepContent}>
             {/* Experience Level */}
             <View style={styles.sectionContainer}>
-              <Text style={styles.formLabel}>Your experience level</Text>
+              <Text style={styles.formLabel}>{t('wizard.levelLabel')}</Text>
               <View style={styles.levelGrid}>
-                {(Object.entries(GOAL_LEVEL_CONFIG) as [GoalLevel, typeof GOAL_LEVEL_CONFIG['beginner']][]).map(
-                  ([level, config]) => (
+                {GOAL_LEVEL_KEYS.map(
+                  (level) => (
                     <Pressable
                       key={level}
                       onPress={() => {
@@ -797,9 +797,9 @@ export function AddGoalWizard({ visible, onClose, userId }: AddGoalWizardProps) 
                           currentLevel === level && styles.levelLabelActive,
                         ]}
                       >
-                        {config.label}
+                        {t(`wizard.level.${level}`)}
                       </Text>
-                      <Text style={styles.levelDesc}>{config.description}</Text>
+                      <Text style={styles.levelDesc}>{t(`wizard.level.${level}.description`)}</Text>
                     </Pressable>
                   )
                 )}
@@ -809,7 +809,7 @@ export function AddGoalWizard({ visible, onClose, userId }: AddGoalWizardProps) 
             {/* Daily Time Available */}
             <View style={styles.sectionContainer}>
               <Text style={styles.formLabel}>
-                Daily time available
+                {t('wizard.dailyTimeLabel')}
               </Text>
               <View style={styles.timeGrid}>
                 {TIME_OPTIONS.map((mins) => (
@@ -830,7 +830,7 @@ export function AddGoalWizard({ visible, onClose, userId }: AddGoalWizardProps) 
                         dailyTimeAvailable === mins && styles.timeChipTextActive,
                       ]}
                     >
-                      {mins} min
+                      {t('wizard.timeMinutes', { count: mins })}
                     </Text>
                   </Pressable>
                 ))}
@@ -842,7 +842,7 @@ export function AddGoalWizard({ visible, onClose, userId }: AddGoalWizardProps) 
               <View style={styles.loadingContainer}>
                 <ActivityIndicator size="small" color={colors.primary} />
                 <Text style={styles.loadingText}>
-                  Generating personalized questions...
+                  {t('wizard.loadingQuestions')}
                 </Text>
               </View>
             ) : contextQuestions.length > 0 ? (
@@ -850,7 +850,7 @@ export function AddGoalWizard({ visible, onClose, userId }: AddGoalWizardProps) 
                 <View style={styles.questionsHeader}>
                   <Ionicons name="sparkles" size={14} color={colors.primary} />
                   <Text style={styles.questionsHeaderText}>
-                    Questions tailored to your goal
+                    {t('wizard.questionsHeader')}
                   </Text>
                 </View>
 
@@ -874,7 +874,7 @@ export function AddGoalWizard({ visible, onClose, userId }: AddGoalWizardProps) 
                       {q.type === 'text' && (
                         <BottomSheetTextInput
                           style={styles.textAnswer}
-                          placeholder={q.placeholder || 'Your answer...'}
+                          placeholder={q.placeholder || t('wizard.answerPlaceholder')}
                           placeholderTextColor={colors.textMuted}
                           value={(questionAnswers[q.id] as string) || ''}
                           onChangeText={(text) =>
@@ -995,7 +995,7 @@ export function AddGoalWizard({ visible, onClose, userId }: AddGoalWizardProps) 
                                   styles.optionRowTextActive,
                               ]}
                             >
-                              None of the above
+                              {t('wizard.noneOfAbove')}
                             </Text>
                           </Pressable>
                         </View>
@@ -1022,9 +1022,9 @@ export function AddGoalWizard({ visible, onClose, userId }: AddGoalWizardProps) 
 
             {/* Footer */}
             <View style={styles.footer}>
-              <Button title="Back" variant="ghost" onPress={goBack} />
+              <Button title={t('wizard.back')} variant="ghost" onPress={goBack} />
               <Button
-                title="Generate Habits"
+                title={t('wizard.generateHabits')}
                 onPress={generateHabits}
                 disabled={!isStep2Valid || isGenerating}
                 loading={isGenerating}
@@ -1045,10 +1045,10 @@ export function AddGoalWizard({ visible, onClose, userId }: AddGoalWizardProps) 
           <View style={styles.centerContent}>
             <ActivityIndicator size="large" color={colors.primary} />
             <Text style={styles.generatingTitle}>
-              Dr. Sage is designing your habit plan...
+              {t('wizard.generating.title')}
             </Text>
             <Text style={styles.generatingSubtitle}>
-              Analyzing your goal and creating science-backed habits
+              {t('wizard.generating.subtitle')}
             </Text>
           </View>
         )}
@@ -1063,7 +1063,7 @@ export function AddGoalWizard({ visible, onClose, userId }: AddGoalWizardProps) 
               <View style={styles.warningBox}>
                 <Ionicons name="alert-circle" size={16} color={colors.warning} />
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.warningTitle}>Heads up</Text>
+                  <Text style={styles.warningTitle}>{t('wizard.review.warningTitle')}</Text>
                   {warnings.map((w, i) => (
                     <Text key={i} style={styles.warningText}>{w}</Text>
                   ))}
@@ -1076,7 +1076,7 @@ export function AddGoalWizard({ visible, onClose, userId }: AddGoalWizardProps) 
               <View style={styles.sectionHeader}>
                 <Ionicons name="sparkles" size={14} color={colors.primary} />
                 <Text style={styles.sectionTitle}>
-                  Suggested Habits ({acceptedHabitsCount} selected)
+                  {t('wizard.review.suggestedHabits', { count: acceptedHabitsCount })}
                 </Text>
               </View>
 
@@ -1133,11 +1133,11 @@ export function AddGoalWizard({ visible, onClose, userId }: AddGoalWizardProps) 
             {/* Milestones */}
             {suggestedMilestones.length > 0 && (
               <View style={styles.sectionContainer}>
-                <Text style={styles.sectionTitle}>Milestones</Text>
+                <Text style={styles.sectionTitle}>{t('wizard.review.milestones')}</Text>
                 <View style={styles.milestonesGrid}>
                   {suggestedMilestones.map((m, i) => (
                     <View key={i} style={styles.milestoneBadge}>
-                      <Text style={styles.milestoneWeek}>Week {m.targetWeek}</Text>
+                      <Text style={styles.milestoneWeek}>{t('wizard.review.milestoneWeek', { week: m.targetWeek })}</Text>
                       <Text style={styles.milestoneTitle}>{m.title}</Text>
                     </View>
                   ))}
@@ -1148,11 +1148,11 @@ export function AddGoalWizard({ visible, onClose, userId }: AddGoalWizardProps) 
             {/* Phases */}
             {suggestedPhases.length > 0 && (
               <View style={styles.sectionContainer}>
-                <Text style={styles.sectionTitle}>Progressive Phases</Text>
+                <Text style={styles.sectionTitle}>{t('wizard.review.phases')}</Text>
                 {suggestedPhases.map((phase, i) => (
                   <View key={i} style={styles.phaseItem}>
                     <Text style={styles.phaseWeeks}>
-                      Weeks {phase.weekStart}-{phase.weekEnd}
+                      {t('wizard.review.phaseWeeks', { start: phase.weekStart, end: phase.weekEnd })}
                     </Text>
                     <Text style={styles.phaseDesc}>{phase.description}</Text>
                   </View>
@@ -1162,9 +1162,9 @@ export function AddGoalWizard({ visible, onClose, userId }: AddGoalWizardProps) 
 
             {/* Footer */}
             <View style={styles.footer}>
-              <Button title="Back" variant="ghost" onPress={goBack} />
+              <Button title={t('wizard.back')} variant="ghost" onPress={goBack} />
               <Button
-                title="Create Goal"
+                title={t('wizard.review.createGoal')}
                 onPress={createGoalAndHabits}
                 disabled={isCreating || acceptedHabitsCount === 0}
                 loading={isCreating}
@@ -1184,7 +1184,7 @@ export function AddGoalWizard({ visible, onClose, userId }: AddGoalWizardProps) 
         {step === 'creating' && (
           <View style={styles.centerContent}>
             <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={styles.generatingTitle}>Setting up your goal...</Text>
+            <Text style={styles.generatingTitle}>{t('wizard.creating.title')}</Text>
             <Text style={styles.generatingSubtitle}>{creationProgress}</Text>
           </View>
         )}
@@ -1197,22 +1197,22 @@ export function AddGoalWizard({ visible, onClose, userId }: AddGoalWizardProps) 
             <View style={styles.successCircle}>
               <Ionicons name="checkmark" size={36} color={colors.success} />
             </View>
-            <Text style={styles.confirmTitle}>Goal Created!</Text>
+            <Text style={styles.confirmTitle}>{t('wizard.confirmation.title')}</Text>
             <Text style={styles.confirmSubtitle}>
-              Your goal "{title}" is ready with {acceptedHabitsCount} habits.
+              {t('wizard.confirmation.subtitle', { title, count: acceptedHabitsCount })}
             </Text>
             <View style={styles.confirmStats}>
               <View style={styles.confirmStatItem}>
                 <Ionicons name="flag" size={14} color={colors.textMuted} />
-                <Text style={styles.confirmStatText}>{weeksRemaining} weeks</Text>
+                <Text style={styles.confirmStatText}>{t('wizard.confirmation.weeks', { count: weeksRemaining })}</Text>
               </View>
               <View style={styles.confirmStatItem}>
                 <Ionicons name="sparkles" size={14} color={colors.textMuted} />
-                <Text style={styles.confirmStatText}>{acceptedHabitsCount} habits</Text>
+                <Text style={styles.confirmStatText}>{t('wizard.confirmation.habits', { count: acceptedHabitsCount })}</Text>
               </View>
             </View>
             <View style={[styles.footer, { marginTop: Spacing.lg }]}>
-              <Button title="Done" onPress={handleClose} fullWidth />
+              <Button title={t('wizard.done')} onPress={handleClose} fullWidth />
             </View>
           </View>
         )}

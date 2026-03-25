@@ -1,0 +1,66 @@
+{
+  "sheetTitle": "New Habit",
+  "habitName.label": "Habit Name",
+  "habitName.placeholder": "e.g., Morning run, Read 30 minutes...",
+
+  "category.label": "Category",
+  "category.health": "Health",
+  "category.career": "Career",
+  "category.mind": "Mind",
+  "category.life": "Life",
+
+  "xpReward.label": "XP Reward",
+  "xpReward.value": "{{xp}} XP",
+
+  "frequency.label": "Frequency",
+  "frequency.daily": "Every day",
+  "frequency.weekdays": "Weekdays",
+  "frequency.weekends": "Weekends",
+  "frequency.custom": "Custom",
+  "frequency.timesPerWeek": "X per week",
+
+  "timeOfDay.label": "Time of Day",
+  "timeOfDay.morning": "Morning",
+  "timeOfDay.afternoon": "Afternoon",
+  "timeOfDay.evening": "Evening",
+  "timeOfDay.anytime": "Anytime",
+
+  "chainAfter.label": "Chain After",
+  "chainAfter.selected": "After: {{name}}",
+  "chainAfter.unknownName": "Unknown",
+  "chainAfter.none": "None \u2014 standalone habit",
+  "chainAfter.hint": "Habit stacking: do this right after another habit",
+
+  "supercharge.label": "Supercharge",
+  "supercharge.ifThen.label": "If-Then Blueprint",
+  "supercharge.ifThen.if": "IF",
+  "supercharge.ifThen.then": "THEN",
+  "supercharge.ifThen.at": "AT",
+  "supercharge.ifThen.triggerPlaceholder": "After morning coffee...",
+  "supercharge.ifThen.locationPlaceholder": "In the gym, at my desk...",
+  "supercharge.ifThen.hint": "If-then plans increase follow-through by 2-3x (Gollwitzer, 1999)",
+  "supercharge.ifThen.yourHabit": "Your habit",
+
+  "supercharge.reward.label": "Reward Bundle",
+  "supercharge.reward.placeholder": "e.g., Listen to podcast, watch a show...",
+  "supercharge.reward.hint": "Pair this habit with a reward you enjoy (Milkman, 2014)",
+
+  "button.cancel": "Cancel",
+  "button.create": "Create Habit",
+
+  "card.xp": "+{{xp}} XP",
+  "card.after": "After {{name}}",
+  "card.next": "{{count}} next",
+  "card.accessibility": "{{name}}, {{category}}, {{xp}} XP",
+  "card.accessibilityCompleted": "{{name}}, {{category}}, {{xp}} XP, completed",
+
+  "days.sun": "S",
+  "days.mon": "M",
+  "days.tue": "T",
+  "days.wed": "W",
+  "days.thu": "T",
+  "days.fri": "F",
+  "days.sat": "S",
+
+  "timesPerWeek.label": "times per week"
+}

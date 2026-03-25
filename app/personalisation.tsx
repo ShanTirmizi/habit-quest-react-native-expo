@@ -12,6 +12,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useQuery, useMutation } from 'convex/react';
+import { useTranslation } from 'react-i18next';
 import { api } from '@/convex/_generated/api';
 import { useTheme } from '@/contexts/theme-context';
 import { useToast } from '@/contexts/toast-context';
@@ -25,6 +26,7 @@ export default function PersonalisationScreen() {
   const router = useRouter();
   const { colors } = useTheme();
   const { showToast } = useToast();
+  const { t } = useTranslation('onboarding');
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   const user = useQuery(api.users.currentUser);
@@ -66,14 +68,14 @@ export default function PersonalisationScreen() {
           adhdSubtype: selectedConditions.includes('adhd') ? adhdSubtype : undefined,
           diagnosisType,
         });
-        showToast('Profile updated');
+        showToast(t('personalisation.toast.updated'));
       } else {
         await clearNdProfile();
-        showToast('Profile cleared');
+        showToast(t('personalisation.toast.cleared'));
       }
       router.back();
     } catch {
-      showToast('Failed to save', undefined, 'error');
+      showToast(t('personalisation.toast.failed'), undefined, 'error');
     } finally {
       setIsSaving(false);
     }
@@ -81,19 +83,19 @@ export default function PersonalisationScreen() {
 
   const handleClear = useCallback(() => {
     Alert.alert(
-      'Clear profile?',
-      'This will remove your neurodivergence profile. Dr. Sage will use default coaching.',
+      t('personalisation.clearAlert.title'),
+      t('personalisation.clearAlert.message'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('personalisation.clearAlert.cancel'), style: 'cancel' },
         {
-          text: 'Clear',
+          text: t('personalisation.clearAlert.clear'),
           style: 'destructive',
           onPress: async () => {
             await clearNdProfile();
             setSelectedConditions([]);
             setAdhdSubtype(undefined);
             setDiagnosisType(undefined);
-            showToast('Profile cleared');
+            showToast(t('personalisation.toast.cleared'));
             router.back();
           },
         },
@@ -108,7 +110,7 @@ export default function PersonalisationScreen() {
         <Pressable onPress={() => router.back()} style={styles.backButton} hitSlop={12}>
           <Ionicons name="chevron-back" size={24} color={colors.foreground} />
         </Pressable>
-        <Text style={styles.headerTitle}>Personalisation</Text>
+        <Text style={styles.headerTitle}>{t('personalisation.headerTitle')}</Text>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -117,10 +119,10 @@ export default function PersonalisationScreen() {
         showsVerticalScrollIndicator={false}
       >
         <Text style={styles.sectionDesc}>
-          Select any conditions that apply to you. This personalises Dr. Sage's coaching style, goal suggestions, and gamification to work with your brain, not against it.
+          {t('personalisation.sectionDesc')}
         </Text>
         <Text style={styles.privacyNote}>
-          This data is only used for AI personalisation and is never shared.
+          {t('personalisation.privacyNote')}
         </Text>
 
         {/* Condition chips */}
@@ -145,9 +147,9 @@ export default function PersonalisationScreen() {
                 />
                 <View style={styles.chipTextWrap}>
                   <Text style={[styles.chipLabel, isSelected && { color: config.color }]}>
-                    {config.label}
+                    {t(`nd.${condition}`)}
                   </Text>
-                  <Text style={styles.chipDesc} numberOfLines={1}>{config.description}</Text>
+                  <Text style={styles.chipDesc} numberOfLines={1}>{t(`nd.${condition}.description`)}</Text>
                 </View>
                 {isSelected && <Ionicons name="checkmark-circle" size={18} color={config.color} />}
               </Pressable>
@@ -158,7 +160,7 @@ export default function PersonalisationScreen() {
         {/* ADHD Subtype */}
         {selectedConditions.includes('adhd') && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>ADHD Type</Text>
+            <Text style={styles.sectionTitle}>{t('adhdType.title')}</Text>
             <View style={styles.optionList}>
               {(Object.keys(ADHD_SUBTYPE_CONFIG) as AdhdSubtype[]).map((subtype) => {
                 const config = ADHD_SUBTYPE_CONFIG[subtype];
@@ -173,9 +175,9 @@ export default function PersonalisationScreen() {
                     ]}
                   >
                     <Text style={[styles.optionLabel, isSelected && { color: ND_CONDITION_CONFIG.adhd.color }]}>
-                      {config.label}
+                      {t(`adhdType.${subtype}`)}
                     </Text>
-                    <Text style={styles.optionDesc}>{config.description}</Text>
+                    <Text style={styles.optionDesc}>{t(`adhdType.${subtype}.description`)}</Text>
                   </Pressable>
                 );
               })}
@@ -186,7 +188,7 @@ export default function PersonalisationScreen() {
         {/* Diagnosis type */}
         {selectedConditions.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>How would you describe this?</Text>
+            <Text style={styles.sectionTitle}>{t('diagnosisType.title')}</Text>
             <View style={styles.optionList}>
               {(Object.keys(DIAGNOSIS_TYPE_CONFIG) as DiagnosisType[]).map((dtype) => {
                 const config = DIAGNOSIS_TYPE_CONFIG[dtype];
@@ -201,7 +203,7 @@ export default function PersonalisationScreen() {
                     ]}
                   >
                     <Text style={[styles.optionLabel, isSelected && { color: colors.primary }]}>
-                      {config.label}
+                      {t(`diagnosisType.${dtype}`)}
                     </Text>
                   </Pressable>
                 );
@@ -217,7 +219,7 @@ export default function PersonalisationScreen() {
             style={({ pressed }) => [styles.clearBtn, pressed && { opacity: 0.7 }]}
           >
             <Ionicons name="trash-outline" size={16} color={colors.danger} />
-            <Text style={styles.clearBtnText}>Clear profile</Text>
+            <Text style={styles.clearBtnText}>{t('personalisation.clearProfile')}</Text>
           </Pressable>
         )}
       </ScrollView>
@@ -225,7 +227,7 @@ export default function PersonalisationScreen() {
       {/* Sticky footer */}
       <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, Spacing.md) }]}>
         <Button
-          title={isSaving ? 'Saving...' : 'Save'}
+          title={isSaving ? t('personalisation.saving') : t('personalisation.save')}
           onPress={handleSave}
           fullWidth
           disabled={isSaving}

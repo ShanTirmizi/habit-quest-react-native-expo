@@ -41,6 +41,7 @@ import { analyzeDifficulty, type DifficultySuggestion } from '@/lib/adaptive-dif
 import { generateCompassionMessage, type CompassionMessage } from '@/lib/compassion-engine';
 import { CompassionCard } from '@/components/widgets/CompassionCard';
 import { MicroReflectionPrompt } from '@/components/habits/MicroReflectionPrompt';
+import { useTranslation } from 'react-i18next';
 
 const TIME_SECTION_META: Record<TimeOfDay, { label: string; icon: keyof typeof Ionicons.glyphMap; order: number }> = {
   morning:   { label: 'Morning',   icon: 'sunny-outline',         order: 0 },
@@ -110,6 +111,7 @@ export default function DashboardScreen() {
   const router = useRouter();
   const { userId, user } = useAuth();
   const { showToast } = useToast();
+  const { t } = useTranslation('dashboard');
   usePushNotifications(userId);
   const { colors, isDark } = useTheme();
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
@@ -129,8 +131,8 @@ export default function DashboardScreen() {
   const todayDate = format(new Date(), 'yyyy-MM-dd');
 
   const hour = new Date().getHours();
-  const timeGreeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
-  const firstName = user?.name?.split(' ')[0] ?? 'Adventurer';
+  const timeGreeting = hour < 12 ? t('greeting.morning') : hour < 17 ? t('greeting.afternoon') : t('greeting.evening');
+  const firstName = user?.name?.split(' ')[0] ?? t('defaultName');
 
   const rawHabits = useQuery(api.habits.getHabits, userId ? { userId } : 'skip');
   const progress = useQuery(api.progress.getProgress, userId ? { userId } : 'skip');
@@ -174,7 +176,7 @@ export default function DashboardScreen() {
         .then((result) => {
           if (result.missedCount > 0) {
             showToast(
-              `Missed ${result.missedCount} habit${result.missedCount > 1 ? 's' : ''} — lost ${result.hpLost} HP`,
+              t('toast.missedHabits', { count: result.missedCount, hp: result.hpLost }),
               undefined,
               'hp',
             );
@@ -430,8 +432,8 @@ export default function DashboardScreen() {
         const habit = habits.find((h) => h.id === id);
         if (habit) {
           const toastMsg = habit.rewardBundle
-            ? `${habit.name} done! Time for: ${habit.rewardBundle}`
-            : `${habit.name} completed!`;
+            ? t('toast.habitDoneWithReward', { name: habit.name, reward: habit.rewardBundle })
+            : t('toast.habitCompleted', { name: habit.name });
           showToast(toastMsg, habit.xpReward, 'xp');
 
           // Phase 2: Trigger micro-reflection prompt
@@ -455,7 +457,7 @@ export default function DashboardScreen() {
         }
       }
     } catch (err) {
-      showToast('Failed to toggle habit', undefined, 'error');
+      showToast(t('toast.toggleFailed'), undefined, 'error');
     }
   }, [userId, todayDate, toggleCompletionMutation, habits, showToast, addXpMutation, removeXpMutation]);
 
@@ -485,9 +487,9 @@ export default function DashboardScreen() {
           chainedToHabitId: habitData.chainedToHabitId as any,
           rewardBundle: habitData.rewardBundle,
         });
-        showToast('Habit created!', undefined, 'xp');
+        showToast(t('toast.habitCreated'), undefined, 'xp');
       } catch (err) {
-        showToast('Failed to add habit', undefined, 'error');
+        showToast(t('toast.addFailed'), undefined, 'error');
       }
     },
     [userId, addHabitMutation, showToast]
@@ -497,9 +499,9 @@ export default function DashboardScreen() {
     if (!userId) return;
     try {
       await deleteHabitMutation({ habitId: id as any, userId });
-      showToast('Habit deleted', undefined, 'hp');
+      showToast(t('toast.habitDeleted'), undefined, 'hp');
     } catch {
-      showToast('Failed to delete habit', undefined, 'error');
+      showToast(t('toast.deleteFailed'), undefined, 'error');
     }
   }, [userId, deleteHabitMutation, showToast]);
 
@@ -507,9 +509,9 @@ export default function DashboardScreen() {
     if (!userId) return;
     try {
       await addNoteMutation({ habitId: habitId as any, userId, text });
-      showToast('Note added', undefined, 'xp');
+      showToast(t('toast.noteAdded'), undefined, 'xp');
     } catch {
-      showToast('Failed to add note', undefined, 'error');
+      showToast(t('toast.noteFailed'), undefined, 'error');
     }
   }, [userId, addNoteMutation, showToast]);
 
@@ -521,9 +523,9 @@ export default function DashboardScreen() {
         userId,
         ...data,
       } as Parameters<typeof updateHabitMutation>[0]);
-      showToast('Habit updated!', undefined, 'xp');
+      showToast(t('toast.habitUpdated'), undefined, 'xp');
     } catch {
-      showToast('Failed to update habit', undefined, 'error');
+      showToast(t('toast.updateFailed'), undefined, 'error');
     }
   }, [userId, updateHabitMutation, showToast]);
 
@@ -533,13 +535,13 @@ export default function DashboardScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       if (isOnHoliday) {
         await endHolidayMutation({ userId });
-        showToast('Welcome back! Streaks resumed', undefined, 'xp');
+        showToast(t('toast.holidayEnded'), undefined, 'xp');
       } else {
         await startHolidayMutation({ userId });
-        showToast('Holiday mode on — streaks are safe!', undefined, 'hp');
+        showToast(t('toast.holidayStarted'), undefined, 'hp');
       }
     } catch {
-      showToast('Failed to toggle holiday mode', undefined, 'error');
+      showToast(t('toast.holidayFailed'), undefined, 'error');
     }
   }, [userId, isOnHoliday, startHolidayMutation, endHolidayMutation, showToast]);
 
@@ -547,9 +549,9 @@ export default function DashboardScreen() {
     if (!userId) return;
     try {
       await hibernateHabitMutation({ habitId: id as any, userId });
-      showToast('Habit hibernated', undefined, 'hp');
+      showToast(t('toast.hibernated'), undefined, 'hp');
     } catch {
-      showToast('Failed to hibernate', undefined, 'error');
+      showToast(t('toast.hibernateFailed'), undefined, 'error');
     }
   }, [userId, hibernateHabitMutation, showToast]);
 
@@ -557,9 +559,9 @@ export default function DashboardScreen() {
     if (!userId) return;
     try {
       await wakeHabitMutation({ habitId: id as any, userId });
-      showToast('Habit reactivated!', undefined, 'xp');
+      showToast(t('toast.reactivated'), undefined, 'xp');
     } catch {
-      showToast('Failed to wake habit', undefined, 'error');
+      showToast(t('toast.wakeFailed'), undefined, 'error');
     }
   }, [userId, wakeHabitMutation, showToast]);
 
@@ -567,9 +569,9 @@ export default function DashboardScreen() {
     if (!userId) return;
     try {
       await useStreakFreezeMutation({ userId });
-      showToast('Streak freeze used!', undefined, 'xp');
+      showToast(t('toast.streakFreezeUsed'), undefined, 'xp');
     } catch {
-      showToast('No streak freezes available', undefined, 'error');
+      showToast(t('toast.noFreezes'), undefined, 'error');
     }
   }, [userId, useStreakFreezeMutation, showToast]);
 
@@ -627,7 +629,7 @@ export default function DashboardScreen() {
       const result = await checkMissedMutation({ userId });
       if (result.missedCount > 0) {
         showToast(
-          `Missed ${result.missedCount} habit${result.missedCount > 1 ? 's' : ''} — lost ${result.hpLost} HP`,
+          t('toast.missedHabits', { count: result.missedCount, hp: result.hpLost }),
           undefined,
           'hp',
         );
@@ -675,7 +677,7 @@ export default function DashboardScreen() {
             <Pressable
               onPress={() => router.push('/companion')}
               style={({ pressed }) => [styles.sageButton, pressed && { opacity: 0.9, transform: [{ scale: 0.97 }] }]}
-              accessibilityLabel={companion ? "Open Dr. Sage companion" : "Choose companion"}
+              accessibilityLabel={companion ? t('accessibility.openCompanion') : t('accessibility.chooseCompanion')}
               accessibilityRole="button"
             >
               <View style={[styles.sageAvatar, { borderColor: colors.primary }]}>
@@ -695,7 +697,7 @@ export default function DashboardScreen() {
           <Pressable
             onPress={handleToggleHoliday}
             style={({ pressed }) => [styles.settingsButton, pressed && { opacity: 0.9, transform: [{ scale: 0.97 }] }]}
-            accessibilityLabel={isOnHoliday ? "End holiday mode" : "Start holiday mode"}
+            accessibilityLabel={isOnHoliday ? t('accessibility.endHoliday') : t('accessibility.startHoliday')}
             accessibilityRole="button"
           >
             <Ionicons
@@ -707,7 +709,7 @@ export default function DashboardScreen() {
           <Pressable
             onPress={() => router.push('/settings')}
             style={({ pressed }) => [styles.settingsButton, pressed && { opacity: 0.9, transform: [{ scale: 0.97 }] }]}
-            accessibilityLabel="Settings"
+            accessibilityLabel={t('accessibility.settings')}
             accessibilityRole="button"
           >
             <Ionicons name="settings-outline" size={20} color={colors.textSecondary} />
@@ -718,7 +720,7 @@ export default function DashboardScreen() {
               setShowAddSheet(true);
             }}
             style={({ pressed }) => [styles.addButton, pressed && styles.addButtonPressed]}
-            accessibilityLabel="Add new habit"
+            accessibilityLabel={t('accessibility.addHabit')}
             accessibilityRole="button"
           >
             <Ionicons name="add" size={24} color="#FFFFFF" />
@@ -760,7 +762,7 @@ export default function DashboardScreen() {
                     <Text style={styles.statsLevelNum}>{level}</Text>
                   </CircularProgress>
                 </View>
-                <Text style={styles.statsItemLabel}>LVL</Text>
+                <Text style={styles.statsItemLabel}>{t('stats.lvl')}</Text>
               </View>
 
               {/* Divider */}
@@ -771,7 +773,7 @@ export default function DashboardScreen() {
                 <View style={styles.statsValueArea}>
                   <Text style={styles.statsValue}>{totalXp.toLocaleString()}</Text>
                 </View>
-                <Text style={styles.statsItemLabel}>XP</Text>
+                <Text style={styles.statsItemLabel}>{t('stats.xp')}</Text>
               </View>
 
               {/* Divider */}
@@ -790,7 +792,7 @@ export default function DashboardScreen() {
                     <ProgressBar progress={hpPercent} color={hpColor} height={3} />
                   </View>
                 </View>
-                <Text style={styles.statsItemLabel}>HP</Text>
+                <Text style={styles.statsItemLabel}>{t('stats.hp')}</Text>
               </View>
 
               {/* Divider */}
@@ -803,7 +805,7 @@ export default function DashboardScreen() {
                     {completedIds.size}/{visibleHabits.length}
                   </Text>
                 </View>
-                <Text style={styles.statsItemLabel}>DONE</Text>
+                <Text style={styles.statsItemLabel}>{t('stats.done')}</Text>
               </View>
 
               {/* Divider */}
@@ -817,7 +819,7 @@ export default function DashboardScreen() {
                   </Text>
                 </View>
                 <View style={styles.streakLabelRow}>
-                  <Text style={styles.statsItemLabel}>STREAK</Text>
+                  <Text style={styles.statsItemLabel}>{t('stats.streak')}</Text>
                   {streakFreezes > 0 ? (
                     <View style={styles.freezeIndicator}>
                       <Ionicons name="snow-outline" size={9} color={colors.info} />
@@ -839,15 +841,16 @@ export default function DashboardScreen() {
                 <View style={styles.holidayBannerLeft}>
                   <Ionicons name="airplane" size={18} color="#9C27B0" />
                   <View>
-                    <Text style={styles.holidayBannerTitle}>Holiday Mode Active</Text>
+                    <Text style={styles.holidayBannerTitle}>{t('holiday.title')}</Text>
                     <Text style={styles.holidayBannerSubtitle}>
-                      Streaks frozen, no HP damage
-                      {holidayStatus?.endDate ? ` \u00B7 Until ${format(parseISO(holidayStatus.endDate), 'MMM d')}` : ''}
+                      {holidayStatus?.endDate
+                        ? t('holiday.subtitleUntil', { date: format(parseISO(holidayStatus.endDate), 'MMM d') })
+                        : t('holiday.subtitle')}
                     </Text>
                   </View>
                 </View>
                 <View style={styles.holidayEndBtn}>
-                  <Text style={styles.holidayEndBtnText}>End</Text>
+                  <Text style={styles.holidayEndBtnText}>{t('holiday.end')}</Text>
                 </View>
               </View>
             </Pressable>
@@ -889,21 +892,21 @@ export default function DashboardScreen() {
           {habits.length === 0 ? (
             <EmptyState
               icon="flame-outline"
-              title="No habits yet"
-              description="Start your journey by creating your first habit. Small steps lead to big changes!"
-              actionLabel="Create First Habit"
+              title={t('emptyState.title')}
+              description={t('emptyState.description')}
+              actionLabel={t('emptyState.action')}
               onAction={() => setShowAddSheet(true)}
             />
           ) : (
             <View style={styles.habitSection}>
               {/* Section Header */}
               <View style={styles.goalsSectionHeader}>
-                <Text style={styles.goalsSectionTitle}>Today&apos;s Habits</Text>
+                <Text style={styles.goalsSectionTitle}>{t('todaysHabits')}</Text>
                 <Pressable
                   onPress={() => router.push('/habit-browser')}
                   style={({ pressed }) => [pressed && { opacity: 0.9, transform: [{ scale: 0.97 }] }]}
                 >
-                  <Text style={styles.goalsSeeAll}>All habits</Text>
+                  <Text style={styles.goalsSeeAll}>{t('allHabits')}</Text>
                 </Pressable>
               </View>
 
@@ -912,9 +915,9 @@ export default function DashboardScreen() {
                 <View style={styles.allDoneCard}>
                   <View style={styles.allDoneBanner}>
                     <Ionicons name="trophy" size={40} color="#fff" />
-                    <Text style={styles.allDoneTitle}>All Done!</Text>
+                    <Text style={styles.allDoneTitle}>{t('allDone.title')}</Text>
                     <Text style={styles.allDoneText}>
-                      You&apos;ve completed all habits for today. Amazing work!
+                      {t('allDone.text')}
                     </Text>
                   </View>
                 </View>
@@ -960,16 +963,16 @@ export default function DashboardScreen() {
                             isPast && { color: colors.textMuted },
                           ]}
                         >
-                          {section.label}
+                          {t(`timeSection.${section.key}`)}
                         </Text>
                         {isCurrent && !allSectionDone ? (
                           <View style={styles.nowBadge}>
-                            <Text style={styles.nowBadgeText}>NOW</Text>
+                            <Text style={styles.nowBadgeText}>{t('badge.now')}</Text>
                           </View>
                         ) : null}
                         {isUpNext ? (
                           <View style={styles.upNextBadge}>
-                            <Text style={styles.upNextBadgeText}>UP NEXT</Text>
+                            <Text style={styles.upNextBadgeText}>{t('badge.upNext')}</Text>
                           </View>
                         ) : null}
                       </View>
@@ -1052,7 +1055,7 @@ export default function DashboardScreen() {
                     <View style={styles.timeHeaderLeft}>
                       <Ionicons name="snow-outline" size={14} color={colors.textMuted} />
                       <Text style={[styles.timeHeaderLabel, { color: colors.textMuted }]}>
-                        Hibernating
+                        {t('hibernating')}
                       </Text>
                     </View>
                     <View style={styles.timeHeaderRight}>
@@ -1086,12 +1089,12 @@ export default function DashboardScreen() {
           {true ? (
             <View style={styles.goalsSection}>
               <View style={styles.goalsSectionHeader}>
-                <Text style={styles.goalsSectionTitle}>Goals</Text>
+                <Text style={styles.goalsSectionTitle}>{t('goals.title')}</Text>
                 <Pressable
                   onPress={() => router.push('/goals')}
                   style={({ pressed }) => [pressed && { opacity: 0.9, transform: [{ scale: 0.97 }] }]}
                 >
-                  <Text style={styles.goalsSeeAll}>{activeGoals.length > 0 ? 'See all' : 'Set a Goal'}</Text>
+                  <Text style={styles.goalsSeeAll}>{activeGoals.length > 0 ? t('goals.seeAll') : t('goals.setGoal')}</Text>
                 </Pressable>
               </View>
               <ScrollView
@@ -1131,7 +1134,7 @@ export default function DashboardScreen() {
                             daysLeft < 14 && { color: colors.warning },
                             daysLeft < 0 && { color: colors.danger },
                           ]}>
-                            {daysLeft > 0 ? `${daysLeft}d` : daysLeft === 0 ? 'Today' : 'Overdue'}
+                            {daysLeft > 0 ? t('goals.daysLeft', { count: daysLeft }) : daysLeft === 0 ? t('goals.today') : t('goals.overdue')}
                           </Text>
                         </View>
                       </View>

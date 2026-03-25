@@ -4,6 +4,7 @@ import { v } from "convex/values";
 import { action } from "./_generated/server";
 import { buildNdHabitGuidelines } from "./lib/neurodivergence";
 import { FEATURE_FLAGS } from "./lib/featureFlags";
+import { buildLanguageDirective } from "./lib/locale";
 
 // ============================================
 // Goal Category Validator (matches goals.ts)
@@ -422,6 +423,7 @@ export const generateContextQuestions = action({
     category: goalCategoryValidator,
     targetDate: v.string(),
     ndConditions: v.optional(v.array(v.string())),
+    locale: v.optional(v.string()),
   },
   handler: async (_ctx, args) => {
     const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -430,7 +432,6 @@ export const generateContextQuestions = action({
       return { questions: getFallbackQuestions(args.category) };
     }
 
-    // Calculate timeline
     const targetDate = new Date(args.targetDate);
     const today = new Date();
     const weeksUntilDeadline = Math.ceil(
@@ -440,6 +441,8 @@ export const generateContextQuestions = action({
     const ndContext = args.ndConditions?.length
       ? `\n**Neurodivergence**: ${args.ndConditions.join(', ')}. Tailor questions to surface relevant constraints (e.g., executive function challenges for ADHD, sensory considerations for autism, energy management for depression).`
       : '';
+
+    const languageDirective = buildLanguageDirective(args.locale ?? 'en');
 
     const userMessage = `Generate 2-3 contextual questions for this goal:
 
@@ -466,7 +469,7 @@ Respond with ONLY valid JSON.`;
         body: JSON.stringify({
           model: "claude-sonnet-4-6",
           max_tokens: 500,
-          system: QUESTIONS_SYSTEM_PROMPT,
+          system: languageDirective + QUESTIONS_SYSTEM_PROMPT,
           messages: [{ role: "user", content: userMessage }],
         }),
       });
@@ -548,6 +551,7 @@ export const generateGoalHabits = action({
     ),
     existingHabitNames: v.array(v.string()),
     ndConditions: v.optional(v.array(v.string())),
+    locale: v.optional(v.string()),
   },
   handler: async (_ctx, args) => {
     const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -609,7 +613,7 @@ Please create a progressive habit plan to help achieve this goal. Remember:
         body: JSON.stringify({
           model: "claude-sonnet-4-6",
           max_tokens: 2000,
-          system: HABITS_SYSTEM_PROMPT + (FEATURE_FLAGS.neurodivergenceSupport ? buildNdHabitGuidelines(args.ndConditions) : ''),
+          system: buildLanguageDirective(args.locale ?? 'en') + HABITS_SYSTEM_PROMPT + (FEATURE_FLAGS.neurodivergenceSupport ? buildNdHabitGuidelines(args.ndConditions) : ''),
           messages: [{ role: "user", content: userMessage }],
         }),
       });

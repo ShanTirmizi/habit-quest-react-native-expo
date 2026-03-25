@@ -31,6 +31,7 @@ import { FontSize, Spacing, Radius, FontFamily, Shadows, type ThemeColors } from
 import { useTheme } from '@/contexts/theme-context';
 import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/contexts/toast-context';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button';
 import { ChatMarkdown } from '@/components/ui/ChatMarkdown';
 import { useVoiceModeController } from '@/components/voice/VoiceModeOverlay';
@@ -59,24 +60,13 @@ const MOOD_EMOJI: Record<string, string> = {
   worried: '😟',
 };
 
-const SAGE_RESPONSES = [
-  "Keep up the great work! Every small step counts toward your bigger goals.",
-  "I've noticed your dedication lately. Consistency is the real superpower!",
-  "Remember, progress isn't always linear. You're doing better than you think.",
-  "What a great time to check in! How are you feeling about your habits today?",
-  "Your commitment to self-improvement inspires me. Let's keep this momentum going!",
-  "Sometimes the hardest part is just showing up. And here you are!",
-  "I believe in you. Every habit you build is shaping a stronger version of yourself.",
-  "Take a moment to appreciate how far you've come. You deserve that recognition.",
-  "Challenges are just opportunities in disguise. What's on your mind?",
-  "The fact that you're here, checking in, already says a lot about your character.",
-];
+const SAGE_RESPONSE_KEYS = Array.from({ length: 10 }, (_, i) => `sageResponse.${i}`);
 
-const TOOL_BADGE_CONFIG: Record<string, { icon: keyof typeof Ionicons.glyphMap; label: string; color: string }> = {
-  create_habits: { icon: 'checkmark-circle', label: 'Habit', color: '#4CAF50' },
-  create_medicines: { icon: 'medkit', label: 'Medication', color: '#2196F3' },
-  create_quests: { icon: 'flag', label: 'Quest', color: '#FF9800' },
-  toggle_holiday_mode: { icon: 'airplane', label: 'Holiday', color: '#9C27B0' },
+const TOOL_BADGE_CONFIG: Record<string, { icon: keyof typeof Ionicons.glyphMap; labelKey: string; color: string }> = {
+  create_habits: { icon: 'checkmark-circle', labelKey: 'toolBadge.habit', color: '#4CAF50' },
+  create_medicines: { icon: 'medkit', labelKey: 'toolBadge.medication', color: '#2196F3' },
+  create_quests: { icon: 'flag', labelKey: 'toolBadge.quest', color: '#FF9800' },
+  toggle_holiday_mode: { icon: 'airplane', labelKey: 'toolBadge.holiday', color: '#9C27B0' },
 };
 
 interface ToolCallInfo {
@@ -119,6 +109,7 @@ export default function CompanionScreen() {
   const styles = useMemo(() => createStyles(colors), [colors]);
   const speciesColorMap = useMemo(() => getSpeciesColor(colors), [colors]);
   const { showToast } = useToast();
+  const { t } = useTranslation('companion');
 
   const [editingName, setEditingName] = useState(false);
   const [newName, setNewName] = useState('');
@@ -180,10 +171,10 @@ export default function CompanionScreen() {
     },
     generateFallback: (msg: string) => {
       const lower = msg.toLowerCase();
-      if (lower.includes('help') || lower.includes('struggle')) return "I hear you. What specifically feels challenging right now?";
-      if (lower.includes('happy') || lower.includes('great')) return "That's wonderful! What's been going well?";
-      if (lower.includes('tired') || lower.includes('exhausted')) return "Rest is part of the journey. Be gentle with yourself today.";
-      return "Thanks for sharing! How can I help you with your habits today?";
+      if (lower.includes('help') || lower.includes('struggle')) return t('voiceFallback.helpStruggle');
+      if (lower.includes('happy') || lower.includes('great')) return t('voiceFallback.happyGreat');
+      if (lower.includes('tired') || lower.includes('exhausted')) return t('voiceFallback.tiredExhausted');
+      return t('voiceFallback.default');
     },
     cloudTTS,
   });
@@ -300,9 +291,9 @@ export default function CompanionScreen() {
     try {
       await getOrCreateMutation({ userId });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      showToast('Companion joined your quest!', undefined, 'xp');
+      showToast(t('toast.companionJoined'), undefined, 'xp');
     } catch {
-      showToast('Failed to summon companion', undefined, 'error');
+      showToast(t('toast.failedSummon'), undefined, 'error');
     }
   }, [userId, getOrCreateMutation, showToast]);
 
@@ -311,9 +302,9 @@ export default function CompanionScreen() {
     try {
       await updateNameMutation({ userId, name: newName.trim() });
       setEditingName(false);
-      showToast('Companion renamed!', undefined, 'xp');
+      showToast(t('toast.companionRenamed'), undefined, 'xp');
     } catch {
-      showToast('Failed to rename companion', undefined, 'error');
+      showToast(t('toast.failedRename'), undefined, 'error');
     }
   }, [userId, newName, updateNameMutation, showToast]);
 
@@ -323,35 +314,37 @@ export default function CompanionScreen() {
       const result = await claimGiftMutation({ userId, giftId });
       if (result.claimed) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        showToast(`Gift claimed: ${result.giftType}!`, undefined, 'xp');
+        showToast(t('toast.giftClaimed', { giftType: result.giftType }), undefined, 'xp');
       }
     } catch {
-      showToast('Failed to claim gift', undefined, 'error');
+      showToast(t('toast.failedClaimGift'), undefined, 'error');
     }
   }, [userId, claimGiftMutation, showToast]);
+
+  const sageResponses = useMemo(() => SAGE_RESPONSE_KEYS.map((key) => t(key)), [t]);
 
   const generateSageResponse = useCallback((userMessage: string): string => {
     const lower = userMessage.toLowerCase();
     if (lower.includes('help') || lower.includes('struggle') || lower.includes('hard')) {
-      return "I hear you. Struggles are a natural part of growth. What specifically feels challenging right now? Sometimes breaking it down helps.";
+      return t('fallback.helpStruggle');
     }
     if (lower.includes('happy') || lower.includes('great') || lower.includes('awesome') || lower.includes('good')) {
-      return "That's wonderful to hear! Positive momentum is powerful. What's been going well for you?";
+      return t('fallback.happyGreat');
     }
     if (lower.includes('tired') || lower.includes('exhausted') || lower.includes('burned') || lower.includes('burnout')) {
-      return "Rest is part of the journey, not a detour from it. Consider taking a lighter day today and being gentle with yourself.";
+      return t('fallback.tiredExhausted');
     }
     if (lower.includes('habit') || lower.includes('routine') || lower.includes('streak')) {
-      return "Building habits is like building a muscle -- it gets stronger with consistent practice. Even small reps count!";
+      return t('fallback.habitRoutine');
     }
     if (lower.includes('motivation') || lower.includes('motivate') || lower.includes('inspire')) {
-      return "Motivation comes and goes, but discipline stays. That said, reconnecting with your 'why' can reignite that spark. What got you started?";
+      return t('fallback.motivation');
     }
     if (lower.includes('hello') || lower.includes('hi') || lower.includes('hey')) {
-      return "Hello there! Great to see you. How's your quest going today?";
+      return t('fallback.hello');
     }
-    return SAGE_RESPONSES[Math.floor(Math.random() * SAGE_RESPONSES.length)];
-  }, []);
+    return sageResponses[Math.floor(Math.random() * sageResponses.length)];
+  }, [t, sageResponses]);
 
   const handleSendMessage = useCallback(async () => {
     const text = chatInput.trim();
@@ -422,7 +415,7 @@ export default function CompanionScreen() {
           <Pressable onPress={handleBack} style={styles.backButton} hitSlop={12}>
             <Ionicons name="chevron-back" size={24} color={colors.foreground} />
           </Pressable>
-          <Text style={styles.headerTitle}>Dr. Sage</Text>
+          <Text style={styles.headerTitle}>{t('headerTitle')}</Text>
           <View style={styles.headerSpacer} />
         </View>
         <View style={styles.loadingContainer}>
@@ -440,19 +433,19 @@ export default function CompanionScreen() {
           <Pressable onPress={handleBack} style={styles.backButton} hitSlop={12}>
             <Ionicons name="chevron-back" size={24} color={colors.foreground} />
           </Pressable>
-          <Text style={styles.headerTitle}>Dr. Sage</Text>
+          <Text style={styles.headerTitle}>{t('headerTitle')}</Text>
           <View style={styles.headerSpacer} />
         </View>
         <View style={styles.ctaContent}>
           <View style={styles.ctaIconCircle}>
             <Ionicons name="paw" size={40} color={colors.primary} />
           </View>
-          <Text style={styles.ctaTitle}>Choose Your Companion</Text>
+          <Text style={styles.ctaTitle}>{t('cta.title')}</Text>
           <Text style={styles.ctaSubtitle}>
-            A loyal friend to join your quest. They&apos;ll react to your progress, evolve as you level up, and bring you gifts!
+            {t('cta.subtitle')}
           </Text>
           <Button
-            title="Summon Companion"
+            title={t('cta.summonButton')}
             onPress={handleChooseCompanion}
             fullWidth
             size="lg"
@@ -482,7 +475,7 @@ export default function CompanionScreen() {
           color={activeTab === 'info' ? '#fff' : colors.textSecondary}
         />
         <Text style={[styles.tabPillText, activeTab === 'info' && styles.tabPillTextActive]}>
-          Info
+          {t('tab.info')}
         </Text>
       </Pressable>
       <Pressable onPress={() => switchTab('chat')} style={styles.tabPill}>
@@ -492,7 +485,7 @@ export default function CompanionScreen() {
           color={activeTab === 'chat' ? '#fff' : colors.textSecondary}
         />
         <Text style={[styles.tabPillText, activeTab === 'chat' && styles.tabPillTextActive]}>
-          Chat
+          {t('tab.chat')}
         </Text>
       </Pressable>
     </View>
@@ -508,11 +501,11 @@ export default function CompanionScreen() {
       <View style={styles.detailStats}>
         <View style={styles.detailStat}>
           <Text style={styles.detailStatValue}>{companion.evolutionStage}</Text>
-          <Text style={styles.detailStatLabel}>Stage</Text>
+          <Text style={styles.detailStatLabel}>{t('info.stage')}</Text>
         </View>
         <View style={styles.detailStat}>
           <Text style={styles.detailStatValue}>{companion.totalXp}</Text>
-          <Text style={styles.detailStatLabel}>XP</Text>
+          <Text style={styles.detailStatLabel}>{t('info.xp')}</Text>
         </View>
         <View style={styles.detailStat}>
           <Text style={styles.detailStatValue}>{moodEmoji}</Text>
@@ -521,7 +514,7 @@ export default function CompanionScreen() {
       </View>
 
       <Text style={styles.speciesLabel}>
-        Stage {companion.evolutionStage} {companion.species.charAt(0).toUpperCase() + companion.species.slice(1)}
+        {t('info.speciesLabel', { stage: companion.evolutionStage, species: companion.species.charAt(0).toUpperCase() + companion.species.slice(1) })}
       </Text>
 
       {/* Unclaimed Gifts Banner */}
@@ -530,7 +523,7 @@ export default function CompanionScreen() {
           <View style={styles.giftBanner}>
             <Ionicons name="gift" size={18} color={colors.accent} />
             <Text style={styles.giftBannerText}>
-              {unclaimedGifts} unclaimed gift{unclaimedGifts > 1 ? 's' : ''}!
+              {t('info.unclaimedGifts', { count: unclaimedGifts })}
             </Text>
           </View>
         </Animated.View>
@@ -543,22 +536,22 @@ export default function CompanionScreen() {
             style={styles.nameInput}
             value={newName}
             onChangeText={setNewName}
-            placeholder="New name..."
+            placeholder={t('info.namePlaceholder')}
             placeholderTextColor={colors.textMuted}
             autoFocus
           />
-          <Button title="Save" size="sm" onPress={handleSaveName} disabled={!newName.trim()} />
+          <Button title={t('info.save')} size="sm" onPress={handleSaveName} disabled={!newName.trim()} />
         </View>
       ) : (
         <Pressable onPress={() => { setNewName(companion.name); setEditingName(true); }}>
-          <Text style={styles.editNameLink}>Rename companion</Text>
+          <Text style={styles.editNameLink}>{t('info.renameCompanion')}</Text>
         </Pressable>
       )}
 
       {/* Gifts */}
       {companion.gifts && companion.gifts.length > 0 ? (
         <View style={styles.giftSection}>
-          <Text style={styles.giftSectionTitle}>Unclaimed Gifts</Text>
+          <Text style={styles.giftSectionTitle}>{t('info.unclaimedGiftsTitle')}</Text>
           {companion.gifts.filter((g: { claimed: boolean }) => !g.claimed).map((gift: { id: string; type: string; claimed: boolean }) => (
             <Pressable
               key={gift.id}
@@ -567,7 +560,7 @@ export default function CompanionScreen() {
             >
               <Ionicons name="gift" size={16} color={colors.accent} />
               <Text style={styles.giftLabel}>{gift.type.replace('_', ' ')}</Text>
-              <Text style={styles.giftClaim}>Claim</Text>
+              <Text style={styles.giftClaim}>{t('info.claim')}</Text>
             </Pressable>
           ))}
         </View>
@@ -608,7 +601,7 @@ export default function CompanionScreen() {
                 <View key={`${idx}-${i}`} style={[styles.toolBadge, { backgroundColor: `${config.color}15`, borderColor: `${config.color}30` }]}>
                   <Ionicons name={config.icon} size={12} color={config.color} />
                   <Text style={[styles.toolBadgeText, { color: config.color }]}>
-                    {tc.tool === 'toggle_holiday_mode' ? itemName : `${config.label} added: ${itemName}`}
+                    {tc.tool === 'toggle_holiday_mode' ? itemName : t('toolBadge.added', { label: t(config.labelKey), item: itemName })}
                   </Text>
                 </View>
               ));
@@ -650,9 +643,9 @@ export default function CompanionScreen() {
             <View style={[styles.chatEmptyAvatar, { borderColor: speciesColor }]}>
               <Ionicons name={speciesIcon} size={28} color={speciesColor} />
             </View>
-            <Text style={styles.chatEmptyTitle}>Chat with {companion.name}</Text>
+            <Text style={styles.chatEmptyTitle}>{t('chat.emptyTitle', { name: companion.name })}</Text>
             <Text style={styles.chatEmptySubtitle}>
-              Ask for advice, share your progress, or just say hello!
+              {t('chat.emptySubtitle')}
             </Text>
           </View>
         ) : (
@@ -674,7 +667,7 @@ export default function CompanionScreen() {
             </View>
             <View style={styles.thinkingBubble}>
               <ActivityIndicator size="small" color={colors.textSecondary} />
-              <Text style={styles.thinkingText}>{companion.name} is thinking...</Text>
+              <Text style={styles.thinkingText}>{t('chat.thinking', { name: companion.name })}</Text>
             </View>
           </View>
         )}
@@ -689,9 +682,9 @@ export default function CompanionScreen() {
           }]} />
           <Text style={styles.voiceStatusText} numberOfLines={1}>
             {voiceController.partialTranscript ||
-              (voiceController.voiceState === 'listening' ? 'Listening...' :
-               voiceController.voiceState === 'thinking' ? `${companion.name} is thinking...` :
-               `${companion.name} is speaking...`)}
+              (voiceController.voiceState === 'listening' ? t('voice.listening') :
+               voiceController.voiceState === 'thinking' ? t('voice.thinking', { name: companion.name }) :
+               t('voice.speaking', { name: companion.name }))}
           </Text>
         </View>
       )}
@@ -699,7 +692,7 @@ export default function CompanionScreen() {
       {/* Hold-to-speak tooltip */}
       {holdToSpeakTooltip && (
         <View style={styles.holdTooltip}>
-          <Text style={styles.holdTooltipText}>Hold to speak</Text>
+          <Text style={styles.holdTooltipText}>{t('chat.holdToSpeak')}</Text>
         </View>
       )}
 
@@ -709,7 +702,7 @@ export default function CompanionScreen() {
           style={styles.chatTextInput}
           value={chatInput}
           onChangeText={setChatInput}
-          placeholder={`Message ${companion.name}...`}
+          placeholder={t('chat.inputPlaceholder', { name: companion.name })}
           placeholderTextColor={colors.textMuted}
           multiline
           maxLength={5000}
