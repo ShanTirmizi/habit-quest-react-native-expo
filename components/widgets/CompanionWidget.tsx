@@ -472,25 +472,23 @@ export function CompanionWidget({
     setChatInput('');
     setIsSending(true);
 
-    const userMsg: ChatMessage = { role: 'user', content: text };
+    const userMsg: ChatMessage = { _id: `local-${Date.now()}-user`, role: 'user', content: text };
     setLocalMessages((prev) => [...prev, userMsg]);
 
     try {
-      // Call Claude via Convex action (saves both user + assistant messages)
       const reply = await sendMessageAction({
         userId,
         userMessage: text,
         sessionId: sessionIdRef.current,
       });
 
-      const sageMsg: ChatMessage = { role: 'assistant', content: reply };
+      const sageMsg: ChatMessage = { _id: `local-${Date.now()}-assistant`, role: 'assistant', content: reply };
       setLocalMessages((prev) => [...prev, sageMsg]);
 
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     } catch {
-      // Fallback to local response if action fails
       const sageReply = generateSageResponse(text);
-      const sageMsg: ChatMessage = { role: 'assistant', content: sageReply };
+      const sageMsg: ChatMessage = { _id: `local-${Date.now()}-fallback`, role: 'assistant', content: sageReply };
       setLocalMessages((prev) => [...prev, sageMsg]);
 
       // Save locally generated messages
@@ -533,6 +531,15 @@ export function CompanionWidget({
       voiceController.releaseMic();
     }
   }, [voiceController.releaseMic]);
+
+  // Scroll to bottom when isSending changes (shows/hides thinking indicator)
+  useEffect(() => {
+    if (isSending && chatReadyRef.current) {
+      setTimeout(() => {
+        chatListRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    }
+  }, [isSending]);
 
   // Merge backend messages with local (optimistic) ones.
   // Deduplicate: if a local message's content already appears in the last N
@@ -783,9 +790,13 @@ export function CompanionWidget({
               needsRevealRef.current = false;
               contentOpacity.value = withTiming(1, { duration: 200 });
             }
-          } else if (msgCount > prevMessageCountRef.current || isSending) {
-            chatListRef.current?.scrollToEnd({ animated: true });
+          } else if (msgCount > prevMessageCountRef.current) {
+            // New message arrived — scroll after a brief delay so layout
+            // has fully settled (prevents scrolling short of the true end)
             prevMessageCountRef.current = msgCount;
+            setTimeout(() => {
+              chatListRef.current?.scrollToEnd({ animated: true });
+            }, 50);
           }
         }}
       >
@@ -800,8 +811,8 @@ export function CompanionWidget({
             </Text>
           </View>
         ) : (
-          allMessages.map((msg, index) => (
-            <ChatBubble key={`${index}-${msg.role}`} skipAnimation={initialRenderRef.current}>
+          allMessages.map((msg) => (
+            <ChatBubble key={msg._id ?? msg.content.slice(0, 20)} skipAnimation={initialRenderRef.current}>
               {renderMessage({ item: msg })}
             </ChatBubble>
           ))

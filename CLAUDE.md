@@ -73,6 +73,32 @@ This rule applies to custom hooks too — if `useMyHook()` calls 5 hooks interna
 - `constants/` - Theme, colors, configuration
 - `contexts/` - React contexts (auth, theme, toast)
 
+## Color Accessibility — WCAG Contrast Check
+
+**When introducing ANY new color that will be used as text or icon color**, verify it passes WCAG AA contrast ratio against BOTH the light background (`#FDF6EE`) and dark background (`#1A1A2E`).
+
+- **Minimum 3:1** for large text (≥18px bold or ≥24px regular) and icons
+- **Minimum 4.5:1** for normal body text
+
+Use this formula to check (run via `node -e`):
+```
+function luminance(hex) {
+  const [r,g,b] = [hex.slice(1,3),hex.slice(3,5),hex.slice(5,7)].map(h => {
+    const c = parseInt(h,16)/255;
+    return c <= 0.03928 ? c/12.92 : Math.pow((c+0.055)/1.055, 2.4);
+  });
+  return 0.2126*r + 0.7152*g + 0.0722*b;
+}
+function contrast(fg, bg) {
+  const [l1,l2] = [luminance(fg),luminance(bg)].sort((a,b)=>b-a);
+  return ((l1+0.05)/(l2+0.05)).toFixed(2);
+}
+console.log(contrast('#YOUR_COLOR', '#FDF6EE')); // light mode
+console.log(contrast('#YOUR_COLOR', '#1A1A2E')); // dark mode
+```
+
+If either ratio is below the threshold, darken/adjust the color until it passes. Never ship a color without checking. Bright yellows, light greens, and pastel purples are common offenders on the cream background.
+
 ## Styling
 
 - Use the theme system: `useTheme()` hook returns `colors` object.

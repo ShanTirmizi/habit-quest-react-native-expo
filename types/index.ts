@@ -536,12 +536,13 @@ export interface NeurodivergenceProfile {
   diagnosisType?: DiagnosisType;
 }
 
+// Colors are WCAG AA compliant (≥3:1 contrast) against both light (#FDF6EE) and dark (#1A1A2E) backgrounds
 export const ND_CONDITION_CONFIG: Record<NdCondition, { label: string; icon: string; color: string; description: string }> = {
-  adhd: { label: 'ADHD', icon: 'flash-outline', color: '#FF6B2C', description: 'Attention, focus, and executive function' },
-  autism: { label: 'Autism', icon: 'color-filter-outline', color: '#00E5CC', description: 'Sensory processing and routine preferences' },
+  adhd: { label: 'ADHD', icon: 'flash-outline', color: '#D4511E', description: 'Attention, focus, and executive function' },
+  autism: { label: 'Autism', icon: 'color-filter-outline', color: '#0A8F7F', description: 'Sensory processing and routine preferences' },
   anxiety: { label: 'Anxiety', icon: 'pulse-outline', color: '#448AFF', description: 'Worry, perfectionism, and avoidance' },
-  depression: { label: 'Depression', icon: 'cloudy-outline', color: '#B388FF', description: 'Low energy, motivation, and mood' },
-  dyslexia: { label: 'Dyslexia', icon: 'book-outline', color: '#FFD740', description: 'Reading and text processing' },
+  depression: { label: 'Depression', icon: 'cloudy-outline', color: '#7C4DFF', description: 'Low energy, motivation, and mood' },
+  dyslexia: { label: 'Dyslexia', icon: 'book-outline', color: '#B8860B', description: 'Reading and text processing' },
 };
 
 export const ADHD_SUBTYPE_CONFIG: Record<AdhdSubtype, { label: string; description: string }> = {

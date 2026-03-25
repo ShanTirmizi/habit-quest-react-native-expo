@@ -360,7 +360,7 @@ export default function CompanionScreen() {
     setChatInput('');
     setIsSending(true);
 
-    const userMsg: ChatMessage = { role: 'user', content: text };
+    const userMsg: ChatMessage = { _id: `local-${Date.now()}-user`, role: 'user', content: text };
     setLocalMessages((prev) => [...prev, userMsg]);
 
     try {
@@ -370,12 +370,12 @@ export default function CompanionScreen() {
         sessionId: sessionIdRef.current,
       });
 
-      const sageMsg: ChatMessage = { role: 'assistant', content: reply };
+      const sageMsg: ChatMessage = { _id: `local-${Date.now()}-assistant`, role: 'assistant', content: reply };
       setLocalMessages((prev) => [...prev, sageMsg]);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     } catch {
       const sageReply = generateSageResponse(text);
-      const sageMsg: ChatMessage = { role: 'assistant', content: sageReply };
+      const sageMsg: ChatMessage = { _id: `local-${Date.now()}-fallback`, role: 'assistant', content: sageReply };
       setLocalMessages((prev) => [...prev, sageMsg]);
       try {
         await saveMessageMutation({ userId, role: 'user', content: text, sessionId: sessionIdRef.current });
@@ -404,6 +404,15 @@ export default function CompanionScreen() {
 
     return [...backend, ...uniqueLocal];
   }, [recentMessages, localMessages]);
+
+  // Scroll to bottom when isSending changes (shows/hides thinking indicator)
+  useEffect(() => {
+    if (isSending && chatReadyRef.current) {
+      setTimeout(() => {
+        chatListRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    }
+  }, [isSending]);
 
   // Loading state
   if (!userId || companion === undefined) {
@@ -617,22 +626,22 @@ export default function CompanionScreen() {
         ref={chatListRef}
         style={styles.chatMessageList}
         contentContainerStyle={styles.chatMessageListContent}
-        contentOffset={{ x: 0, y: 99999 }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         onContentSizeChange={() => {
-          // Track message count separately from isSending so we detect
-          // both new messages AND the thinking indicator appearing.
           const msgCount = allMessages.length;
           if (!chatReadyRef.current) {
+            // First render — jump to bottom instantly
             chatListRef.current?.scrollToEnd({ animated: false });
             chatReadyRef.current = true;
             prevMessageCountRef.current = msgCount;
             initialRenderRef.current = false;
-          } else if (msgCount > prevMessageCountRef.current || isSending) {
-            // Scroll when: new message arrives OR thinking indicator is visible
-            chatListRef.current?.scrollToEnd({ animated: true });
+          } else if (msgCount !== prevMessageCountRef.current) {
+            // Message count changed — scroll after layout settles
             prevMessageCountRef.current = msgCount;
+            setTimeout(() => {
+              chatListRef.current?.scrollToEnd({ animated: true });
+            }, 80);
           }
         }}
       >
@@ -647,13 +656,13 @@ export default function CompanionScreen() {
             </Text>
           </View>
         ) : (
-          allMessages.map((msg, index) => (
-            // Key must be stable across the local→backend transition.
-            // Do NOT use msg._id — it's undefined for local messages and then
-            // becomes a real ID when the backend version arrives, causing React
-            // to unmount/remount (flicker). Index+role is stable because
-            // messages are append-only and never reordered.
-            <ChatBubble key={`${index}-${msg.role}`} skipAnimation={initialRenderRef.current}>
+          allMessages.map((msg) => (
+            // Backend messages use their real _id. Local optimistic messages
+            // use a generated client ID (local-{timestamp}-{role}).
+            // Dedup ensures only one version is shown at a time.
+            // Unlike index-based keys, _id keys are stable even when the
+            // oldest message drops off a paginated query (indices would shift).
+            <ChatBubble key={msg._id ?? msg.content.slice(0, 20)} skipAnimation={initialRenderRef.current}>
               {renderMessage({ item: msg })}
             </ChatBubble>
           ))
