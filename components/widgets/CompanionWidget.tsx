@@ -308,12 +308,11 @@ export function CompanionWidget({
     }
   }, [companion?._id, completionRate, currentHp]);
 
-  // Clear local messages when backend messages update (they are now persisted)
-  useEffect(() => {
-    if (recentMessages) {
-      setLocalMessages([]);
-    }
-  }, [recentMessages?.length]);
+  // NOTE: We intentionally do NOT clear localMessages when recentMessages
+  // updates. The dedup logic in allMessages handles filtering out local
+  // messages that have been persisted to the backend. Clearing eagerly
+  // caused a full-screen flicker: messages temporarily vanished then
+  // reappeared, triggering unmount/remount of all ChatBubble components.
 
   // Use external visibility when provided
   const isVisible = externalVisible ?? false;
@@ -773,25 +772,20 @@ export function CompanionWidget({
         showsVerticalScrollIndicator={false}
         nestedScrollEnabled
         onContentSizeChange={() => {
-          const currentCount = allMessages.length + (isSending ? 1 : 0);
+          const msgCount = allMessages.length;
 
           if (!chatReadyRef.current) {
-            // First render or tab switch — instant scroll, no animation
             chatListRef.current?.scrollToEnd({ animated: false });
             chatReadyRef.current = true;
-            prevMessageCountRef.current = currentCount;
+            prevMessageCountRef.current = msgCount;
             initialRenderRef.current = false;
-            // On initial sheet open, content starts at opacity 0 to hide
-            // the scroll-to-bottom. Now that scroll is positioned, fade in.
-            // During tab switches, switchTab handles the fade, so skip.
             if (needsRevealRef.current) {
               needsRevealRef.current = false;
               contentOpacity.value = withTiming(1, { duration: 200 });
             }
-          } else if (currentCount > prevMessageCountRef.current) {
-            // New message arrived — smooth scroll
+          } else if (msgCount > prevMessageCountRef.current || isSending) {
             chatListRef.current?.scrollToEnd({ animated: true });
-            prevMessageCountRef.current = currentCount;
+            prevMessageCountRef.current = msgCount;
           }
         }}
       >
@@ -807,7 +801,7 @@ export function CompanionWidget({
           </View>
         ) : (
           allMessages.map((msg, index) => (
-            <ChatBubble key={msg._id ?? `local-${index}`} skipAnimation={initialRenderRef.current}>
+            <ChatBubble key={`${index}-${msg.role}`} skipAnimation={initialRenderRef.current}>
               {renderMessage({ item: msg })}
             </ChatBubble>
           ))

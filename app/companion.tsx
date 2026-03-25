@@ -225,12 +225,12 @@ export default function CompanionScreen() {
     }
   }, [companion?._id, completionRate, currentHp]);
 
-  // Clear local messages when backend messages update
-  useEffect(() => {
-    if (recentMessages) {
-      setLocalMessages([]);
-    }
-  }, [recentMessages?.length]);
+  // NOTE: We intentionally do NOT clear localMessages when recentMessages
+  // updates. The dedup logic in allMessages handles filtering out local
+  // messages that have been persisted to the backend. Clearing localMessages
+  // eagerly caused a full-screen flicker: messages would temporarily vanish
+  // (array shrinks) then reappear (backend catches up), triggering
+  // unmount/remount of all ChatBubble components.
 
   const contentOpacity = useSharedValue(1);
 
@@ -621,16 +621,18 @@ export default function CompanionScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         onContentSizeChange={() => {
-          const currentCount = allMessages.length + (isSending ? 1 : 0);
+          // Track message count separately from isSending so we detect
+          // both new messages AND the thinking indicator appearing.
+          const msgCount = allMessages.length;
           if (!chatReadyRef.current) {
             chatListRef.current?.scrollToEnd({ animated: false });
             chatReadyRef.current = true;
-            prevMessageCountRef.current = currentCount;
-            // Mark initial render done so new messages get animation
+            prevMessageCountRef.current = msgCount;
             initialRenderRef.current = false;
-          } else if (currentCount > prevMessageCountRef.current) {
+          } else if (msgCount > prevMessageCountRef.current || isSending) {
+            // Scroll when: new message arrives OR thinking indicator is visible
             chatListRef.current?.scrollToEnd({ animated: true });
-            prevMessageCountRef.current = currentCount;
+            prevMessageCountRef.current = msgCount;
           }
         }}
       >
@@ -646,7 +648,12 @@ export default function CompanionScreen() {
           </View>
         ) : (
           allMessages.map((msg, index) => (
-            <ChatBubble key={msg._id ?? `local-${index}`} skipAnimation={initialRenderRef.current}>
+            // Key must be stable across the local→backend transition.
+            // Do NOT use msg._id — it's undefined for local messages and then
+            // becomes a real ID when the backend version arrives, causing React
+            // to unmount/remount (flicker). Index+role is stable because
+            // messages are append-only and never reordered.
+            <ChatBubble key={`${index}-${msg.role}`} skipAnimation={initialRenderRef.current}>
               {renderMessage({ item: msg })}
             </ChatBubble>
           ))
