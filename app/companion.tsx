@@ -9,6 +9,7 @@ import {
   Keyboard,
   Platform,
   KeyboardAvoidingView,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -122,18 +123,21 @@ export default function CompanionScreen() {
   const [holdToSpeakTooltip, setHoldToSpeakTooltip] = useState(false);
   const micPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const sessionIdRef = useRef<string>(Date.now().toString());
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
   const chatListRef = useRef<ScrollView>(null);
   const prevMessageCountRef = useRef(0);
   const chatReadyRef = useRef(false);
-  // True on first render — existing messages skip ChatBubble animation so
-  // they don't trigger multiple onContentSizeChange/layout shifts.
   const initialRenderRef = useRef(true);
 
   // Queries
   const companion = useQuery(api.companions.getCompanion, userId ? { userId } : 'skip');
   const unclaimedGifts = useQuery(api.companions.getUnclaimedGiftsCount, userId ? { userId } : 'skip');
-  const recentMessages = useQuery(api.chat.getRecentMessages, userId ? { userId, limit: 30 } : 'skip');
+  const sessionMessages = useQuery(
+    api.chat.getSessionMessages,
+    userId && activeSessionId ? { userId, sessionId: activeSessionId } : 'skip'
+  );
+  const chatSessions = useQuery(api.chat.getSessions, userId ? { userId } : 'skip');
   const progress = useQuery(api.progress.getProgress, userId ? { userId } : 'skip');
 
   const completionRate = 0; // Not critical for companion mood update; simplified
@@ -147,7 +151,67 @@ export default function CompanionScreen() {
   const claimGiftMutation = useMutation(api.companions.claimGift);
   const saveMessageMutation = useMutation(api.chat.saveMessage);
   const sendMessageAction = useAction(api.chatAction.sendMessage);
+  const getOrCreateSessionMutation = useMutation(api.chat.getOrCreateSession);
+  const createSessionMutation = useMutation(api.chat.createSession);
+  const deleteSessionMutation = useMutation(api.chat.deleteSession);
   const ttsSynthesize = useAction(api.tts.synthesize);
+
+  // Auto-create or resume session on mount
+  useEffect(() => {
+    if (!userId) return;
+    getOrCreateSessionMutation({ userId }).then((sid) => {
+      setActiveSessionId(sid);
+    });
+  }, [userId]);
+
+  const handleNewChat = useCallback(async () => {
+    if (!userId) return;
+    // Don't create a new session if the current one has no messages
+    if (sessionMessages !== undefined && sessionMessages.length === 0) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const sid = await createSessionMutation({ userId });
+    setActiveSessionId(sid);
+    setLocalMessages([]);
+    chatReadyRef.current = false;
+    prevMessageCountRef.current = 0;
+    initialRenderRef.current = true;
+    setShowHistory(false);
+  }, [userId, createSessionMutation, sessionMessages]);
+
+  const handleDeleteSession = useCallback(async (sessionId: string) => {
+    if (!userId) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    Alert.alert(
+      'Delete conversation',
+      'This will permanently delete this conversation and all its messages.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            await deleteSessionMutation({ userId, sessionId });
+            // If we deleted the active session, create a new one
+            if (sessionId === activeSessionId) {
+              const sid = await createSessionMutation({ userId });
+              setActiveSessionId(sid);
+              setLocalMessages([]);
+            }
+          },
+        },
+      ]
+    );
+  }, [userId, deleteSessionMutation, createSessionMutation, activeSessionId]);
+
+  const handleSelectSession = useCallback((sessionId: string) => {
+    Haptics.selectionAsync();
+    setActiveSessionId(sessionId);
+    setLocalMessages([]);
+    chatReadyRef.current = false;
+    prevMessageCountRef.current = 0;
+    initialRenderRef.current = true;
+    setShowHistory(false);
+  }, []);
 
   // Cloud TTS
   const cloudTTS = useCallback(async (text: string): Promise<string | null> => {
@@ -164,7 +228,7 @@ export default function CompanionScreen() {
     active: true,
     onDeactivate: () => {},
     userId: userId as Id<'users'>,
-    sessionId: sessionIdRef.current,
+    sessionId: activeSessionId!,
     sendMessage: sendMessageAction,
     onMessageSent: (userMsg, aiMsg) => {
       setLocalMessages((prev) => [...prev, userMsg, aiMsg]);
@@ -348,7 +412,7 @@ export default function CompanionScreen() {
 
   const handleSendMessage = useCallback(async () => {
     const text = chatInput.trim();
-    if (!text || isSending || !userId) return;
+    if (!text || isSending || !userId || !activeSessionId) return;
 
     setChatInput('');
     setIsSending(true);
@@ -360,7 +424,7 @@ export default function CompanionScreen() {
       const reply = await sendMessageAction({
         userId,
         userMessage: text,
-        sessionId: sessionIdRef.current,
+        sessionId: activeSessionId!,
       });
 
       const sageMsg: ChatMessage = { _id: `local-${Date.now()}-assistant`, role: 'assistant', content: reply };
@@ -371,19 +435,19 @@ export default function CompanionScreen() {
       const sageMsg: ChatMessage = { _id: `local-${Date.now()}-fallback`, role: 'assistant', content: sageReply };
       setLocalMessages((prev) => [...prev, sageMsg]);
       try {
-        await saveMessageMutation({ userId, role: 'user', content: text, sessionId: sessionIdRef.current });
-        await saveMessageMutation({ userId, role: 'assistant', content: sageReply, sessionId: sessionIdRef.current });
+        await saveMessageMutation({ userId, role: 'user', content: text, sessionId: activeSessionId! });
+        await saveMessageMutation({ userId, role: 'assistant', content: sageReply, sessionId: activeSessionId! });
       } catch {}
     } finally {
       setIsSending(false);
     }
-  }, [chatInput, isSending, userId, sendMessageAction, saveMessageMutation, generateSageResponse]);
+  }, [chatInput, isSending, userId, activeSessionId, sendMessageAction, saveMessageMutation, generateSageResponse]);
 
   // Merge backend messages with local (optimistic) ones.
   // Deduplicate: if a local message's content already appears in the last N
   // backend messages, skip it (it's been persisted and would show twice).
   const allMessages: ChatMessage[] = useMemo(() => {
-    const backend = recentMessages ?? [];
+    const backend = sessionMessages ?? [];
     if (localMessages.length === 0) return backend;
 
     // Build a set of recent backend message contents for fast lookup
@@ -396,7 +460,7 @@ export default function CompanionScreen() {
     );
 
     return [...backend, ...uniqueLocal];
-  }, [recentMessages, localMessages]);
+  }, [sessionMessages, localMessages]);
 
   // Scroll to bottom when isSending changes (shows/hides thinking indicator)
   useEffect(() => {
@@ -638,7 +702,12 @@ export default function CompanionScreen() {
           }
         }}
       >
-        {allMessages.length === 0 ? (
+        {sessionMessages === undefined ? (
+          <View style={styles.chatLoadingState}>
+            <ActivityIndicator size="small" color={colors.textMuted} />
+            <Text style={styles.chatLoadingText}>Loading conversation...</Text>
+          </View>
+        ) : allMessages.length === 0 ? (
           <View style={styles.chatEmptyState}>
             <View style={[styles.chatEmptyAvatar, { borderColor: speciesColor }]}>
               <Ionicons name={speciesIcon} size={28} color={speciesColor} />
@@ -769,20 +838,122 @@ export default function CompanionScreen() {
     >
       {/* Header */}
       <View style={styles.header}>
-        <Pressable onPress={handleBack} style={styles.backButton} hitSlop={12}>
+        <Pressable
+          onPress={showHistory ? () => setShowHistory(false) : handleBack}
+          style={styles.backButton}
+          hitSlop={12}
+        >
           <Ionicons name="chevron-back" size={24} color={colors.foreground} />
         </Pressable>
-        <Text style={styles.headerTitle}>{companion.name}</Text>
-        <View style={styles.headerSpacer} />
+        <Text style={styles.headerTitle}>
+          {showHistory ? 'Chat History' : companion.name}
+        </Text>
+        {showHistory ? (
+          <Pressable onPress={handleNewChat} style={styles.backButton} hitSlop={12}>
+            <Ionicons name="add" size={22} color={colors.foreground} />
+          </Pressable>
+        ) : (
+          <View style={styles.headerActions}>
+            <Pressable
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setShowHistory(true); }}
+              style={styles.headerIconBtn}
+              hitSlop={8}
+            >
+              <Ionicons name="time-outline" size={20} color={colors.textSecondary} />
+            </Pressable>
+            <Pressable
+              onPress={handleNewChat}
+              style={styles.headerIconBtn}
+              hitSlop={8}
+            >
+              <Ionicons name="add-circle-outline" size={20} color={colors.textSecondary} />
+            </Pressable>
+          </View>
+        )}
       </View>
 
-      {/* Tab Switcher */}
-      {renderTabSwitcher()}
-
-      {/* Tab Content */}
-      <Animated.View style={[styles.tabContent, contentAnimStyle]}>
-        {activeTab === 'info' ? renderInfoTab() : renderChatTab()}
-      </Animated.View>
+      {showHistory ? (
+        /* ── Chat History Screen ── */
+        <View style={styles.historyScreen}>
+          <ScrollView
+            contentContainerStyle={styles.historyContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {(chatSessions ?? []).map((session) => {
+              const isActive = session.sessionId === activeSessionId;
+              return (
+                <Pressable
+                  key={session.sessionId}
+                  onPress={() => handleSelectSession(session.sessionId)}
+                  style={({ pressed }) => [
+                    styles.historyItem,
+                    isActive && styles.historyItemActive,
+                    pressed && { opacity: 0.9, transform: [{ scale: 0.97 }] },
+                  ]}
+                >
+                  <View style={styles.historyItemLeft}>
+                    <Ionicons
+                      name="chatbubble-outline"
+                      size={16}
+                      color={isActive ? colors.primary : colors.textMuted}
+                    />
+                    <View style={{ flex: 1 }}>
+                      <Text
+                        style={[styles.historyItemTitle, isActive && { color: colors.primary }]}
+                        numberOfLines={1}
+                      >
+                        {session.title || 'New conversation'}
+                      </Text>
+                      <Text style={styles.historyItemDate}>
+                        {new Date(session.createdAt).toLocaleDateString(undefined, {
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    {isActive && (
+                      <View style={styles.historyActiveBadge}>
+                        <Text style={styles.historyActiveBadgeText}>Active</Text>
+                      </View>
+                    )}
+                    <Pressable
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        handleDeleteSession(session.sessionId);
+                      }}
+                      hitSlop={8}
+                      style={({ pressed }) => [
+                        styles.historyDeleteBtn,
+                        pressed && { opacity: 0.5 },
+                      ]}
+                    >
+                      <Ionicons name="trash-outline" size={16} color={colors.danger} />
+                    </Pressable>
+                  </View>
+                </Pressable>
+              );
+            })}
+            {(!chatSessions || chatSessions.length === 0) && (
+              <View style={styles.historyEmpty}>
+                <Ionicons name="chatbubbles-outline" size={40} color={colors.textMuted} />
+                <Text style={styles.historyEmptyText}>No previous conversations</Text>
+              </View>
+            )}
+          </ScrollView>
+        </View>
+      ) : (
+        /* ── Normal Chat/Info View ── */
+        <>
+          {renderTabSwitcher()}
+          <Animated.View style={[styles.tabContent, contentAnimStyle]}>
+            {activeTab === 'info' ? renderInfoTab() : renderChatTab()}
+          </Animated.View>
+        </>
+      )}
     </KeyboardAvoidingView>
   );
 }
@@ -821,6 +992,89 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   headerSpacer: {
     width: 36,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  headerIconBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: Radius.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  historyScreen: {
+    flex: 1,
+  },
+  historyContent: {
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.sm,
+    paddingBottom: Spacing.xl,
+    gap: Spacing.sm,
+  },
+  historyItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    borderRadius: Radius.lg,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  historyItemActive: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryBg,
+  },
+  historyItemLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+  },
+  historyItemTitle: {
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.sm,
+    color: colors.foreground,
+  },
+  historyItemDate: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.xs,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  historyActiveBadge: {
+    backgroundColor: `${colors.primary}18`,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: Radius.full,
+  },
+  historyActiveBadgeText: {
+    fontFamily: FontFamily.semibold,
+    fontSize: FontSize.xs,
+    color: colors.primary,
+  },
+  historyDeleteBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.surfaceLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  historyEmpty: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing['2xl'],
+    gap: Spacing.md,
+  },
+  historyEmptyText: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.sm,
+    color: colors.textMuted,
   },
 
   // Tab content
@@ -1091,6 +1345,17 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
 
   // Chat empty state
+  chatLoadingState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing['2xl'],
+    gap: Spacing.md,
+  },
+  chatLoadingText: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.sm,
+    color: colors.textMuted,
+  },
   chatEmptyState: {
     alignItems: 'center',
     justifyContent: 'center',

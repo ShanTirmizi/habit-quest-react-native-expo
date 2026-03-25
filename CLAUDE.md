@@ -106,6 +106,17 @@ If either ratio is below the threshold, darken/adjust the color until it passes.
 - Use constants from `theme.ts`: `FontSize`, `Spacing`, `Radius`, `FontFamily`, `Shadows`.
 - Never hardcode colors - always reference `colors.*`.
 
+### UI Consistency Rule — CRITICAL
+
+**Every new view, overlay, or screen MUST match the existing app's design patterns.** Before building ANY new UI:
+1. Look at existing screens (`settings.tsx`, `goals.tsx`) for the exact header, padding, and layout patterns
+2. Always include: proper safe area padding, back button (standard `backButton` style), centered title, consistent spacing
+3. Never render content behind the status bar/notch
+4. Use `Shadows.card` for cards, `Radius.lg` for card corners, `Spacing.lg` for horizontal padding
+5. Follow the `Pressable` interaction pattern: `pressed && { opacity: 0.9, transform: [{ scale: 0.97 }] }`
+
+If the new view doesn't look like it belongs in the same app as the Settings screen, it's wrong. Fix it before shipping.
+
 ### Screen Layout Conventions — FOLLOW THESE EXACTLY
 
 When creating any new screen, **copy the exact patterns below**. Do NOT invent new header or layout patterns. Reference `app/settings.tsx` or `app/goals.tsx` as canonical examples.

@@ -499,9 +499,9 @@ export const sendMessage = action({
         ctx.runQuery(api.progress.getProgress, { userId: args.userId }),
         ctx.runQuery(api.journal.getEntries, { userId: args.userId }),
         ctx.runQuery(api.chat.getMemories, { userId: args.userId }),
-        ctx.runQuery(api.chat.getRecentMessages, {
+        ctx.runQuery(api.chat.getSessionMessages, {
           userId: args.userId,
-          limit: 20,
+          sessionId: args.sessionId,
         }),
         ctx.runQuery(api.users.getNdProfile, { userId: args.userId }),
         ctx.runQuery(api.users.getUserLocale, { userId: args.userId }),

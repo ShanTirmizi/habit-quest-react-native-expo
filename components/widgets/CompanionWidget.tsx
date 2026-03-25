@@ -215,14 +215,17 @@ export function CompanionWidget({
   const [holdToSpeakTooltip, setHoldToSpeakTooltip] = useState(false);
   const micPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const sessionIdRef = useRef<string>(Date.now().toString());
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const chatListRef = useRef<ScrollView>(null);
   const prevMessageCountRef = useRef(0);
   const chatReadyRef = useRef(false);
 
   const companion = useQuery(api.companions.getCompanion, { userId });
   const unclaimedGifts = useQuery(api.companions.getUnclaimedGiftsCount, { userId });
-  const recentMessages = useQuery(api.chat.getRecentMessages, { userId, limit: 30 });
+  const sessionMessages = useQuery(
+    api.chat.getSessionMessages,
+    activeSessionId ? { userId, sessionId: activeSessionId } : 'skip'
+  );
 
   const getOrCreateMutation = useMutation(api.companions.getOrCreateCompanion);
   const updateMoodMutation = useMutation(api.companions.updateMood);
@@ -230,6 +233,7 @@ export function CompanionWidget({
   const claimGiftMutation = useMutation(api.companions.claimGift);
   const saveMessageMutation = useMutation(api.chat.saveMessage);
   const sendMessageAction = useAction(api.chatAction.sendMessage);
+  const getOrCreateSessionMutation = useMutation(api.chat.getOrCreateSession);
   const ttsSynthesize = useAction(api.tts.synthesize);
 
   // Cloud TTS function — calls Convex action which hits OpenAI TTS API
@@ -247,7 +251,7 @@ export function CompanionWidget({
     active: true,
     onDeactivate: () => {},
     userId,
-    sessionId: sessionIdRef.current,
+    sessionId: activeSessionId!,
     sendMessage: sendMessageAction,
     onMessageSent: (userMsg, aiMsg) => {
       setLocalMessages((prev) => [...prev, userMsg, aiMsg]);
@@ -299,7 +303,7 @@ export function CompanionWidget({
     }
   }, [companion?._id, completionRate, currentHp]);
 
-  // NOTE: We intentionally do NOT clear localMessages when recentMessages
+  // NOTE: We intentionally do NOT clear localMessages when sessionMessages
   // updates. The dedup logic in allMessages handles filtering out local
   // messages that have been persisted to the backend. Clearing eagerly
   // caused a full-screen flicker: messages temporarily vanished then
@@ -359,15 +363,16 @@ export function CompanionWidget({
   // When switching to chat tab via setActiveTab (triggered by switchTab's runOnJS),
   // the scroll refs are already reset in switchTab() before the fade animation.
 
-  // Reset session ID and scroll state when the sheet opens
+  // Get or create session when the sheet opens
   useEffect(() => {
     if (isVisible) {
-      sessionIdRef.current = Date.now().toString();
+      getOrCreateSessionMutation({ userId }).then((sid) => {
+        setActiveSessionId(sid);
+      });
       chatReadyRef.current = false;
       prevMessageCountRef.current = 0;
       initialRenderRef.current = true;
       needsRevealRef.current = true;
-      // Start content invisible so user doesn't see the scroll-to-bottom
       contentOpacity.value = 0;
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
@@ -460,7 +465,7 @@ export function CompanionWidget({
 
   const handleSendMessage = useCallback(async () => {
     const text = chatInputRef.current.trim();
-    if (!text || isSendingRef.current) return;
+    if (!text || isSendingRef.current || !activeSessionId) return;
 
     setChatInput('');
     setIsSending(true);
@@ -472,7 +477,7 @@ export function CompanionWidget({
       const reply = await sendMessageAction({
         userId,
         userMessage: text,
-        sessionId: sessionIdRef.current,
+        sessionId: activeSessionId!,
       });
 
       const sageMsg: ChatMessage = { _id: `local-${Date.now()}-assistant`, role: 'assistant', content: reply };
@@ -490,13 +495,13 @@ export function CompanionWidget({
           userId,
           role: 'user',
           content: text,
-          sessionId: sessionIdRef.current,
+          sessionId: activeSessionId!,
         });
         await saveMessageMutation({
           userId,
           role: 'assistant',
           content: sageReply,
-          sessionId: sessionIdRef.current,
+          sessionId: activeSessionId!,
         });
       } catch {}
     } finally {
@@ -538,7 +543,7 @@ export function CompanionWidget({
   // Deduplicate: if a local message's content already appears in the last N
   // backend messages, skip it (it's been persisted and would show twice).
   const allMessages: ChatMessage[] = useMemo(() => {
-    const backend = recentMessages ?? [];
+    const backend = sessionMessages ?? [];
     if (localMessages.length === 0) return backend;
 
     const recentBackendContents = new Set(
@@ -550,7 +555,7 @@ export function CompanionWidget({
     );
 
     return [...backend, ...uniqueLocal];
-  }, [recentMessages, localMessages]);
+  }, [sessionMessages, localMessages]);
 
   // ---- Copy message handler (long-press to copy full message) ----
   // NOTE: This hook MUST be before any early returns to satisfy React's rules of hooks.
@@ -793,7 +798,12 @@ export function CompanionWidget({
           }
         }}
       >
-        {allMessages.length === 0 ? (
+        {sessionMessages === undefined ? (
+          <View style={styles.chatLoadingState}>
+            <ActivityIndicator size="small" color={colors.textMuted} />
+            <Text style={styles.chatLoadingText}>Loading conversation...</Text>
+          </View>
+        ) : allMessages.length === 0 ? (
           <View style={styles.chatEmptyState}>
             <View style={[styles.chatEmptyAvatar, { borderColor: speciesColor }]}>
               <Ionicons name={speciesIcon} size={28} color={speciesColor} />
@@ -1128,6 +1138,17 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
 
   // Chat empty state
+  chatLoadingState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing['2xl'],
+    gap: Spacing.md,
+  },
+  chatLoadingText: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.sm,
+    color: colors.textMuted,
+  },
   chatEmptyState: {
     alignItems: 'center',
     justifyContent: 'center',

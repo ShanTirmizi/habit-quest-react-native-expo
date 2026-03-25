@@ -164,7 +164,7 @@ export default function ChroniclesScreen() {
     } finally {
       setSaving(false);
     }
-  }, [gratitude1, gratitude2, gratitude3, improvement, content, selectedMood, userId, editingEntry, updateEntryMutation]);
+  }, [gratitude1, gratitude2, gratitude3, achievements, improvement, content, selectedMood, userId, editingEntry, updateEntryMutation]);
 
   const handleStartEditing = useCallback((entry: JournalEntry) => {
     setGratitude1(entry.gratitudes[0] || '');

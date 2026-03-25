@@ -135,13 +135,38 @@ export const saveMessage = mutation({
   handler: async (ctx, args) => {
     await verifyAuth(ctx, args.userId);
 
-    return await ctx.db.insert('chatMessages', {
+    const msgId = await ctx.db.insert('chatMessages', {
       userId: args.userId,
       role: args.role,
       content: args.content,
       sessionId: args.sessionId,
       ...(args.toolCalls ? { toolCalls: args.toolCalls } : {}),
     });
+
+    // Upsert the chatSession record
+    const now = Date.now();
+    const existing = await ctx.db
+      .query('chatSessions')
+      .withIndex('by_session_id', (q) => q.eq('sessionId', args.sessionId))
+      .first();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        lastMessageAt: now,
+        // Set title from first user message if not set
+        ...((!existing.title && args.role === 'user') ? { title: args.content.slice(0, 80) } : {}),
+      });
+    } else {
+      await ctx.db.insert('chatSessions', {
+        userId: args.userId,
+        sessionId: args.sessionId,
+        title: args.role === 'user' ? args.content.slice(0, 80) : undefined,
+        createdAt: now,
+        lastMessageAt: now,
+      });
+    }
+
+    return msgId;
   },
 });
 
@@ -468,6 +493,111 @@ export const triggerChatMemoryExtraction = internalMutation({
           messages: recentMessages,
         }
       );
+    }
+  },
+});
+
+// ============================================
+// CHAT SESSIONS
+// ============================================
+
+const SESSION_GAP_MS = 5 * 60 * 1000; // 5 minutes
+
+/** Get all chat sessions for a user, most recent first */
+export const getSessions = query({
+  args: { userId: v.id('users') },
+  handler: async (ctx, args) => {
+    await verifyAuth(ctx, args.userId);
+
+    const sessions = await ctx.db
+      .query('chatSessions')
+      .withIndex('by_user', (q) => q.eq('userId', args.userId))
+      .order('desc')
+      .collect();
+
+    return sessions;
+  },
+});
+
+/**
+ * Get or create the active session. If the last session's lastMessageAt
+ * is more than 5 minutes ago, creates a new session. Returns the sessionId.
+ */
+export const getOrCreateSession = mutation({
+  args: { userId: v.id('users') },
+  handler: async (ctx, args) => {
+    await verifyAuth(ctx, args.userId);
+
+    // Find the most recent session
+    const latestSession = await ctx.db
+      .query('chatSessions')
+      .withIndex('by_user', (q) => q.eq('userId', args.userId))
+      .order('desc')
+      .first();
+
+    const now = Date.now();
+
+    // If a recent session exists and is within the gap, reuse it
+    if (latestSession && (now - latestSession.lastMessageAt) < SESSION_GAP_MS) {
+      return latestSession.sessionId;
+    }
+
+    // Otherwise create a new session
+    const newSessionId = `${now}-${Math.random().toString(36).slice(2, 8)}`;
+    await ctx.db.insert('chatSessions', {
+      userId: args.userId,
+      sessionId: newSessionId,
+      createdAt: now,
+      lastMessageAt: now,
+    });
+
+    return newSessionId;
+  },
+});
+
+/** Manually create a new session (for the "+" button) */
+export const createSession = mutation({
+  args: { userId: v.id('users') },
+  handler: async (ctx, args) => {
+    await verifyAuth(ctx, args.userId);
+
+    const now = Date.now();
+    const newSessionId = `${now}-${Math.random().toString(36).slice(2, 8)}`;
+    await ctx.db.insert('chatSessions', {
+      userId: args.userId,
+      sessionId: newSessionId,
+      createdAt: now,
+      lastMessageAt: now,
+    });
+
+    return newSessionId;
+  },
+});
+
+/** Delete a session and all its messages */
+export const deleteSession = mutation({
+  args: { userId: v.id('users'), sessionId: v.string() },
+  handler: async (ctx, args) => {
+    await verifyAuth(ctx, args.userId);
+
+    // Delete the session record
+    const session = await ctx.db
+      .query('chatSessions')
+      .withIndex('by_session_id', (q) => q.eq('sessionId', args.sessionId))
+      .first();
+    if (session && session.userId === args.userId) {
+      await ctx.db.delete(session._id);
+    }
+
+    // Delete all messages in this session
+    const messages = await ctx.db
+      .query('chatMessages')
+      .withIndex('by_session', (q) => q.eq('sessionId', args.sessionId))
+      .collect();
+    for (const msg of messages) {
+      if (msg.userId === args.userId) {
+        await ctx.db.delete(msg._id);
+      }
     }
   },
 });

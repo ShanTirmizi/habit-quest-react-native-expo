@@ -421,6 +421,17 @@ export default defineSchema({
     .index('by_user', ['userId'])
     .index('by_session', ['sessionId']),
 
+  // Chat Sessions (groups of chatMessages)
+  chatSessions: defineTable({
+    userId: v.id('users'),
+    sessionId: v.string(),
+    title: v.optional(v.string()),
+    createdAt: v.number(),
+    lastMessageAt: v.number(),
+  })
+    .index('by_user', ['userId'])
+    .index('by_session_id', ['sessionId']),
+
   // Push Notification Subscriptions
   pushSubscriptions: defineTable({
     userId: v.id('users'),
