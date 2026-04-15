@@ -31,6 +31,7 @@ import { LevelUpCelebration } from '@/components/overlays/LevelUpCelebration';
 import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/contexts/toast-context';
 import { usePushNotifications } from '@/hooks/use-push-notifications';
+import type { Id } from '@/convex/_generated/dataModel';
 import type { Habit, HabitCategory, Goal, TimeOfDay, ReflectionMood, MicroReflection } from '@/types';
 import { GOAL_CATEGORY_CONFIG } from '@/types';
 import { buildScheduleMap, type HabitScheduleInfo } from '@/lib/habit-scheduling';
@@ -146,13 +147,13 @@ export default function DashboardScreen() {
   const activeGoals = useMemo(() => {
     if (!rawGoals) return [];
     return rawGoals
-      .filter((g: any) => g.status === 'active')
-      .map((g: any) => ({
+      .filter((g) => g.status === 'active')
+      .map((g) => ({
         id: g._id as string,
-        title: g.title as string,
-        category: g.category as string,
-        targetDate: g.targetDate as string,
-        milestones: g.milestones as any[] | undefined,
+        title: g.title,
+        category: g.category,
+        targetDate: g.targetDate,
+        milestones: g.milestones,
       }));
   }, [rawGoals]);
 
@@ -423,7 +424,7 @@ export default function DashboardScreen() {
     if (!userId) return;
     try {
       const result = await toggleCompletionMutation({
-        habitId: id as any,
+        habitId: id as Id<'habits'>,
         userId,
         date: todayDate,
       });
@@ -480,11 +481,11 @@ export default function DashboardScreen() {
           name: habitData.name,
           category: habitData.category,
           xpReward: habitData.xpReward,
-          frequency: habitData.frequency as any,
-          timeOfDay: habitData.timeOfDay as any,
+          frequency: habitData.frequency as Parameters<typeof addHabitMutation>[0]['frequency'],
+          timeOfDay: habitData.timeOfDay as Parameters<typeof addHabitMutation>[0]['timeOfDay'],
           location: habitData.location,
           trigger: habitData.trigger,
-          chainedToHabitId: habitData.chainedToHabitId as any,
+          chainedToHabitId: habitData.chainedToHabitId as Id<'habits'> | undefined,
           rewardBundle: habitData.rewardBundle,
         });
         showToast(t('toast.habitCreated'), undefined, 'xp');
@@ -498,7 +499,7 @@ export default function DashboardScreen() {
   const handleDeleteHabit = useCallback(async (id: string) => {
     if (!userId) return;
     try {
-      await deleteHabitMutation({ habitId: id as any, userId });
+      await deleteHabitMutation({ habitId: id as Id<'habits'>, userId });
       showToast(t('toast.habitDeleted'), undefined, 'hp');
     } catch {
       showToast(t('toast.deleteFailed'), undefined, 'error');
@@ -508,7 +509,7 @@ export default function DashboardScreen() {
   const handleAddNote = useCallback(async (habitId: string, text: string) => {
     if (!userId) return;
     try {
-      await addNoteMutation({ habitId: habitId as any, userId, text });
+      await addNoteMutation({ habitId: habitId as Id<'habits'>, userId, text });
       showToast(t('toast.noteAdded'), undefined, 'xp');
     } catch {
       showToast(t('toast.noteFailed'), undefined, 'error');
@@ -548,7 +549,7 @@ export default function DashboardScreen() {
   const handleHibernate = useCallback(async (id: string) => {
     if (!userId) return;
     try {
-      await hibernateHabitMutation({ habitId: id as any, userId });
+      await hibernateHabitMutation({ habitId: id as Id<'habits'>, userId });
       showToast(t('toast.hibernated'), undefined, 'hp');
     } catch {
       showToast(t('toast.hibernateFailed'), undefined, 'error');
@@ -558,7 +559,7 @@ export default function DashboardScreen() {
   const handleWake = useCallback(async (id: string) => {
     if (!userId) return;
     try {
-      await wakeHabitMutation({ habitId: id as any, userId });
+      await wakeHabitMutation({ habitId: id as Id<'habits'>, userId });
       showToast(t('toast.reactivated'), undefined, 'xp');
     } catch {
       showToast(t('toast.wakeFailed'), undefined, 'error');
@@ -581,7 +582,7 @@ export default function DashboardScreen() {
     try {
       await addReflectionMutation({
         userId,
-        habitId: reflectionHabit.id as any,
+        habitId: reflectionHabit.id as Id<'habits'>,
         mood,
         date: todayDate,
       });
@@ -660,7 +661,7 @@ export default function DashboardScreen() {
       }
       await reorderHabitsMutation({
         userId,
-        habitIds: allIds as any,
+        habitIds: allIds as Id<'habits'>[],
       });
     } catch {}
   }, [userId, reorderHabitsMutation, groupedHabits]);

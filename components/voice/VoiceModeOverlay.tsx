@@ -81,7 +81,7 @@ export function useVoiceModeController({
       return;
     }
 
-    console.log('[VoiceController] Processing:', text.substring(0, 50));
+    if (__DEV__) console.log('[VoiceController] Processing:', text.substring(0, 50));
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     try {
@@ -91,7 +91,7 @@ export function useVoiceModeController({
         sessionId,
       });
 
-      console.log('[VoiceController] Got reply:', reply.substring(0, 50));
+      if (__DEV__) console.log('[VoiceController] Got reply:', reply.substring(0, 50));
 
       if (isClosingRef.current) {
         isProcessingRef.current = false;
@@ -108,7 +108,7 @@ export function useVoiceModeController({
       isProcessingRef.current = false;
 
     } catch (error) {
-      console.error('[VoiceController] Error:', error);
+      if (__DEV__) console.error('[VoiceController] Error:', error);
 
       if (isClosingRef.current) {
         isProcessingRef.current = false;

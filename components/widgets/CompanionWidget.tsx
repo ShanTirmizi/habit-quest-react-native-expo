@@ -214,6 +214,7 @@ export function CompanionWidget({
   const [localMessages, setLocalMessages] = useState<ChatMessage[]>([]);
   const [holdToSpeakTooltip, setHoldToSpeakTooltip] = useState(false);
   const micPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const tooltipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const chatListRef = useRef<ScrollView>(null);
@@ -241,7 +242,7 @@ export function CompanionWidget({
     try {
       return await ttsSynthesize({ text, voice: 'nova' });
     } catch (err) {
-      console.warn('[CompanionWidget] Cloud TTS error:', err);
+      if (__DEV__) console.warn('[CompanionWidget] Cloud TTS error:', err);
       return null;
     }
   }, [ttsSynthesize]);
@@ -269,6 +270,13 @@ export function CompanionWidget({
   // Breathing pulse for gift indicator (scale + subtle opacity)
   const giftScale = useSharedValue(1);
   const giftOpacity = useSharedValue(1);
+  // Cleanup tooltip timer on unmount
+  useEffect(() => {
+    return () => {
+      if (tooltipTimerRef.current) clearTimeout(tooltipTimerRef.current);
+    };
+  }, []);
+
   useEffect(() => {
     if (unclaimedGifts && unclaimedGifts > 0) {
       giftScale.value = withRepeat(
@@ -507,7 +515,7 @@ export function CompanionWidget({
     } finally {
       setIsSending(false);
     }
-  }, [userId, sendMessageAction, saveMessageMutation, generateSageResponse]);
+  }, [userId, activeSessionId, sendMessageAction, saveMessageMutation, generateSageResponse]);
 
   // Stable mic callbacks — extracted so ChatInputBar doesn't re-render on voice state changes
   const handleMicPressIn = useCallback(() => {
@@ -524,7 +532,11 @@ export function CompanionWidget({
       micPressTimerRef.current = null;
       voiceController.releaseMic();
       setHoldToSpeakTooltip(true);
-      setTimeout(() => setHoldToSpeakTooltip(false), 2000);
+      if (tooltipTimerRef.current) clearTimeout(tooltipTimerRef.current);
+      tooltipTimerRef.current = setTimeout(() => {
+        setHoldToSpeakTooltip(false);
+        tooltipTimerRef.current = null;
+      }, 2000);
     } else {
       voiceController.releaseMic();
     }

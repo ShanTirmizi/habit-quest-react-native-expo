@@ -1,4 +1,5 @@
 import React, { useCallback, useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -18,6 +19,7 @@ export function OracleChallengeCard({ userId }: OracleChallengeCardProps) {
   const { colors, isDark } = useTheme();
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const { showToast } = useToast();
+  const { t } = useTranslation('oracle');
   const challenge = useQuery(api.oracle.getChallenge, { userId });
   const generateMutation = useMutation(api.oracle.generateChallenge);
   const acceptMutation = useMutation(api.oracle.acceptChallenge);
@@ -30,9 +32,9 @@ export function OracleChallengeCard({ userId }: OracleChallengeCardProps) {
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       await generateMutation({ userId });
-      showToast('The Oracle speaks...', undefined, 'xp');
+      showToast(t('toast.speaks'), undefined, 'xp');
     } catch {
-      showToast('The Oracle is silent...', undefined, 'error');
+      showToast(t('toast.silent'), undefined, 'error');
     }
   }, [userId, generateMutation, showToast]);
 
@@ -42,9 +44,9 @@ export function OracleChallengeCard({ userId }: OracleChallengeCardProps) {
     try {
       await acceptMutation({ userId, challengeId: challenge._id });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      showToast('Challenge accepted!', undefined, 'xp');
+      showToast(t('toast.accepted'), undefined, 'xp');
     } catch (err) {
-      showToast('Failed to accept challenge', undefined, 'error');
+      showToast(t('toast.acceptError'), undefined, 'error');
     } finally {
       setActionLoading(false);
     }
@@ -56,9 +58,9 @@ export function OracleChallengeCard({ userId }: OracleChallengeCardProps) {
     try {
       const result = await completeMutation({ userId, challengeId: challenge._id });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      showToast('Challenge completed!', result.xpReward, 'xp');
+      showToast(t('toast.completed'), result.xpReward, 'xp');
     } catch {
-      showToast('Failed to complete challenge', undefined, 'error');
+      showToast(t('toast.completeError'), undefined, 'error');
     } finally {
       setActionLoading(false);
     }
@@ -69,9 +71,9 @@ export function OracleChallengeCard({ userId }: OracleChallengeCardProps) {
     setActionLoading(true);
     try {
       await dismissMutation({ userId, challengeId: challenge._id });
-      showToast('Challenge dismissed', undefined, 'hp');
+      showToast(t('toast.dismissed'), undefined, 'hp');
     } catch {
-      showToast('Failed to dismiss', undefined, 'error');
+      showToast(t('toast.dismissError'), undefined, 'error');
     } finally {
       setActionLoading(false);
     }
@@ -84,10 +86,10 @@ export function OracleChallengeCard({ userId }: OracleChallengeCardProps) {
         <View style={styles.content}>
           <View style={styles.headerRow}>
             <Ionicons name="eye-outline" size={20} color={isDark ? colors.categoryMind : '#fff'} />
-            <Text style={styles.title}>Oracle Challenge</Text>
+            <Text style={styles.title}>{t('title')}</Text>
           </View>
-          <Text style={styles.description}>Consult the Oracle for a daily challenge and earn bonus XP.</Text>
-          <Button title="Consult the Oracle" onPress={handleGenerate} size="sm" />
+          <Text style={styles.description}>{t('description')}</Text>
+          <Button title={t('button.consult')} onPress={handleGenerate} size="sm" />
         </View>
       </View>
     );
@@ -104,21 +106,21 @@ export function OracleChallengeCard({ userId }: OracleChallengeCardProps) {
         <View style={styles.headerRow}>
           <Ionicons name="eye" size={20} color={isDark ? colors.categoryMind : '#fff'} />
           <Text style={styles.title}>Oracle Challenge</Text>
-          <Text style={styles.xpBadge}>+{challenge.xpReward} XP</Text>
+          <Text style={styles.xpBadge}>{t('xpBadge', { xp: challenge.xpReward })}</Text>
         </View>
         <Text style={styles.challengeText}>{challenge.challengeText}</Text>
         <View style={styles.actions}>
           {isPending ? (
             <>
-              <Button title="Accept" onPress={handleAccept} size="sm" loading={actionLoading} disabled={actionLoading} />
-              <Button title="Dismiss" onPress={handleDismiss} size="sm" variant="ghost" disabled={actionLoading} textColor={isDark ? undefined : 'rgba(255,255,255,0.85)'} />
+              <Button title={t('button.accept')} onPress={handleAccept} size="sm" loading={actionLoading} disabled={actionLoading} />
+              <Button title={t('button.dismiss')} onPress={handleDismiss} size="sm" variant="ghost" disabled={actionLoading} textColor={isDark ? undefined : 'rgba(255,255,255,0.85)'} />
             </>
           ) : isAccepted ? (
-            <Button title="Complete" onPress={handleComplete} size="sm" loading={actionLoading} disabled={actionLoading} />
+            <Button title={t('button.complete')} onPress={handleComplete} size="sm" loading={actionLoading} disabled={actionLoading} />
           ) : challenge.completed ? (
             <View style={styles.completedBadge}>
               <Ionicons name="checkmark-circle" size={18} color={isDark ? colors.success : '#FFFFFF'} />
-              <Text style={styles.completedText}>Completed</Text>
+              <Text style={styles.completedText}>{t('status.completed')}</Text>
             </View>
           ) : null}
         </View>

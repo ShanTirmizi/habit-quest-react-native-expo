@@ -1,0 +1,40 @@
+{
+  "title": "\u6240\u6709\u4e60\u60ef",
+  "badge.active": "{{count}} \u4e2a\u6d3b\u8dc3",
+  "badge.hibernated": "{{count}} \u4e2a\u4f11\u7720",
+  "search.placeholder": "\u641c\u7d22\u4e60\u60ef...",
+
+  "filter.all": "\u5168\u90e8",
+  "filter.daily": "\u6bcf\u5929",
+  "filter.weekdays": "\u5de5\u4f5c\u65e5",
+  "filter.weekends": "\u5468\u672b",
+  "filter.custom": "\u81ea\u5b9a\u4e49",
+  "filter.timesPerWeek": "X/\u5468",
+
+  "frequency.everyDay": "\u6bcf\u5929",
+  "frequency.monFri": "\u5468\u4e00\u81f3\u5468\u4e94",
+  "frequency.satSun": "\u5468\u516d\u81f3\u5468\u65e5",
+  "frequency.customDays": "\u81ea\u5b9a\u4e49\u65e5\u671f",
+  "frequency.timesPerWeek": "\u6bcf\u5468 {{count}} \u6b21",
+
+  "card.streak": "{{count}} \u8fde\u7eed",
+  "card.xp": "{{count}} \u7ecf\u9a8c\u503c",
+  "card.hibernated": "\u5df2\u4f11\u7720",
+
+  "empty.title": "\u672a\u627e\u5230\u4e60\u60ef",
+  "empty.searchDescription": "\u6ca1\u6709\u4e0e\u201c{{query}}\u201d\u5339\u914d\u7684\u4e60\u60ef",
+  "empty.filterDescription": "\u8fd8\u6ca1\u6709{{filter}}\u4e60\u60ef",
+
+  "toast.completed": "{{name}} \u5df2\u5b8c\u6210\uff01",
+  "toast.toggleError": "\u5207\u6362\u4e60\u60ef\u72b6\u6001\u5931\u8d25",
+  "toast.deleted": "\u4e60\u60ef\u5df2\u5220\u9664",
+  "toast.deleteError": "\u5220\u9664\u4e60\u60ef\u5931\u8d25",
+  "toast.noteAdded": "\u7b14\u8bb0\u5df2\u6dfb\u52a0",
+  "toast.noteError": "\u6dfb\u52a0\u7b14\u8bb0\u5931\u8d25",
+  "toast.updated": "\u4e60\u60ef\u5df2\u66f4\u65b0\uff01",
+  "toast.updateError": "\u66f4\u65b0\u4e60\u60ef\u5931\u8d25",
+  "toast.hibernated": "\u4e60\u60ef\u5df2\u4f11\u7720",
+  "toast.hibernateError": "\u4f11\u7720\u5931\u8d25",
+  "toast.reactivated": "\u4e60\u60ef\u5df2\u91cd\u65b0\u6fc0\u6d3b\uff01",
+  "toast.wakeError": "\u5524\u9192\u4e60\u60ef\u5931\u8d25"
+}

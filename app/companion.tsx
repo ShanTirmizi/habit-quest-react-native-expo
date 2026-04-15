@@ -218,7 +218,7 @@ export default function CompanionScreen() {
     try {
       return await ttsSynthesize({ text, voice: 'nova' });
     } catch (err) {
-      console.warn('[CompanionScreen] Cloud TTS error:', err);
+      if (__DEV__) console.warn('[CompanionScreen] Cloud TTS error:', err);
       return null;
     }
   }, [ttsSynthesize]);

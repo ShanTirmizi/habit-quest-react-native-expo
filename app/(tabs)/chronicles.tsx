@@ -6,7 +6,16 @@ import {
   ScrollView,
   Pressable,
   Dimensions,
+  Alert,
 } from 'react-native';
+import Animated, {
+  FadeIn,
+  FadeInDown,
+  FadeOut,
+  LinearTransition,
+  SlideInRight,
+  ZoomIn,
+} from 'react-native-reanimated';
 import { BottomSheetTextInput as SheetTextInput } from '@/components/ui/BottomSheet';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,6 +32,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/contexts/toast-context';
 import { useTranslation } from 'react-i18next';
+import type { Id } from '@/convex/_generated/dataModel';
 import type { JournalEntry, JournalMood } from '@/types';
 import { MOOD_CONFIG, JOURNAL_XP } from '@/types';
 
@@ -49,11 +59,13 @@ export default function ChroniclesScreen() {
   const [content, setContent] = useState('');
   const [selectedMood, setSelectedMood] = useState<JournalMood | null>(null);
   const [saving, setSaving] = useState(false);
+  const [expandedEntryId, setExpandedEntryId] = useState<string | null>(null);
 
   // Fetch real data from Convex
   const rawEntries = useQuery(api.journal.getEntries, userId ? { userId } : 'skip');
   const addEntryMutation = useMutation(api.journal.addEntry);
   const updateEntryMutation = useMutation(api.journal.updateEntry);
+  const deleteEntryMutation = useMutation(api.journal.deleteEntry);
 
   // Map Convex entries to the JournalEntry type the UI expects
   const entries: JournalEntry[] = useMemo(() => {
@@ -62,7 +74,7 @@ export default function ChroniclesScreen() {
       id: e._id,
       entryType: e.entryType as JournalEntry['entryType'],
       gratitudes: e.gratitudes as [string, string, string],
-      achievements: (e as any).achievements as string[] | undefined,
+      achievements: e.achievements,
       improvement: e.improvement,
       content: e.content,
       weekHighlights: e.weekHighlights,
@@ -131,7 +143,7 @@ export default function ChroniclesScreen() {
     } finally {
       setSaving(false);
     }
-  }, [gratitude1, gratitude2, gratitude3, improvement, content, selectedMood, userId, addEntryMutation]);
+  }, [gratitude1, gratitude2, gratitude3, achievements, improvement, content, selectedMood, userId, addEntryMutation]);
 
   const handleUpdateEntry = useCallback(async () => {
     if (!gratitude1 || !gratitude2 || !gratitude3 || !userId || !editingEntry) return;
@@ -139,7 +151,7 @@ export default function ChroniclesScreen() {
     setSaving(true);
     try {
       await updateEntryMutation({
-        entryId: editingEntry.id as any,
+        entryId: editingEntry.id as Id<'journalEntries'>,
         userId,
         gratitudes: [gratitude1, gratitude2, gratitude3],
         achievements: achievements.length > 0 ? achievements : undefined,
@@ -178,6 +190,34 @@ export default function ChroniclesScreen() {
     setEditingEntry(entry);
     setIsEditing(true);
   }, []);
+
+  const handleDeleteEntry = useCallback((entry: JournalEntry) => {
+    if (!userId) return;
+    Alert.alert(
+      t('deleteAlert.title'),
+      t('deleteAlert.message'),
+      [
+        { text: t('deleteAlert.cancel'), style: 'cancel' },
+        {
+          text: t('deleteAlert.delete'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteEntryMutation({
+                entryId: entry.id as Id<'journalEntries'>,
+                userId,
+              });
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              showToast(t('deleteAlert.success'));
+              setExpandedEntryId(null);
+            } catch {
+              showToast(t('toast.failedDelete'), undefined, 'error');
+            }
+          },
+        },
+      ]
+    );
+  }, [userId, deleteEntryMutation, showToast, t]);
 
   const prompts = useMemo(() => {
     const resolved = GRATITUDE_PROMPT_KEYS.map((key) => t(key));
@@ -227,7 +267,7 @@ export default function ChroniclesScreen() {
           keyboardShouldPersistTaps="handled"
         >
           {/* ── Today's Featured Card ── */}
-          {todayEntry && !isWriting && !isEditing ? (
+          {todayEntry ? (
             <GradientCard
               gradient={[todayMoodColor + '40', todayMoodColor + '18']}
               elevated
@@ -252,7 +292,16 @@ export default function ChroniclesScreen() {
                     </Text>
                   </View>
                 </View>
-                <Ionicons name="pencil-outline" size={16} color={colors.textMuted} />
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm }}>
+                  <Ionicons name="pencil-outline" size={16} color={colors.textMuted} />
+                  <Pressable
+                    onPress={() => handleDeleteEntry(todayEntry)}
+                    hitSlop={8}
+                    style={({ pressed }) => [pressed && { opacity: 0.6 }]}
+                  >
+                    <Ionicons name="trash-outline" size={16} color={colors.danger} />
+                  </Pressable>
+                </View>
               </View>
 
               <View style={styles.featuredGratitudes}>
@@ -298,14 +347,38 @@ export default function ChroniclesScreen() {
           ) : null}
 
           {/* ── Past Entries ── */}
-          {pastEntries.length > 0 && !isWriting && !isEditing ? (
+          {pastEntries.length > 0 ? (
             <View style={styles.pastSection}>
               <Text style={styles.pastSectionTitle}>{t('pastEntries.title')}</Text>
-              <View style={styles.pastList}>
-                {pastEntries.map((entry, i) => (
-                    <PastEntryCard key={entry.id} entry={entry} onEdit={handleStartEditing} colors={colors} styles={styles} />
-                ))}
-              </View>
+              <Animated.View
+                style={styles.pastList}
+                layout={LinearTransition.springify().damping(18).stiffness(140)}
+              >
+                {/* Reorder: expanded entry always renders first (top of list) */}
+                {(() => {
+                  const sorted = expandedEntryId
+                    ? [...pastEntries].sort((a, b) => {
+                        if (a.id === expandedEntryId) return -1;
+                        if (b.id === expandedEntryId) return 1;
+                        return 0;
+                      })
+                    : pastEntries;
+                  return sorted.map((entry) => (
+                    <PastEntryCard
+                      key={entry.id}
+                      entry={entry}
+                      onEdit={handleStartEditing}
+                      onDelete={handleDeleteEntry}
+                      colors={colors}
+                      styles={styles}
+                      isExpanded={expandedEntryId === entry.id}
+                      onToggleExpand={() => setExpandedEntryId(
+                        expandedEntryId === entry.id ? null : (entry.id as string)
+                      )}
+                    />
+                  ));
+                })()}
+              </Animated.View>
             </View>
           ) : null}
 
@@ -536,16 +609,21 @@ export default function ChroniclesScreen() {
 function PastEntryCard({
   entry,
   onEdit,
+  onDelete,
   colors,
   styles,
+  isExpanded,
+  onToggleExpand,
 }: {
   entry: JournalEntry;
   onEdit: (entry: JournalEntry) => void;
+  onDelete: (entry: JournalEntry) => void;
   colors: ThemeColors;
   styles: ReturnType<typeof createStyles>;
+  isExpanded: boolean;
+  onToggleExpand: () => void;
 }) {
   const { t } = useTranslation('chronicles');
-  const [expanded, setExpanded] = useState(false);
 
   const dateStr = entry.entryDate
     ? format(parseISO(entry.entryDate), 'MMM d')
@@ -556,93 +634,119 @@ function PastEntryCard({
     ? MOOD_CONFIG[entry.mood].icon
     : 'document-text-outline';
 
-  if (expanded) {
+  // Spring config shared by all layout animations in this card
+  const springLayout = LinearTransition.springify().damping(18).stiffness(140);
+
+  if (isExpanded) {
     return (
-      <GradientCard
-        gradient={[moodColor + '55', moodColor + '30']}
-        onPress={() => {
-          Haptics.selectionAsync();
-          setExpanded(false);
-        }}
-        style={styles.pastCardExpanded}
-      >
-        <View style={styles.expandedHeader}>
-          <Text style={styles.expandedDate}>
-            {entry.entryDate
-              ? format(parseISO(entry.entryDate), 'EEEE, MMM d')
-              : format(parseISO(entry.createdAt), 'EEEE, MMM d')}
-          </Text>
-          <View style={styles.expandedHeaderRight}>
-            <Pressable
-              onPress={() => onEdit(entry)}
-              hitSlop={8}
-              style={({ pressed }) => [pressed && { opacity: 0.6 }]}
-            >
-              <Ionicons name="pencil-outline" size={14} color={colors.primary} />
-            </Pressable>
-            <Ionicons name="chevron-up" size={14} color={colors.textMuted} />
-          </View>
-        </View>
-        <View style={styles.expandedGratitudes}>
-          {entry.gratitudes.map((g, i) => (
-            <Text key={i} style={styles.expandedGratitude}>
-              {i + 1}. {g}
+      <Animated.View layout={springLayout}>
+        <GradientCard
+          gradient={[moodColor + '55', moodColor + '30']}
+          onPress={() => {
+            Haptics.selectionAsync();
+            onToggleExpand();
+          }}
+          style={styles.pastCardExpanded}
+        >
+          <View style={styles.expandedHeader}>
+            <Text style={styles.expandedDate}>
+              {entry.entryDate
+                ? format(parseISO(entry.entryDate), 'EEEE, MMM d')
+                : format(parseISO(entry.createdAt), 'EEEE, MMM d')}
             </Text>
-          ))}
-        </View>
-        {entry.achievements && entry.achievements.length > 0 ? (
-          <View style={styles.expandedBlock}>
-            <Text style={styles.expandedBlockLabel}>{t('pastEntries.achievements')}</Text>
-            {entry.achievements.map((a, i) => (
-              <Text key={i} style={styles.expandedBlockText}>
-                {i + 1}. {a}
+            <View style={styles.expandedHeaderRight}>
+              <Pressable
+                onPress={() => onEdit(entry)}
+                hitSlop={8}
+                style={({ pressed }) => [pressed && { opacity: 0.6 }]}
+              >
+                <Ionicons name="pencil-outline" size={14} color={colors.primary} />
+              </Pressable>
+              <Pressable
+                onPress={() => onDelete(entry)}
+                hitSlop={8}
+                style={({ pressed }) => [pressed && { opacity: 0.6 }]}
+              >
+                <Ionicons name="trash-outline" size={14} color={colors.danger} />
+              </Pressable>
+              <Ionicons name="chevron-up" size={14} color={colors.textMuted} />
+            </View>
+          </View>
+          <Animated.View
+            entering={FadeInDown.springify().damping(16).stiffness(120).delay(80)}
+            style={styles.expandedGratitudes}
+          >
+            {entry.gratitudes.map((g, i) => (
+              <Text key={i} style={styles.expandedGratitude}>
+                {i + 1}. {g}
               </Text>
             ))}
-          </View>
+          </Animated.View>
+          {entry.achievements && entry.achievements.length > 0 ? (
+            <Animated.View
+              entering={FadeInDown.springify().damping(16).stiffness(120).delay(140)}
+              style={styles.expandedBlock}
+            >
+              <Text style={styles.expandedBlockLabel}>{t('pastEntries.achievements')}</Text>
+              {entry.achievements.map((a, i) => (
+                <Text key={i} style={styles.expandedBlockText}>
+                  {i + 1}. {a}
+                </Text>
+            ))}
+          </Animated.View>
         ) : null}
         {entry.improvement ? (
-          <View style={styles.expandedBlock}>
+          <Animated.View
+            entering={FadeInDown.springify().damping(16).stiffness(120).delay(200)}
+            style={styles.expandedBlock}
+          >
             <Text style={styles.expandedBlockLabel}>{t('pastEntries.improvement')}</Text>
             <Text style={styles.expandedBlockText}>{entry.improvement}</Text>
-          </View>
+          </Animated.View>
         ) : null}
         {entry.content ? (
-          <View style={styles.expandedBlock}>
+          <Animated.View
+            entering={FadeInDown.springify().damping(16).stiffness(120).delay(260)}
+            style={styles.expandedBlock}
+          >
             <Text style={styles.expandedBlockLabel}>{t('pastEntries.thoughts')}</Text>
             <Text style={styles.expandedBlockText}>{entry.content}</Text>
-          </View>
+          </Animated.View>
         ) : null}
       </GradientCard>
+      </Animated.View>
     );
   }
 
   return (
-    <GradientCard
-      gradient={[moodColor + '55', moodColor + '30']}
-      onPress={() => {
-        Haptics.selectionAsync();
-        setExpanded(true);
-      }}
-      style={styles.pastCard}
-    >
-      <Text style={styles.pastCardDate}>{dateStr}</Text>
-      <View style={styles.pastCardCenter}>
-        <Ionicons
-          name={moodIcon as keyof typeof Ionicons.glyphMap}
-          size={40}
-          color={moodColor}
-        />
-      </View>
-      <View style={styles.pastCardBottom}>
-        <Text style={styles.pastCardPreview} numberOfLines={1}>
-          {entry.gratitudes[0] || t('pastEntries.noGratitudes')}
-        </Text>
-        <View style={styles.pastCardXp}>
-          <Ionicons name="flash" size={10} color={colors.accent} />
-          <Text style={styles.pastCardXpText}>+{entry.xpAwarded}</Text>
+    <Animated.View layout={springLayout}>
+      <GradientCard
+        gradient={[moodColor + '55', moodColor + '30']}
+        onPress={() => {
+          Haptics.selectionAsync();
+          onToggleExpand();
+        }}
+        style={styles.pastCard}
+      >
+        <Text style={styles.pastCardDate}>{dateStr}</Text>
+        <View style={styles.pastCardCenter}>
+          <Ionicons
+            name={moodIcon as keyof typeof Ionicons.glyphMap}
+            size={40}
+            color={moodColor}
+          />
         </View>
-      </View>
-    </GradientCard>
+        <View style={styles.pastCardBottom}>
+          <Text style={styles.pastCardPreview} numberOfLines={1}>
+            {entry.gratitudes[0] || t('pastEntries.noGratitudes')}
+          </Text>
+          <View style={styles.pastCardXp}>
+            <Ionicons name="flash" size={10} color={colors.accent} />
+            <Text style={styles.pastCardXpText}>+{entry.xpAwarded}</Text>
+          </View>
+        </View>
+      </GradientCard>
+    </Animated.View>
   );
 }
 

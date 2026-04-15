@@ -25,6 +25,7 @@ import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Skeleton';
+import type { Id } from '@/convex/_generated/dataModel';
 import type { SideQuest, QuestPriority } from '@/types';
 import { QUEST_PRIORITY_CONFIG } from '@/types';
 
@@ -69,7 +70,7 @@ export default function QuestsScreen() {
       if (!userId) return;
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       try {
-        await completeQuestMutation({ questId: id as any, userId });
+        await completeQuestMutation({ questId: id as Id<'sideQuests'>, userId });
       } catch (error) {
         showToast(t('toast.completeFailed'), undefined, 'error');
       }
@@ -91,7 +92,7 @@ export default function QuestsScreen() {
             onPress: async () => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               try {
-                await deleteQuestMutation({ questId: id as any, userId });
+                await deleteQuestMutation({ questId: id as Id<'sideQuests'>, userId });
               } catch (error) {
                 showToast(t('toast.deleteFailed'), undefined, 'error');
               }
@@ -107,7 +108,7 @@ export default function QuestsScreen() {
     async (id: string) => {
       if (!userId) return;
       try {
-        await uncompleteQuestMutation({ questId: id as any, userId });
+        await uncompleteQuestMutation({ questId: id as Id<'sideQuests'>, userId });
       } catch (error) {
         showToast(t('toast.undoFailed'), undefined, 'error');
       }

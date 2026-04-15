@@ -1,0 +1,82 @@
+{
+  "editTitle": "Edit Habit",
+
+  "label.name": "Name",
+  "label.category": "Category",
+  "label.xpReward": "XP Reward",
+  "label.frequency": "Frequency",
+  "label.timeOfDay": "Time of Day",
+  "label.location": "Location (optional)",
+  "label.trigger": "Trigger (optional)",
+  "label.rewardBundle": "Reward Bundle (optional)",
+
+  "placeholder.habitName": "Habit name",
+  "placeholder.location": "e.g. Home gym, Office",
+  "placeholder.trigger": "e.g. After morning coffee",
+  "placeholder.rewardBundle": "e.g. Watch a show after workout",
+  "placeholder.addNote": "Add a note...",
+
+  "category.health": "Health",
+  "category.career": "Career",
+  "category.mind": "Mind",
+  "category.life": "Life",
+
+  "frequency.daily": "Daily",
+  "frequency.weekdays": "Weekdays",
+  "frequency.weekends": "Weekends",
+  "frequency.custom": "Custom",
+  "frequency.timesPerWeek": "X/Week",
+  "frequency.fallback": "Every day",
+
+  "time.morning": "Morning",
+  "time.afternoon": "Afternoon",
+  "time.evening": "Evening",
+  "time.anytime": "Anytime",
+
+  "button.cancel": "Cancel",
+  "button.saveChanges": "Save Changes",
+  "button.edit": "Edit",
+  "button.save": "Save",
+  "button.wakeUp": "Wake Up",
+  "button.hibernate": "Hibernate",
+  "button.delete": "Delete",
+  "button.complete": "Complete",
+  "button.markIncomplete": "Mark Incomplete",
+
+  "stat.streak": "Streak",
+  "stat.total": "Total",
+  "stat.xpEarned": "XP Earned",
+
+  "section.automaticity": "Automaticity",
+  "section.rewardBundle": "Reward Bundle",
+  "section.ifThenBlueprint": "If-Then Blueprint",
+  "section.keystoneHabit": "Keystone Habit",
+  "section.recentReflections": "Recent Reflections",
+  "section.whyThisHabitWorks": "Why This Habit Works",
+  "section.notes": "Notes",
+
+  "automaticity.lockedIn": "This habit is locked in!",
+  "automaticity.daysToLockIn": "~{{days}} days to lock-in",
+  "automaticity.detail": "{{completions}} completions over {{days}} days ({{rate}}% consistency)",
+
+  "keystone.description": "Completing this habit makes your other habits more likely to get done.",
+  "keystone.influence": "+{{percent}}% more likely to do {{name}}",
+
+  "difficulty.scaleUp": "Ready to Level Up",
+  "difficulty.scaleDown": "Consider Scaling Down",
+
+  "blueprint.if": "IF",
+  "blueprint.then": "THEN",
+  "blueprint.at": "AT",
+
+  "badge.aiGenerated": "AI-Generated",
+
+  "streakFreeze": "Use Streak Freeze ({{count}} left)",
+
+  "notes.empty": "No notes yet",
+
+  "delete.title": "Delete Habit",
+  "delete.message": "Are you sure you want to delete \"{{name}}\"? This cannot be undone.",
+  "delete.cancel": "Cancel",
+  "delete.confirm": "Delete"
+}

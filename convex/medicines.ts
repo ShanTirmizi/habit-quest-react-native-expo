@@ -966,8 +966,10 @@ export const checkDailyMedicineAdherence = mutation({
         currentHp: newHp,
       });
 
-      // Check achievements
-      const currentAchievements = progress.achievements || [];
+      // Check achievements — re-read progress to get latest achievements
+      // (the patch above modified the document, so our local `progress` is stale)
+      const freshProgress = await ctx.db.get(progress._id);
+      const currentAchievements = freshProgress?.achievements || [];
       const unlockedAchievements: string[] = [];
 
       if (!currentAchievements.includes('med-consistent-7') && newStreak >= 7) {

@@ -1,0 +1,9 @@
+{
+  "title": "The Underworld",
+  "description": "Complete habits for {{count}} more day to resurrect",
+  "description_plural": "Complete habits for {{count}} more days to resurrect",
+  "resurrectButton": "Resurrect",
+  "toast.risen": "You have risen! HP restored.",
+  "toast.notReady": "Not ready yet",
+  "toast.failed": "Failed to resurrect"
+}

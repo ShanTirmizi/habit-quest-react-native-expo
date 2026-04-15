@@ -14,8 +14,9 @@
       "backgroundColor": "#F5D9C0"
     },
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.tirmazilabs.habitquest",
+      "buildNumber": "1",
       "usesAppleSignIn": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
@@ -45,7 +46,8 @@
       [
         "expo-notifications",
         {
-          "color": "#EB6D3A"
+          "color": "#EB6D3A",
+          "sounds": ["./assets/sounds/notification.wav"]
         }
       ],
       [

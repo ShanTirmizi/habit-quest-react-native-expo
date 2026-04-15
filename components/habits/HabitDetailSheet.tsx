@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Pressable, Alert, ScrollView } from 'react-nati
 import { BottomSheetTextInput as TextInput } from '@gorhom/bottom-sheet';
 import { Ionicons } from '@expo/vector-icons';
 import { format, parseISO } from 'date-fns';
+import { useTranslation } from 'react-i18next';
 import { FontSize, Spacing, Radius, FontFamily, getCategoryColors, type ThemeColors } from '@/constants/theme';
 import { useTheme } from '@/contexts/theme-context';
 import { BottomSheet } from '@/components/ui/BottomSheet';
@@ -32,26 +33,26 @@ export interface HabitUpdateData {
   clearRewardBundle?: boolean;
 }
 
-const CATEGORY_OPTIONS: { value: HabitCategory; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
-  { value: 'health', label: 'Health', icon: 'heart' },
-  { value: 'career', label: 'Career', icon: 'briefcase' },
-  { value: 'mind', label: 'Mind', icon: 'bulb' },
-  { value: 'life', label: 'Life', icon: 'leaf' },
+const CATEGORY_OPTIONS: { value: HabitCategory; tKey: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+  { value: 'health', tKey: 'category.health', icon: 'heart' },
+  { value: 'career', tKey: 'category.career', icon: 'briefcase' },
+  { value: 'mind', tKey: 'category.mind', icon: 'bulb' },
+  { value: 'life', tKey: 'category.life', icon: 'leaf' },
 ];
 
-const FREQUENCY_OPTIONS: { value: HabitFrequencyType; label: string }[] = [
-  { value: 'daily', label: 'Daily' },
-  { value: 'weekdays', label: 'Weekdays' },
-  { value: 'weekends', label: 'Weekends' },
-  { value: 'custom', label: 'Custom' },
-  { value: 'timesPerWeek', label: 'X/Week' },
+const FREQUENCY_OPTIONS: { value: HabitFrequencyType; tKey: string }[] = [
+  { value: 'daily', tKey: 'frequency.daily' },
+  { value: 'weekdays', tKey: 'frequency.weekdays' },
+  { value: 'weekends', tKey: 'frequency.weekends' },
+  { value: 'custom', tKey: 'frequency.custom' },
+  { value: 'timesPerWeek', tKey: 'frequency.timesPerWeek' },
 ];
 
-const TIME_OPTIONS: { value: TimeOfDay; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
-  { value: 'morning', label: 'Morning', icon: 'sunny-outline' },
-  { value: 'afternoon', label: 'Afternoon', icon: 'partly-sunny-outline' },
-  { value: 'evening', label: 'Evening', icon: 'moon-outline' },
-  { value: 'anytime', label: 'Anytime', icon: 'time-outline' },
+const TIME_OPTIONS: { value: TimeOfDay; tKey: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+  { value: 'morning', tKey: 'time.morning', icon: 'sunny-outline' },
+  { value: 'afternoon', tKey: 'time.afternoon', icon: 'partly-sunny-outline' },
+  { value: 'evening', tKey: 'time.evening', icon: 'moon-outline' },
+  { value: 'anytime', tKey: 'time.anytime', icon: 'time-outline' },
 ];
 
 const XP_OPTIONS = [5, 10, 15, 20, 25, 30, 40, 50];
@@ -92,6 +93,7 @@ export function HabitDetailSheet({
   recentReflections,
 }: HabitDetailSheetProps) {
   const { colors } = useTheme();
+  const { t } = useTranslation('habit-detail');
   const styles = useMemo(() => createStyles(colors), [colors]);
   const categoryColors = useMemo(() => getCategoryColors(colors), [colors]);
   const [noteText, setNoteText] = useState('');
@@ -132,7 +134,7 @@ export function HabitDetailSheet({
   const categoryColor = categoryColors[habit.category] || colors.textSecondary;
   const freqLabel = habit.frequency?.type
     ? FREQUENCY_LABELS[habit.frequency.type]
-    : 'Every day';
+    : t('frequency.fallback');
 
   const handleStartEdit = () => {
     setIsEditing(true);
@@ -215,12 +217,12 @@ export function HabitDetailSheet({
 
   const handleDelete = () => {
     Alert.alert(
-      'Delete Habit',
-      `Are you sure you want to delete "${habit.name}"? This cannot be undone.`,
+      t('delete.title'),
+      t('delete.message', { name: habit.name }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('delete.cancel'), style: 'cancel' },
         {
-          text: 'Delete',
+          text: t('delete.confirm'),
           style: 'destructive',
           onPress: () => {
             onDelete(habit.id);
@@ -239,26 +241,26 @@ export function HabitDetailSheet({
   };
 
   return (
-    <BottomSheet visible={!!habit} onClose={() => { setIsEditing(false); onClose(); }} title={isEditing ? 'Edit Habit' : habit.name}>
+    <BottomSheet visible={!!habit} onClose={() => { setIsEditing(false); onClose(); }} title={isEditing ? t('editTitle') : habit.name}>
       <View style={styles.container}>
         {/* Edit Mode */}
         {isEditing ? (
           <View style={styles.editContainer}>
             {/* Name */}
             <View style={styles.editSection}>
-              <Text style={styles.editLabel}>Name</Text>
+              <Text style={styles.editLabel}>{t('label.name')}</Text>
               <TextInput
                 style={styles.editInput}
                 value={editName}
                 onChangeText={setEditName}
-                placeholder="Habit name"
+                placeholder={t('placeholder.habitName')}
                 placeholderTextColor={colors.textMuted}
               />
             </View>
 
             {/* Category */}
             <View style={styles.editSection}>
-              <Text style={styles.editLabel}>Category</Text>
+              <Text style={styles.editLabel}>{t('label.category')}</Text>
               <View style={styles.editChipRow}>
                 {CATEGORY_OPTIONS.map((opt) => (
                   <Pressable
@@ -278,7 +280,7 @@ export function HabitDetailSheet({
                       styles.editChipText,
                       editCategory === opt.value && { color: categoryColors[opt.value] },
                     ]}>
-                      {opt.label}
+                      {t(opt.tKey)}
                     </Text>
                   </Pressable>
                 ))}
@@ -287,7 +289,7 @@ export function HabitDetailSheet({
 
             {/* XP Reward */}
             <View style={styles.editSection}>
-              <Text style={styles.editLabel}>XP Reward</Text>
+              <Text style={styles.editLabel}>{t('label.xpReward')}</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 <View style={styles.editChipRow}>
                   {XP_OPTIONS.map((xp) => (
@@ -313,7 +315,7 @@ export function HabitDetailSheet({
 
             {/* Frequency */}
             <View style={styles.editSection}>
-              <Text style={styles.editLabel}>Frequency</Text>
+              <Text style={styles.editLabel}>{t('label.frequency')}</Text>
               <View style={styles.editChipRow}>
                 {FREQUENCY_OPTIONS.map((opt) => (
                   <Pressable
@@ -328,7 +330,7 @@ export function HabitDetailSheet({
                       styles.editChipText,
                       editFreqType === opt.value && { color: colors.primary },
                     ]}>
-                      {opt.label}
+                      {t(opt.tKey)}
                     </Text>
                   </Pressable>
                 ))}
@@ -383,7 +385,7 @@ export function HabitDetailSheet({
 
             {/* Time of Day */}
             <View style={styles.editSection}>
-              <Text style={styles.editLabel}>Time of Day</Text>
+              <Text style={styles.editLabel}>{t('label.timeOfDay')}</Text>
               <View style={styles.editChipRow}>
                 {TIME_OPTIONS.map((opt) => (
                   <Pressable
@@ -403,7 +405,7 @@ export function HabitDetailSheet({
                       styles.editChipText,
                       editTimeOfDay === opt.value && { color: colors.primary },
                     ]}>
-                      {opt.label}
+                      {t(opt.tKey)}
                     </Text>
                   </Pressable>
                 ))}
@@ -412,36 +414,36 @@ export function HabitDetailSheet({
 
             {/* Location */}
             <View style={styles.editSection}>
-              <Text style={styles.editLabel}>Location (optional)</Text>
+              <Text style={styles.editLabel}>{t('label.location')}</Text>
               <TextInput
                 style={styles.editInput}
                 value={editLocation}
                 onChangeText={setEditLocation}
-                placeholder="e.g. Home gym, Office"
+                placeholder={t('placeholder.location')}
                 placeholderTextColor={colors.textMuted}
               />
             </View>
 
             {/* Trigger */}
             <View style={styles.editSection}>
-              <Text style={styles.editLabel}>Trigger (optional)</Text>
+              <Text style={styles.editLabel}>{t('label.trigger')}</Text>
               <TextInput
                 style={styles.editInput}
                 value={editTrigger}
                 onChangeText={setEditTrigger}
-                placeholder="e.g. After morning coffee"
+                placeholder={t('placeholder.trigger')}
                 placeholderTextColor={colors.textMuted}
               />
             </View>
 
             {/* Reward Bundle */}
             <View style={styles.editSection}>
-              <Text style={styles.editLabel}>Reward Bundle (optional)</Text>
+              <Text style={styles.editLabel}>{t('label.rewardBundle')}</Text>
               <TextInput
                 style={styles.editInput}
                 value={editRewardBundle}
                 onChangeText={setEditRewardBundle}
-                placeholder="e.g. Watch a show after workout"
+                placeholder={t('placeholder.rewardBundle')}
                 placeholderTextColor={colors.textMuted}
               />
             </View>
@@ -449,7 +451,7 @@ export function HabitDetailSheet({
             {/* Save / Cancel */}
             <View style={styles.editActions}>
               <Pressable onPress={handleCancelEdit} style={styles.editCancelBtn}>
-                <Text style={styles.editCancelText}>Cancel</Text>
+                <Text style={styles.editCancelText}>{t('button.cancel')}</Text>
               </Pressable>
               <Pressable
                 onPress={handleSaveEdit}
@@ -457,7 +459,7 @@ export function HabitDetailSheet({
                 disabled={!editName.trim()}
               >
                 <Ionicons name="checkmark" size={16} color="#fff" />
-                <Text style={styles.editSaveText}>Save Changes</Text>
+                <Text style={styles.editSaveText}>{t('button.saveChanges')}</Text>
               </Pressable>
             </View>
           </View>
@@ -474,13 +476,13 @@ export function HabitDetailSheet({
           {habit.goalId ? (
             <View style={styles.aiBadge}>
               <Ionicons name="sparkles" size={12} color={colors.secondary} />
-              <Text style={styles.aiBadgeText}>AI-Generated</Text>
+              <Text style={styles.aiBadgeText}>{t('badge.aiGenerated')}</Text>
             </View>
           ) : null}
           {onUpdate ? (
             <Pressable onPress={handleStartEdit} style={styles.editBadge} hitSlop={8}>
               <Ionicons name="pencil" size={12} color={colors.primary} />
-              <Text style={styles.editBadgeText}>Edit</Text>
+              <Text style={styles.editBadgeText}>{t('button.edit')}</Text>
             </Pressable>
           ) : null}
         </View>
@@ -490,19 +492,19 @@ export function HabitDetailSheet({
           <View style={styles.statCard}>
             <Ionicons name="flame" size={20} color={colors.accent} />
             <Text style={styles.statValue}>{habit.streak}</Text>
-            <Text style={styles.statLabel}>Streak</Text>
+            <Text style={styles.statLabel}>{t('stat.streak')}</Text>
           </View>
           <View style={styles.statCard}>
             <Ionicons name="bar-chart" size={20} color={colors.info} />
             <Text style={styles.statValue}>{habit.completedDates.length}</Text>
-            <Text style={styles.statLabel}>Total</Text>
+            <Text style={styles.statLabel}>{t('stat.total')}</Text>
           </View>
           <View style={styles.statCard}>
             <Ionicons name="flash" size={20} color={colors.primary} />
             <Text style={styles.statValue}>
               {habit.completedDates.length * habit.xpReward}
             </Text>
-            <Text style={styles.statLabel}>XP Earned</Text>
+            <Text style={styles.statLabel}>{t('stat.xpEarned')}</Text>
           </View>
         </View>
 
@@ -510,7 +512,7 @@ export function HabitDetailSheet({
         {automaticityInfo && automaticityInfo.score > 0 ? (
           <View style={styles.automaticitySection}>
             <View style={styles.automaticitySectionHeader}>
-              <Text style={styles.sectionTitle}>Automaticity</Text>
+              <Text style={styles.sectionTitle}>{t('section.automaticity')}</Text>
               <BadgePill
                 label={automaticityInfo.phaseLabel}
                 color={
@@ -529,8 +531,8 @@ export function HabitDetailSheet({
                   <Text style={styles.automaticityScore}>{automaticityInfo.score}%</Text>
                   <Text style={styles.automaticityHint}>
                     {automaticityInfo.phase === 'automatic'
-                      ? 'This habit is locked in!'
-                      : `~${automaticityInfo.daysToLockIn} days to lock-in`}
+                      ? t('automaticity.lockedIn')
+                      : t('automaticity.daysToLockIn', { days: automaticityInfo.daysToLockIn })}
                   </Text>
                 </View>
               </View>
@@ -544,7 +546,7 @@ export function HabitDetailSheet({
                 height={4}
               />
               <Text style={styles.automaticityDetail}>
-                {automaticityInfo.totalCompletions} completions over {automaticityInfo.daysSinceStart} days ({Math.round(automaticityInfo.completionRate * 100)}% consistency)
+                {t('automaticity.detail', { completions: automaticityInfo.totalCompletions, days: automaticityInfo.daysSinceStart, rate: Math.round(automaticityInfo.completionRate * 100) })}
               </Text>
             </View>
           </View>
@@ -555,7 +557,7 @@ export function HabitDetailSheet({
           <View style={styles.bundleCard}>
             <View style={styles.bundleHeader}>
               <Ionicons name="gift-outline" size={16} color={colors.accent} />
-              <Text style={styles.bundleTitleText}>Reward Bundle</Text>
+              <Text style={styles.bundleTitleText}>{t('section.rewardBundle')}</Text>
             </View>
             <Text style={styles.bundleReward}>{habit.rewardBundle}</Text>
           </View>
@@ -564,21 +566,21 @@ export function HabitDetailSheet({
         {/* If-Then Blueprint */}
         {(habit.location || habit.trigger) ? (
           <View style={styles.intentionSection}>
-            <Text style={styles.sectionTitle}>If-Then Blueprint</Text>
+            <Text style={styles.sectionTitle}>{t('section.ifThenBlueprint')}</Text>
             <View style={styles.blueprintCard}>
               {habit.trigger ? (
                 <View style={styles.blueprintRow}>
-                  <Text style={styles.blueprintKeyword}>IF</Text>
+                  <Text style={styles.blueprintKeyword}>{t('blueprint.if')}</Text>
                   <Text style={styles.blueprintText}>{habit.trigger}</Text>
                 </View>
               ) : null}
               <View style={styles.blueprintRow}>
-                <Text style={[styles.blueprintKeyword, { color: colors.success }]}>THEN</Text>
+                <Text style={[styles.blueprintKeyword, { color: colors.success }]}>{t('blueprint.then')}</Text>
                 <Text style={styles.blueprintText}>{habit.name}</Text>
               </View>
               {habit.location ? (
                 <View style={styles.blueprintRow}>
-                  <Text style={[styles.blueprintKeyword, { color: colors.info }]}>AT</Text>
+                  <Text style={[styles.blueprintKeyword, { color: colors.info }]}>{t('blueprint.at')}</Text>
                   <Text style={styles.blueprintText}>{habit.location}</Text>
                 </View>
               ) : null}
@@ -591,7 +593,7 @@ export function HabitDetailSheet({
           <View style={styles.keystoneCard}>
             <View style={styles.keystoneHeader}>
               <Ionicons name="diamond-outline" size={16} color={colors.accent} />
-              <Text style={styles.keystoneTitleText}>Keystone Habit</Text>
+              <Text style={styles.keystoneTitleText}>{t('section.keystoneHabit')}</Text>
               <BadgePill label={`${keystoneInfo.score}%`} color={colors.accent} size="sm" />
             </View>
             <Text style={styles.keystoneBody}>

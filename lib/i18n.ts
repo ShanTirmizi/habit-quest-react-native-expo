@@ -27,6 +27,10 @@ import enOnboarding from '@/locales/en/onboarding.json';
 import enGoals from '@/locales/en/goals.json';
 import enGamification from '@/locales/en/gamification.json';
 import enAuth from '@/locales/en/auth.json';
+import enHabitBrowser from '@/locales/en/habit-browser.json';
+import enOracle from '@/locales/en/oracle.json';
+import enUnderworld from '@/locales/en/underworld.json';
+import enHabitDetail from '@/locales/en/habit-detail.json';
 
 // Chinese namespaces
 import zhCommon from '@/locales/zh/common.json';
@@ -42,6 +46,10 @@ import zhOnboarding from '@/locales/zh/onboarding.json';
 import zhGoals from '@/locales/zh/goals.json';
 import zhGamification from '@/locales/zh/gamification.json';
 import zhAuth from '@/locales/zh/auth.json';
+import zhHabitBrowser from '@/locales/zh/habit-browser.json';
+import zhOracle from '@/locales/zh/oracle.json';
+import zhUnderworld from '@/locales/zh/underworld.json';
+import zhHabitDetail from '@/locales/zh/habit-detail.json';
 
 export const SUPPORTED_LOCALES = ['en', 'zh'] as const;
 export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number];
@@ -54,7 +62,7 @@ export const LOCALE_DISPLAY_NAMES: Record<SupportedLocale, string> = {
 const NAMESPACES = [
   'common', 'dashboard', 'habits', 'chronicles', 'quests',
   'medicines', 'insights', 'companion', 'settings', 'onboarding',
-  'goals', 'gamification', 'auth',
+  'goals', 'gamification', 'auth', 'habit-browser', 'oracle', 'underworld', 'habit-detail',
 ] as const;
 
 i18n.use(initReactI18next).init({
@@ -74,6 +82,10 @@ i18n.use(initReactI18next).init({
       goals: enGoals,
       gamification: enGamification,
       auth: enAuth,
+      'habit-browser': enHabitBrowser,
+      oracle: enOracle,
+      underworld: enUnderworld,
+      'habit-detail': enHabitDetail,
     },
     zh: {
       common: zhCommon,
@@ -89,6 +101,10 @@ i18n.use(initReactI18next).init({
       goals: zhGoals,
       gamification: zhGamification,
       auth: zhAuth,
+      'habit-browser': zhHabitBrowser,
+      oracle: zhOracle,
+      underworld: zhUnderworld,
+      'habit-detail': zhHabitDetail,
     },
   },
   lng: 'en',

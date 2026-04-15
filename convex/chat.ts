@@ -3,6 +3,7 @@ import { mutation, query, internalMutation, MutationCtx, QueryCtx } from './_gen
 import { Id } from './_generated/dataModel';
 import { internal } from './_generated/api';
 import { verifyAuth } from './lib/auth';
+import { truncate, MAX_LENGTHS } from './lib/validation';
 
 // ============================================
 // RATE LIMITING
@@ -135,10 +136,11 @@ export const saveMessage = mutation({
   handler: async (ctx, args) => {
     await verifyAuth(ctx, args.userId);
 
+    const validatedContent = truncate(args.content, MAX_LENGTHS.chatMessage);
     const msgId = await ctx.db.insert('chatMessages', {
       userId: args.userId,
       role: args.role,
-      content: args.content,
+      content: validatedContent,
       sessionId: args.sessionId,
       ...(args.toolCalls ? { toolCalls: args.toolCalls } : {}),
     });

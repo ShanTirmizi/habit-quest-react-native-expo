@@ -63,8 +63,9 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     const inAuthGroup = segments[0] === '(auth)';
     const inOnboarding = segments[0] === 'onboarding';
     const inConsent = segments[0] === 'consent';
+    const inPublicPage = segments[0] === 'privacy-policy' || segments[0] === 'terms-of-service';
 
-    if (!isAuthenticated && !inAuthGroup) {
+    if (!isAuthenticated && !inAuthGroup && !inPublicPage) {
       router.replace('/(auth)/login');
     } else if (isAuthenticated && inAuthGroup) {
       if (user && !user.privacyPolicyAccepted) {
@@ -115,7 +116,7 @@ function ThemedApp() {
           <Stack.Screen name="(tabs)" />
           <Stack.Screen
             name="(auth)/login"
-            options={{ presentation: 'modal' }}
+            options={{ animation: 'fade', gestureEnabled: false }}
           />
           <Stack.Screen
             name="consent"

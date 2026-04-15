@@ -3,8 +3,8 @@ import {
   View,
   Text,
   StyleSheet,
+  ScrollView,
   Pressable,
-  KeyboardAvoidingView,
   Platform,
   Alert,
 } from 'react-native';
@@ -136,11 +136,14 @@ export default function LoginScreen() {
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top + 40 }]}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.content}
-      >
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+        <ScrollView
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: Math.max(insets.bottom, Spacing.xl) }]}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
+          automaticallyAdjustKeyboardInsets
+        >
         {/* Hero */}
         <View style={styles.hero}>
           <View style={styles.logoContainer}>
@@ -272,7 +275,7 @@ export default function LoginScreen() {
             </View>
           ))}
         </View>
-      </KeyboardAvoidingView>
+        </ScrollView>
     </View>
   );
 }
@@ -282,10 +285,11 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  content: {
-    flex: 1,
-    paddingHorizontal: Spacing['2xl'],
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'center',
+    paddingHorizontal: Spacing['2xl'],
+    paddingTop: Spacing.xl,
   },
   hero: {
     alignItems: 'center',

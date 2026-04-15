@@ -5,6 +5,7 @@
   "tab.history": "History",
   "tab.achievements": "Achievements",
   "tab.skills": "Skills",
+  "tab.gamification": "Skills",
   "overview.weeklySummary": "Weekly Summary",
   "overview.completion": "Completion",
   "overview.xpEarned": "XP Earned",
@@ -63,5 +64,7 @@
   "category.wellness": "Wellness",
   "category.growth": "Growth",
   "category.balance": "Balance",
-  "bestDay.na": "N/A"
+  "bestDay.na": "N/A",
+  "emptyState.title": "No data yet",
+  "emptyState.description": "Add your first habit to start seeing insights, streaks, and progress here."
 }

@@ -69,6 +69,15 @@
 
   "toast": {
     "failedSave": "Failed to save entry",
-    "failedUpdate": "Failed to update entry"
+    "failedUpdate": "Failed to update entry",
+    "failedDelete": "Failed to delete entry"
+  },
+
+  "deleteAlert": {
+    "title": "Delete Entry",
+    "message": "Are you sure? This cannot be undone.",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "success": "Entry deleted"
   }
 }

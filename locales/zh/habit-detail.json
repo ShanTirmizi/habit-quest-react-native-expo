@@ -1,0 +1,82 @@
+{
+  "editTitle": "编辑习惯",
+
+  "label.name": "名称",
+  "label.category": "类别",
+  "label.xpReward": "经验值奖励",
+  "label.frequency": "频率",
+  "label.timeOfDay": "时段",
+  "label.location": "地点（可选）",
+  "label.trigger": "触发条件（可选）",
+  "label.rewardBundle": "奖励搭配（可选）",
+
+  "placeholder.habitName": "习惯名称",
+  "placeholder.location": "例如：家庭健身房、办公室",
+  "placeholder.trigger": "例如：喝完早咖啡后",
+  "placeholder.rewardBundle": "例如：锻炼后看一集剧",
+  "placeholder.addNote": "添加笔记...",
+
+  "category.health": "健康",
+  "category.career": "事业",
+  "category.mind": "心智",
+  "category.life": "生活",
+
+  "frequency.daily": "每天",
+  "frequency.weekdays": "工作日",
+  "frequency.weekends": "周末",
+  "frequency.custom": "自定义",
+  "frequency.timesPerWeek": "每周X次",
+  "frequency.fallback": "每天",
+
+  "time.morning": "早晨",
+  "time.afternoon": "下午",
+  "time.evening": "晚上",
+  "time.anytime": "任何时间",
+
+  "button.cancel": "取消",
+  "button.saveChanges": "保存更改",
+  "button.edit": "编辑",
+  "button.save": "保存",
+  "button.wakeUp": "唤醒",
+  "button.hibernate": "休眠",
+  "button.delete": "删除",
+  "button.complete": "完成",
+  "button.markIncomplete": "标记未完成",
+
+  "stat.streak": "连续",
+  "stat.total": "总计",
+  "stat.xpEarned": "获得经验",
+
+  "section.automaticity": "自动化程度",
+  "section.rewardBundle": "奖励搭配",
+  "section.ifThenBlueprint": "如果-那么蓝图",
+  "section.keystoneHabit": "核心习惯",
+  "section.recentReflections": "近期反思",
+  "section.whyThisHabitWorks": "为什么这个习惯有效",
+  "section.notes": "笔记",
+
+  "automaticity.lockedIn": "这个习惯已经稳固了！",
+  "automaticity.daysToLockIn": "约 {{days}} 天可稳固",
+  "automaticity.detail": "{{days}} 天内完成 {{completions}} 次（{{rate}}% 一致性）",
+
+  "keystone.description": "完成此习惯会增加你完成其他习惯的可能性。",
+  "keystone.influence": "完成 {{name}} 的可能性提高 {{percent}}%",
+
+  "difficulty.scaleUp": "准备升级",
+  "difficulty.scaleDown": "考虑降低难度",
+
+  "blueprint.if": "如果",
+  "blueprint.then": "那么",
+  "blueprint.at": "在",
+
+  "badge.aiGenerated": "AI 生成",
+
+  "streakFreeze": "使用连续冻结（剩余 {{count}} 次）",
+
+  "notes.empty": "暂无笔记",
+
+  "delete.title": "删除习惯",
+  "delete.message": "确定要删除 {{name}} 吗？此操作无法撤销。",
+  "delete.cancel": "取消",
+  "delete.confirm": "删除"
+}

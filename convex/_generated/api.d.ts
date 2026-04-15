@@ -26,6 +26,7 @@ import type * as lib_constants from "../lib/constants.js";
 import type * as lib_featureFlags from "../lib/featureFlags.js";
 import type * as lib_locale from "../lib/locale.js";
 import type * as lib_neurodivergence from "../lib/neurodivergence.js";
+import type * as lib_validation from "../lib/validation.js";
 import type * as medicines from "../medicines.js";
 import type * as memoryExtraction from "../memoryExtraction.js";
 import type * as memoryMaintenance from "../memoryMaintenance.js";
@@ -62,6 +63,7 @@ declare const fullApi: ApiFromModules<{
   "lib/featureFlags": typeof lib_featureFlags;
   "lib/locale": typeof lib_locale;
   "lib/neurodivergence": typeof lib_neurodivergence;
+  "lib/validation": typeof lib_validation;
   medicines: typeof medicines;
   memoryExtraction: typeof memoryExtraction;
   memoryMaintenance: typeof memoryMaintenance;

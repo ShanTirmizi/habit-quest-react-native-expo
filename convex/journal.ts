@@ -3,6 +3,7 @@ import { mutation, query, MutationCtx } from './_generated/server';
 import { Id } from './_generated/dataModel';
 import { internal } from './_generated/api';
 import { verifyAuth } from './lib/auth';
+import { truncate, validateString, validateStringArray, MAX_LENGTHS } from './lib/validation';
 
 const JOURNAL_XP = {
   BASE: 20,
@@ -186,15 +187,19 @@ export const addEntry = mutation({
       content: args.content,
     });
 
-    // Filter out empty achievement strings
-    const cleanAchievements = args.achievements?.filter((a) => a.trim().length > 0);
+    // Filter out empty achievement strings and validate lengths
+    const cleanAchievements = validateStringArray(
+      args.achievements?.filter((a) => a.trim().length > 0),
+      MAX_LENGTHS.achievement
+    );
+    const validatedGratitudes = args.gratitudes.map((g) => truncate(g, MAX_LENGTHS.gratitude));
 
     const entryId = await ctx.db.insert('journalEntries', {
       userId: args.userId,
-      gratitudes: args.gratitudes,
+      gratitudes: validatedGratitudes,
       achievements: cleanAchievements && cleanAchievements.length > 0 ? cleanAchievements : undefined,
-      improvement: args.improvement,
-      content: args.content,
+      improvement: validateString(args.improvement, MAX_LENGTHS.shortText),
+      content: validateString(args.content, MAX_LENGTHS.longText),
       mood: args.mood,
       entryType: args.entryType,
       weekHighlights: args.weekHighlights,

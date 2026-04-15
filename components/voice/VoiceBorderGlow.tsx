@@ -85,7 +85,7 @@ const METABALL_SHADER = Skia.RuntimeEffect.Make(`
 `);
 
 if (!METABALL_SHADER) {
-  console.error('[VoiceBorderGlow] Failed to compile metaball shader');
+  if (__DEV__) console.error('[VoiceBorderGlow] Failed to compile metaball shader');
 }
 
 function hexToRGB(hex: string): [number, number, number] {

@@ -5,6 +5,7 @@
   "tab.history": "历史",
   "tab.achievements": "成就",
   "tab.skills": "技能",
+  "tab.gamification": "技能",
   "overview.weeklySummary": "本周总结",
   "overview.completion": "完成率",
   "overview.xpEarned": "获得 XP",
@@ -63,5 +64,7 @@
   "category.wellness": "身心健康",
   "category.growth": "成长",
   "category.balance": "平衡",
-  "bestDay.na": "无"
+  "bestDay.na": "无",
+  "emptyState.title": "暂无数据",
+  "emptyState.description": "添加你的第一个习惯，开始查看洞察、连续记录和进度。"
 }

@@ -2,6 +2,7 @@ import { v } from 'convex/values';
 import { mutation, query } from './_generated/server';
 import { Id } from './_generated/dataModel';
 import { verifyAuth } from './lib/auth';
+import { truncate, validateString, MAX_LENGTHS } from './lib/validation';
 
 // Goal category type
 const goalCategoryValidator = v.union(
@@ -162,15 +163,15 @@ export const createGoal = mutation({
 
     const goalId = await ctx.db.insert('goals', {
       userId: args.userId,
-      title: args.title,
-      description: args.description,
+      title: truncate(args.title, MAX_LENGTHS.name),
+      description: validateString(args.description, MAX_LENGTHS.shortText),
       category: args.category,
       targetDate: args.targetDate,
       status: 'active',
       currentLevel: args.currentLevel,
       dailyTimeAvailable: args.dailyTimeAvailable,
-      constraints: args.constraints,
-      preferences: args.preferences,
+      constraints: validateString(args.constraints, MAX_LENGTHS.shortText),
+      preferences: validateString(args.preferences, MAX_LENGTHS.shortText),
       milestones: args.milestones,
       phases: args.phases,
       currentPhaseIndex: 0,

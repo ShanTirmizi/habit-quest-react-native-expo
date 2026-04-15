@@ -1,0 +1,21 @@
+{
+  "title": "Oracle Challenge",
+  "description": "Consult the Oracle for a daily challenge and earn bonus XP.",
+  "xpBadge": "+{{xp}} XP",
+
+  "button.consult": "Consult the Oracle",
+  "button.accept": "Accept",
+  "button.dismiss": "Dismiss",
+  "button.complete": "Complete",
+
+  "status.completed": "Completed",
+
+  "toast.speaks": "The Oracle speaks...",
+  "toast.silent": "The Oracle is silent...",
+  "toast.accepted": "Challenge accepted!",
+  "toast.acceptError": "Failed to accept challenge",
+  "toast.completed": "Challenge completed!",
+  "toast.completeError": "Failed to complete challenge",
+  "toast.dismissed": "Challenge dismissed",
+  "toast.dismissError": "Failed to dismiss"
+}

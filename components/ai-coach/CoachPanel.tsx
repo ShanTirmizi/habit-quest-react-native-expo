@@ -184,7 +184,7 @@ export function CoachPanel({ userId }: CoachPanelProps) {
         setInsights(null);
       } else if (typeof result === 'object' && ('rateLimited' in result || 'unchanged' in result)) {
         // Rate limited or data unchanged — show message but keep existing insights
-        const msg = (result as any).message ?? 'Try again later.';
+        const msg = (result as { message?: string }).message ?? 'Try again later.';
         if (isManualRefresh) {
           Alert.alert('Dr. Sage', msg);
         }
@@ -399,7 +399,24 @@ export function CoachPanel({ userId }: CoachPanelProps) {
     }
 
     if (!insights) {
-      return null;
+      return (
+        <View style={styles.stateContainer}>
+          <Ionicons name="sparkles" size={32} color={colors.primary} />
+          <Text style={styles.stateTitle}>No insights yet</Text>
+          <Text style={styles.stateBody}>
+            Tap the refresh button to get personalized insights from Dr. Sage based on your recent activity.
+          </Text>
+          <Pressable
+            onPress={handleRefresh}
+            style={({ pressed }) => [styles.retryButton, pressed && styles.pressedButton]}
+            accessibilityRole="button"
+            accessibilityLabel="Generate insights"
+          >
+            <Ionicons name="refresh" size={16} color={colors.primary} />
+            <Text style={styles.retryButtonText}>Generate Insights</Text>
+          </Pressable>
+        </View>
+      );
     }
 
     return (

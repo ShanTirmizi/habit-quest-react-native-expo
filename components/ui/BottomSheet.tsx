@@ -147,24 +147,6 @@ export function BottomSheet({ visible, onClose, title, children, snapPoints }: B
     return () => sub.remove();
   }, []);
 
-  // ─── KEYBOARD-HIDE RESTORATION ────────────────────────────────────────
-  // gorhom bug: with dynamic sizing, the sheet can stay at its expanded
-  // height after the keyboard closes. Force a re-snap to content size.
-  // We use keyboardBlurBehavior="none" (because "restore" conflicts with
-  // "extend" per gorhom #1894) and handle restoration manually here.
-  // ──────────────────────────────────────────────────────────────────────
-  useEffect(() => {
-    const event = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-    const sub = Keyboard.addListener(event, () => {
-      if (isPresented.current) {
-        setTimeout(() => {
-          sheetRef.current?.snapToIndex(0);
-        }, 80);
-      }
-    });
-    return () => sub.remove();
-  }, []);
-
   const handleDismiss = useCallback(() => {
     isPresented.current = false;
     scrollOffsetY.current = 0;
@@ -194,11 +176,12 @@ export function BottomSheet({ visible, onClose, title, children, snapPoints }: B
       )}
       // Gestures
       enablePanDownToClose
-      // Keyboard: "extend" keeps the sheet pinned (no push-off-screen).
-      // "none" blur avoids the extend+restore conflict (gorhom #1894).
-      // Our manual listeners above handle scroll-to-input and restoration.
-      keyboardBehavior="extend"
-      keyboardBlurBehavior="none"
+      // Keyboard: "interactive" pushes the sheet up with the keyboard,
+      // keeping inputs visible. Combined with dynamic sizing and
+      // maxDynamicContentSize, the sheet won't overflow off-screen.
+      // "restore" returns the sheet to its original position when keyboard closes.
+      keyboardBehavior="interactive"
+      keyboardBlurBehavior="restore"
       enableBlurKeyboardOnGesture
       android_keyboardInputMode="adjustResize"
       // Callbacks

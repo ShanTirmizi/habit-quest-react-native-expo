@@ -931,8 +931,10 @@ export const checkMedicineAchievements = mutation({
     const progress = await getOrCreateProgress(ctx, args.userId);
     if (!progress) throw new Error('Failed to create progress');
 
+    // Re-read to get the freshest achievements (in case another mutation just wrote)
+    const freshProgress = await ctx.db.get(progress._id);
     const unlockedAchievements: string[] = [];
-    const currentAchievements = progress.achievements || [];
+    const currentAchievements = freshProgress?.achievements || progress.achievements || [];
 
     // med-starter: First medicine taken
     if (!currentAchievements.includes('med-starter') && (progress.totalMedicinesTaken ?? 0) >= 1) {

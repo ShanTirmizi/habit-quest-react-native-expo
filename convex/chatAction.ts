@@ -374,11 +374,23 @@ async function executeToolCall(
             dosage: med.dosage,
             instructions: med.instructions,
             prescriber: med.prescriber,
-            scheduledTimes: med.scheduledTimes.map((t: any) => ({
-              label: t.label,
-              time: t.time,
-              reminderEnabled: t.reminderEnabled ?? true,
-            })),
+            scheduledTimes: med.scheduledTimes.map((t: any) => {
+              // Normalize label to lowercase to match i18n keys (timeSlot.morning, etc.)
+              // Also map common AI aliases to the canonical keys
+              const LABEL_MAP: Record<string, string> = {
+                bedtime: 'night',
+                nighttime: 'night',
+                noon: 'afternoon',
+                lunchtime: 'afternoon',
+              };
+              const raw = (t.label || 'morning').toLowerCase();
+              const label = LABEL_MAP[raw] ?? raw;
+              return {
+                label,
+                time: t.time,
+                reminderEnabled: t.reminderEnabled ?? true,
+              };
+            }),
           });
           const schedule = med.scheduledTimes
             .map((t: any) => `${t.label} (${t.time})`)
@@ -682,10 +694,12 @@ ${userContext}`;
         // Execute each tool call and build tool_result messages
         const toolResults: any[] = [];
         for (const toolBlock of toolUseBlocks) {
-          console.log(
-            `[DR. SAGE] Executing tool: ${toolBlock.name}`,
-            JSON.stringify(toolBlock.input)
-          );
+          if (process.env.NODE_ENV !== "production") {
+            console.log(
+              `[DR. SAGE] Executing tool: ${toolBlock.name}`,
+              JSON.stringify(toolBlock.input)
+            );
+          }
           const result = await executeToolCall(
             ctx,
             args.userId,

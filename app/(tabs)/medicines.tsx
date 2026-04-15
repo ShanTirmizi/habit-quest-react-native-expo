@@ -123,9 +123,10 @@ export default function MedicinesScreen() {
     const groups: Record<string, TodayMedicineScheduleItem[]> = {};
     for (const item of scheduleData) {
       // For custom times, group by actual time so each unique time gets its own header
-      const slot = (item.label === 'custom' || !item.label)
+      const normalizedLabel = item.label?.toLowerCase() ?? '';
+      const slot = (normalizedLabel === 'custom' || !item.label)
         ? `custom_${item.scheduledTime}`
-        : item.label;
+        : normalizedLabel;
       if (!groups[slot]) groups[slot] = [];
       groups[slot].push(item);
     }
@@ -221,7 +222,7 @@ export default function MedicinesScreen() {
             style: 'destructive',
             onPress: async () => {
               try {
-                await deleteMedicineMutation({ medicineId: medicineId as any, userId });
+                await deleteMedicineMutation({ medicineId: medicineId as Id<'medicines'>, userId });
                 showToast(t('toast.deleted'));
               } catch {
                 showToast(t('toast.deleteFailed'), undefined, 'error');
@@ -238,7 +239,7 @@ export default function MedicinesScreen() {
     async (medicineId: string, name: string, dosage: string) => {
       if (!userId) return;
       try {
-        await updateMedicineMutation({ medicineId: medicineId as any, userId, name, dosage });
+        await updateMedicineMutation({ medicineId: medicineId as Id<'medicines'>, userId, name, dosage });
         setEditingMedicine(null);
         showToast(t('toast.updated'));
       } catch {
@@ -376,8 +377,8 @@ export default function MedicinesScreen() {
               <View style={styles.timelineContainer}>
                 {(() => {
                   return slotEntries.map(([slot, items]) => {
-                    const isCustom = slot.startsWith('custom_');
-                    const baseSlot = isCustom ? 'custom' : slot;
+                    const isCustom = slot.startsWith('custom_') || slot.toLowerCase().startsWith('custom_');
+                    const baseSlot = isCustom ? 'custom' : slot.toLowerCase();
                     const config = timeSlotConfig[baseSlot] || { icon: 'time-outline' as keyof typeof Ionicons.glyphMap, label: 'Custom', color: colors.textSecondary };
 
                     return (

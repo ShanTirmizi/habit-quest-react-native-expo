@@ -91,7 +91,7 @@ export function useVoiceMode(): UseVoiceModeReturn {
 
   useSpeechRecognitionEvent('error', (event) => {
     if (!isMountedRef.current) return;
-    console.warn('[VoiceMode] Recognition error:', event.error);
+    if (__DEV__) console.warn('[VoiceMode] Recognition error:', event.error);
     if (stateRef.current === 'listening') {
       setStateAndRef('idle');
     }
@@ -100,7 +100,7 @@ export function useVoiceMode(): UseVoiceModeReturn {
   useSpeechRecognitionEvent('end', () => {
     if (!isMountedRef.current) return;
     if (stateRef.current === 'listening' && !gotFinalResultRef.current) {
-      console.log('[VoiceMode] Recognition ended without final result, going idle');
+      if (__DEV__) console.log('[VoiceMode] Recognition ended without final result, going idle');
       setStateAndRef('idle');
     }
     gotFinalResultRef.current = false;
@@ -152,7 +152,7 @@ export function useVoiceMode(): UseVoiceModeReturn {
         continuous: true,  // Keep listening until we explicitly stop
       });
     } catch (e) {
-      console.error('[VoiceMode] Failed to start recognition:', e);
+      if (__DEV__) console.error('[VoiceMode] Failed to start recognition:', e);
       if (isMountedRef.current) setStateAndRef('idle');
     }
   }, [permissionStatus, requestPermission, setStateAndRef]);
@@ -168,7 +168,7 @@ export function useVoiceMode(): UseVoiceModeReturn {
   // ── Hold-to-speak: press in ──
   // Stops any TTS, starts listening
   const holdToSpeak = useCallback(() => {
-    console.log('[VoiceMode] Hold to speak — stopping TTS, starting listening');
+    if (__DEV__) console.log('[VoiceMode] Hold to speak — stopping TTS, starting listening');
 
     // Stop TTS if playing
     if (stateRef.current === 'speaking') {
@@ -192,7 +192,7 @@ export function useVoiceMode(): UseVoiceModeReturn {
   // ── Hold-to-speak: press out ──
   // Stops listening — the STT final result triggers thinking state
   const releaseToSend = useCallback(() => {
-    console.log('[VoiceMode] Released — stopping recognition');
+    if (__DEV__) console.log('[VoiceMode] Released — stopping recognition');
     if (stateRef.current === 'listening') {
       stopListening();
     }
@@ -210,7 +210,7 @@ export function useVoiceMode(): UseVoiceModeReturn {
       if (cloudTTSRef.current) {
         try {
           const sentences = splitIntoSentences(text);
-          console.log(`[VoiceMode] Pipelining TTS for ${sentences.length} sentence(s)`);
+          if (__DEV__) console.log(`[VoiceMode] Pipelining TTS for ${sentences.length} sentence(s)`);
 
           const audioPromises = sentences.map(sentence =>
             cloudTTSRef.current!(sentence).catch(() => null)
@@ -234,7 +234,7 @@ export function useVoiceMode(): UseVoiceModeReturn {
           resolve();
           return;
         } catch (err) {
-          console.warn('[VoiceMode] Cloud TTS failed, falling back to system:', err);
+          if (__DEV__) console.warn('[VoiceMode] Cloud TTS failed, falling back to system:', err);
         }
       }
 
@@ -288,7 +288,7 @@ export function useVoiceMode(): UseVoiceModeReturn {
         );
         soundRef.current = sound;
       } catch (err) {
-        console.error('[VoiceMode] Audio playback failed:', err);
+        if (__DEV__) console.error('[VoiceMode] Audio playback failed:', err);
         if (setIdleOnFinish && isMountedRef.current) setStateAndRef('idle');
         try { file.delete(); } catch {}
         resolve();

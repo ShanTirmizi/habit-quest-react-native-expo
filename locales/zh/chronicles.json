@@ -69,6 +69,15 @@
 
   "toast": {
     "failedSave": "保存日记失败",
-    "failedUpdate": "更新日记失败"
+    "failedUpdate": "更新日记失败",
+    "failedDelete": "删除日记失败"
+  },
+
+  "deleteAlert": {
+    "title": "删除日记",
+    "message": "确定要删除吗？此操作无法撤销。",
+    "cancel": "取消",
+    "delete": "删除",
+    "success": "日记已删除"
   }
 }

@@ -70,7 +70,7 @@ export default function SettingsScreen() {
 
   const handleSignOut = async () => {
     await signOut();
-    router.replace('/(auth)/login');
+    // AuthGate in _layout.tsx handles navigation to login screen
   };
 
   const handleDeleteAccount = () => {
@@ -95,7 +95,6 @@ export default function SettingsScreen() {
                     try {
                       await deleteAccount();
                       await signOut();
-                      router.replace('/(auth)/login');
                     } catch {
                       Alert.alert(
                         t('common:error'),

@@ -33,6 +33,7 @@ import { BentoGrid } from '@/components/ui/BentoGrid';
 import { BentoCell } from '@/components/ui/BentoCell';
 import { OversizedMetric } from '@/components/ui/OversizedMetric';
 import { CoachPanel } from '@/components/ai-coach/CoachPanel';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { getWeeklyBoss, getWeekStart } from '@/data/weekly-bosses';
 import type { HabitCategory } from '@/types';
 import type { Id } from '@/convex/_generated/dataModel';
@@ -43,7 +44,7 @@ const TAB_CHIPS: { value: InsightsTab; label: string; icon: keyof typeof Ionicon
   { value: 'overview', label: 'Overview', icon: 'grid-outline' },
   { value: 'history', label: 'History', icon: 'calendar-outline' },
   { value: 'achievements', label: 'Achievements', icon: 'trophy-outline' },
-  { value: 'gamification', label: 'Skills', icon: 'sparkles-outline' },
+  { value: 'gamification', label: 'Gamification', icon: 'sparkles-outline' },
 ];
 
 // Static achievement definitions (what achievements exist)
@@ -261,8 +262,18 @@ export default function InsightsScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-          {tab === 'overview' ? <OverviewTab userId={userId} progress={progress} habits={habits ?? []} colors={colors} styles={styles} isDark={isDark} /> : null}
-          {tab === 'history' ? <HistoryTab userId={userId} habits={habits ?? []} colors={colors} styles={styles} isDark={isDark} /> : null}
+          {(tab === 'overview' || tab === 'history') && (!habits || habits.length === 0) ? (
+            <EmptyState
+              icon="bar-chart-outline"
+              title={t('emptyState.title', { defaultValue: 'No data yet' })}
+              description={t('emptyState.description', { defaultValue: 'Add your first habit to start seeing insights, streaks, and progress here.' })}
+            />
+          ) : (
+            <>
+              {tab === 'overview' ? <OverviewTab userId={userId} progress={progress} habits={habits ?? []} colors={colors} styles={styles} isDark={isDark} /> : null}
+              {tab === 'history' ? <HistoryTab userId={userId} habits={habits ?? []} colors={colors} styles={styles} isDark={isDark} /> : null}
+            </>
+          )}
           {tab === 'achievements' ? <AchievementsTab userId={userId} progress={progress} colors={colors} styles={styles} isDark={isDark} /> : null}
           {tab === 'gamification' ? <GamificationTab userId={userId} progress={progress} colors={colors} styles={styles} isDark={isDark} /> : null}
         <View style={{ height: 140 }} />

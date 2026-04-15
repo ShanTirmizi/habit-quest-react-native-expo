@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   View,
   Text,
@@ -53,36 +54,36 @@ const CATEGORY_ICONS: Record<HabitCategory, keyof typeof Ionicons.glyphMap> = {
   life: 'leaf',
 };
 
-const FREQUENCY_FILTER_OPTIONS: { value: FrequencyFilter; label: string }[] = [
-  { value: 'all', label: 'All' },
-  { value: 'daily', label: 'Daily' },
-  { value: 'weekdays', label: 'Weekdays' },
-  { value: 'weekends', label: 'Weekends' },
-  { value: 'custom', label: 'Custom' },
-  { value: 'timesPerWeek', label: 'X/Week' },
+const FREQUENCY_FILTER_OPTIONS: { value: FrequencyFilter; labelKey: string }[] = [
+  { value: 'all', labelKey: 'filter.all' },
+  { value: 'daily', labelKey: 'filter.daily' },
+  { value: 'weekdays', labelKey: 'filter.weekdays' },
+  { value: 'weekends', labelKey: 'filter.weekends' },
+  { value: 'custom', labelKey: 'filter.custom' },
+  { value: 'timesPerWeek', labelKey: 'filter.timesPerWeek' },
 ];
 
 // ── Helpers ──
 
-function getFrequencyDescription(habit: Habit): string {
+function getFrequencyDescription(habit: Habit, t: (key: string, opts?: Record<string, unknown>) => string): string {
   const freq = habit.frequency;
-  if (!freq) return 'Every day';
+  if (!freq) return t('frequency.everyDay');
   switch (freq.type) {
     case 'daily':
-      return 'Every day';
+      return t('frequency.everyDay');
     case 'weekdays':
-      return 'Mon – Fri';
+      return t('frequency.monFri');
     case 'weekends':
-      return 'Sat – Sun';
+      return t('frequency.satSun');
     case 'custom': {
       const days = freq.daysOfWeek ?? [];
-      if (days.length === 0) return 'Custom days';
+      if (days.length === 0) return t('frequency.customDays');
       return days.map((d) => DAYS_OF_WEEK[d]).join(', ');
     }
     case 'timesPerWeek':
-      return `${freq.timesPerWeek ?? 1}x per week`;
+      return t('frequency.timesPerWeek', { count: freq.timesPerWeek ?? 1 });
     default:
-      return 'Every day';
+      return t('frequency.everyDay');
   }
 }
 
@@ -97,14 +98,16 @@ function BrowserHabitCard({
   colors,
   styles,
   onPress,
+  t,
 }: {
   habit: Habit;
   colors: ThemeColors;
   styles: ReturnType<typeof createStyles>;
   onPress: (habit: Habit) => void;
+  t: (key: string, opts?: Record<string, unknown>) => string;
 }) {
   const catColor = getCategoryColor(habit.category);
-  const freqDesc = getFrequencyDescription(habit);
+  const freqDesc = getFrequencyDescription(habit, t);
   const timeConfig = TIME_OF_DAY_CONFIG[habit.timeOfDay ?? 'anytime'];
   const isHibernated = !!habit.hibernatedAt;
 
@@ -138,7 +141,7 @@ function BrowserHabitCard({
           </View>
           {isHibernated ? (
             <BadgePill
-              label="Hibernated"
+              label={t('card.hibernated')}
               icon="snow-outline"
               color={colors.textMuted}
               size="sm"
@@ -176,7 +179,7 @@ function BrowserHabitCard({
               color={isHibernated ? colors.textMuted : colors.accent}
             />
             <Text style={[styles.cardStatText, isHibernated && { color: colors.textMuted }]}>
-              {habit.streak} streak
+              {t('card.streak', { count: habit.streak })}
             </Text>
           </View>
           <View style={styles.cardStat}>
@@ -186,7 +189,7 @@ function BrowserHabitCard({
               color={isHibernated ? colors.textMuted : colors.primary}
             />
             <Text style={[styles.cardStatText, isHibernated && { color: colors.textMuted }]}>
-              {habit.xpReward} XP
+              {t('card.xp', { count: habit.xpReward })}
             </Text>
           </View>
         </View>
@@ -203,6 +206,7 @@ export default function HabitBrowserScreen() {
   const { userId } = useAuth();
   const { colors, isDark } = useTheme();
   const { showToast } = useToast();
+  const { t } = useTranslation('habit-browser');
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
 
   const [frequencyFilter, setFrequencyFilter] = useState<FrequencyFilter>('all');
@@ -318,7 +322,7 @@ export default function HabitBrowserScreen() {
       if (result.completed) {
         const habit = habits.find((h) => h.id === id);
         if (habit) {
-          showToast(`${habit.name} completed!`, habit.xpReward, 'xp');
+          showToast(t('toast.completed', { name: habit.name }), habit.xpReward, 'xp');
           try {
             await addXpMutation({ userId, amount: habit.xpReward });
           } catch { /* ignore xp errors */ }
@@ -333,7 +337,7 @@ export default function HabitBrowserScreen() {
         }
       }
     } catch {
-      showToast('Failed to toggle habit', undefined, 'error');
+      showToast(t('toast.toggleError'), undefined, 'error');
     }
   }, [userId, todayDate, toggleCompletionMutation, habits, showToast, addXpMutation, removeXpMutation]);
 
@@ -345,9 +349,9 @@ export default function HabitBrowserScreen() {
         userId,
       });
       setSelectedHabit(null);
-      showToast('Habit deleted', undefined, 'hp');
+      showToast(t('toast.deleted'), undefined, 'hp');
     } catch {
-      showToast('Failed to delete habit', undefined, 'error');
+      showToast(t('toast.deleteError'), undefined, 'error');
     }
   }, [userId, deleteHabitMutation, showToast]);
 
@@ -359,9 +363,9 @@ export default function HabitBrowserScreen() {
         userId,
         text,
       });
-      showToast('Note added', undefined, 'xp');
+      showToast(t('toast.noteAdded'), undefined, 'xp');
     } catch {
-      showToast('Failed to add note', undefined, 'error');
+      showToast(t('toast.noteError'), undefined, 'error');
     }
   }, [userId, addNoteMutation, showToast]);
 
@@ -373,9 +377,9 @@ export default function HabitBrowserScreen() {
         userId,
         ...data,
       } as Parameters<typeof updateHabitMutation>[0]);
-      showToast('Habit updated!', undefined, 'xp');
+      showToast(t('toast.updated'), undefined, 'xp');
     } catch {
-      showToast('Failed to update habit', undefined, 'error');
+      showToast(t('toast.updateError'), undefined, 'error');
     }
   }, [userId, updateHabitMutation, showToast]);
 
@@ -386,9 +390,9 @@ export default function HabitBrowserScreen() {
         habitId: id as Parameters<typeof hibernateHabitMutation>[0]['habitId'],
         userId,
       });
-      showToast('Habit hibernated', undefined, 'hp');
+      showToast(t('toast.hibernated'), undefined, 'hp');
     } catch {
-      showToast('Failed to hibernate', undefined, 'error');
+      showToast(t('toast.hibernateError'), undefined, 'error');
     }
   }, [userId, hibernateHabitMutation, showToast]);
 
@@ -399,9 +403,9 @@ export default function HabitBrowserScreen() {
         habitId: id as Parameters<typeof wakeHabitMutation>[0]['habitId'],
         userId,
       });
-      showToast('Habit reactivated!', undefined, 'xp');
+      showToast(t('toast.reactivated'), undefined, 'xp');
     } catch {
-      showToast('Failed to wake habit', undefined, 'error');
+      showToast(t('toast.wakeError'), undefined, 'error');
     }
   }, [userId, wakeHabitMutation, showToast]);
 
@@ -415,7 +419,7 @@ export default function HabitBrowserScreen() {
             <Ionicons name="chevron-back" size={24} color={colors.foreground} />
           </Pressable>
           <View style={styles.headerLeft}>
-            <Text style={styles.title}>All Habits</Text>
+            <Text style={styles.title}>{t('title')}</Text>
           </View>
         </View>
         <View style={styles.loadingContainer}>
@@ -442,11 +446,11 @@ export default function HabitBrowserScreen() {
           <Text style={styles.title}>All Habits</Text>
           <View style={styles.badgeRow}>
             <View style={styles.activeBadge}>
-              <Text style={styles.activeBadgeText}>{activeCount} active</Text>
+              <Text style={styles.activeBadgeText}>{t('badge.active', { count: activeCount })}</Text>
             </View>
             {hibernatedCount > 0 ? (
               <View style={styles.hibernatedBadge}>
-                <Text style={styles.hibernatedBadgeText}>{hibernatedCount} hibernated</Text>
+                <Text style={styles.hibernatedBadgeText}>{t('badge.hibernated', { count: hibernatedCount })}</Text>
               </View>
             ) : null}
           </View>
@@ -458,7 +462,7 @@ export default function HabitBrowserScreen() {
         <Ionicons name="search" size={18} color={colors.textMuted} />
         <TextInput
           style={styles.searchInput}
-          placeholder="Search habits..."
+          placeholder={t('search.placeholder')}
           placeholderTextColor={colors.textMuted}
           value={searchQuery}
           onChangeText={setSearchQuery}
@@ -490,7 +494,7 @@ export default function HabitBrowserScreen() {
               style={[styles.filterChip, isActive && styles.filterChipActive]}
             >
               <Text style={[styles.filterChipText, isActive && styles.filterChipTextActive]}>
-                {opt.label}
+                {t(opt.labelKey)}
                 {count > 0 && opt.value !== 'all' ? ` (${count})` : ''}
               </Text>
             </Pressable>
@@ -517,11 +521,11 @@ export default function HabitBrowserScreen() {
         {filteredHabits.length === 0 ? (
           <EmptyState
             icon="search-outline"
-            title="No habits found"
+            title={t('empty.title')}
             description={
               searchQuery
-                ? `No habits match "${searchQuery}"`
-                : `No ${frequencyFilter === 'all' ? '' : FREQUENCY_LABELS[frequencyFilter as HabitFrequencyType].toLowerCase() + ' '}habits yet`
+                ? t('empty.searchDescription', { query: searchQuery })
+                : t('empty.filterDescription', { filter: frequencyFilter === 'all' ? '' : FREQUENCY_LABELS[frequencyFilter as HabitFrequencyType].toLowerCase() + ' ' })
             }
           />
         ) : (
@@ -533,6 +537,7 @@ export default function HabitBrowserScreen() {
                 colors={colors}
                 styles={styles}
                 onPress={setSelectedHabit}
+                t={t}
               />
             ))}
           </View>

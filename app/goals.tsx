@@ -6,7 +6,6 @@ import {
   ScrollView,
   Pressable,
   RefreshControl,
-  TextInput,
   Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -27,6 +26,7 @@ import { ProgressBar } from '@/components/ui/ProgressBar';
 import { BadgePill } from '@/components/ui/BadgePill';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { BottomSheet } from '@/components/ui/BottomSheet';
+import { Input } from '@/components/ui/Input';
 import { useToast } from '@/contexts/toast-context';
 import { AddGoalWizard } from '@/components/goals/AddGoalWizard';
 import type { Goal, GoalStatus, GoalCategory } from '@/types';
@@ -579,23 +579,22 @@ function GoalDetail({
       {/* Editable title & description */}
       {isEditing ? (
         <View style={styles.editSection}>
-          <Text style={styles.editLabel}>{t('detail.editTitleLabel')}</Text>
-          <TextInput
+          <Input
+            label={t('detail.editTitleLabel')}
             value={editTitle}
             onChangeText={setEditTitle}
-            style={styles.editInput}
-            placeholderTextColor={colors.textMuted}
             placeholder={t('detail.editTitlePlaceholder')}
+            bottomSheet
           />
-          <Text style={styles.editLabel}>{t('detail.editDescLabel')}</Text>
-          <TextInput
+          <Input
+            label={t('detail.editDescLabel')}
             value={editDescription}
             onChangeText={setEditDescription}
-            style={[styles.editInput, styles.editInputMultiline]}
-            placeholderTextColor={colors.textMuted}
             placeholder={t('detail.editDescPlaceholder')}
             multiline
             numberOfLines={3}
+            containerStyle={{ marginTop: Spacing.md }}
+            bottomSheet
           />
         </View>
       ) : goal.description ? (

@@ -34,6 +34,7 @@ export function usePushNotifications(userId: string | null) {
         await Notifications.setNotificationChannelAsync('default', {
           name: 'default',
           importance: Notifications.AndroidImportance.MAX,
+          sound: 'notification.wav',
         });
       }
 
@@ -93,6 +94,7 @@ export async function scheduleHabitReminder(
     content: {
       title: 'Time for your habit!',
       body: `Don't forget: ${habitName}`,
+      sound: 'notification.wav',
       data: { screen: 'habits' },
     },
     trigger: {
@@ -128,6 +130,7 @@ export async function scheduleMedicineReminders(
     content: {
       title,
       body,
+      sound: 'notification.wav',
       data: { screen: 'medicines' },
     },
     trigger: {

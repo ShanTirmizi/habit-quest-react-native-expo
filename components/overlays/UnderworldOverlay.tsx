@@ -10,6 +10,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { useQuery, useMutation } from 'convex/react';
+import { useTranslation } from 'react-i18next';
 import { api } from '@/convex/_generated/api';
 import type { Id } from '@/convex/_generated/dataModel';
 import { FontSize, Spacing, Radius, FontFamily, type ThemeColors } from '@/constants/theme';
@@ -24,6 +25,7 @@ interface UnderworldOverlayProps {
 
 export function UnderworldOverlay({ userId }: UnderworldOverlayProps) {
   const { colors } = useTheme();
+  const { t } = useTranslation('underworld');
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { showToast } = useToast();
   const status = useQuery(api.progress.getUnderworldStatus, { userId });
@@ -53,12 +55,12 @@ export function UnderworldOverlay({ userId }: UnderworldOverlayProps) {
       const result = await resurrectMutation({ userId });
       if (result.success) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        showToast('You have risen! HP restored.', result.xpBonus, 'level');
+        showToast(t('toast.risen'), result.xpBonus, 'level');
       } else {
-        showToast(result.reason || 'Not ready yet', undefined, 'error');
+        showToast(result.reason || t('toast.notReady'), undefined, 'error');
       }
     } catch {
-      showToast('Failed to resurrect', undefined, 'error');
+      showToast(t('toast.failed'), undefined, 'error');
     }
   }, [userId, resurrectMutation, showToast]);
 
@@ -75,10 +77,10 @@ export function UnderworldOverlay({ userId }: UnderworldOverlayProps) {
       <View style={styles.content}>
         <View style={styles.headerRow}>
           <Ionicons name="skull" size={20} color={colors.danger} />
-          <Text style={styles.title}>The Underworld</Text>
+          <Text style={styles.title}>{t('title')}</Text>
         </View>
         <Text style={styles.description}>
-          Complete habits for {status.daysRemaining} more {status.daysRemaining === 1 ? 'day' : 'days'} to resurrect
+          {t('description', { count: status.daysRemaining })}
         </Text>
         <ProgressBar
           progress={progress}
@@ -87,7 +89,7 @@ export function UnderworldOverlay({ userId }: UnderworldOverlayProps) {
           glowColor={colors.hpCritical}
         />
         {status.readyToResurrect ? (
-          <Button title="Resurrect" onPress={handleResurrect} size="sm" />
+          <Button title={t('resurrectButton')} onPress={handleResurrect} size="sm" />
         ) : null}
       </View>
     </View>

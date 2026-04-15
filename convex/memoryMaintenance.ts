@@ -49,9 +49,11 @@ export const decayMemories = internalMutation({
       }
     }
 
-    console.log(
-      `Memory maintenance complete: ${decayedCount} decayed, ${deletedCount} deleted out of ${memories.length} total`
-    );
+    if (process.env.NODE_ENV !== "production") {
+      console.log(
+        `Memory maintenance complete: ${decayedCount} decayed, ${deletedCount} deleted out of ${memories.length} total`
+      );
+    }
 
     return { decayedCount, deletedCount, totalProcessed: memories.length };
   },

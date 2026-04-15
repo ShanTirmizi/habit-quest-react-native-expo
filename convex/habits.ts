@@ -2,6 +2,7 @@ import { v } from 'convex/values';
 import { mutation, query, MutationCtx, QueryCtx } from './_generated/server';
 import { Id, Doc } from './_generated/dataModel';
 import { verifyAuth } from './lib/auth';
+import { truncate, validateString, MAX_LENGTHS } from './lib/validation';
 
 // Get all habits for a user with their completions
 export const getHabits = query({
@@ -104,7 +105,7 @@ export const addHabit = mutation({
 
     const habitId = await ctx.db.insert('habits', {
       userId: args.userId,
-      name: args.name,
+      name: truncate(args.name, MAX_LENGTHS.name),
       category: args.category,
       xpReward: args.xpReward,
       streak: 0,
@@ -112,11 +113,11 @@ export const addHabit = mutation({
       timeOfDay: args.timeOfDay,
       chainedToHabitId: args.chainedToHabitId,
       allowedRestDays: args.allowedRestDays,
-      location: args.location,
-      trigger: args.trigger,
-      rationale: args.rationale,
+      location: validateString(args.location, MAX_LENGTHS.shortText),
+      trigger: validateString(args.trigger, MAX_LENGTHS.shortText),
+      rationale: validateString(args.rationale, MAX_LENGTHS.shortText),
       citation: args.citation,
-      rewardBundle: args.rewardBundle,
+      rewardBundle: validateString(args.rewardBundle, MAX_LENGTHS.shortText),
     });
 
     return habitId;

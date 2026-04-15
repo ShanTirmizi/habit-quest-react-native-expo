@@ -418,7 +418,7 @@ export function AddGoalWizard({ visible, onClose, userId }: AddGoalWizardProps) 
       }
       setQuestionAnswers(initialAnswers);
     } catch (error) {
-      console.error('Error fetching context questions:', error);
+      if (__DEV__) console.error('Error fetching context questions:', error);
       setQuestionsError(t('wizard.questionsError'));
     } finally {
       setIsLoadingQuestions(false);
@@ -486,7 +486,7 @@ export function AddGoalWizard({ visible, onClose, userId }: AddGoalWizardProps) 
       setWarnings(result.warnings || []);
       setStep('review');
     } catch (error) {
-      console.error('Error generating habits:', error);
+      if (__DEV__) console.error('Error generating habits:', error);
       setGenerationError(error instanceof Error ? error.message : 'Failed to generate habits');
       setStep('context');
     } finally {
@@ -608,7 +608,7 @@ export function AddGoalWizard({ visible, onClose, userId }: AddGoalWizardProps) 
       setStep('confirmation');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error) {
-      console.error('Error creating goal:', error);
+      if (__DEV__) console.error('Error creating goal:', error);
       showToast(t('wizard.creating.failed'), undefined, 'error');
       setStep('review');
     } finally {

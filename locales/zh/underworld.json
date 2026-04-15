@@ -1,0 +1,9 @@
+{
+  "title": "冥界",
+  "description": "再完成 {{count}} 天的习惯即可复活",
+  "description_plural": "再完成 {{count}} 天的习惯即可复活",
+  "resurrectButton": "复活",
+  "toast.risen": "你已复活！生命值已恢复。",
+  "toast.notReady": "尚未准备好",
+  "toast.failed": "复活失败"
+}

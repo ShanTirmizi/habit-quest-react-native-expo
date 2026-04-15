@@ -1,0 +1,21 @@
+{
+  "title": "\u795e\u8c15\u6311\u6218",
+  "description": "\u54a8\u8be2\u795e\u8c15\u83b7\u53d6\u6bcf\u65e5\u6311\u6218\uff0c\u8d62\u53d6\u989d\u5916\u7ecf\u9a8c\u503c\u3002",
+  "xpBadge": "+{{xp}} \u7ecf\u9a8c\u503c",
+
+  "button.consult": "\u54a8\u8be2\u795e\u8c15",
+  "button.accept": "\u63a5\u53d7",
+  "button.dismiss": "\u8df3\u8fc7",
+  "button.complete": "\u5b8c\u6210",
+
+  "status.completed": "\u5df2\u5b8c\u6210",
+
+  "toast.speaks": "\u795e\u8c15\u5df2\u964d\u4e34...",
+  "toast.silent": "\u795e\u8c15\u6c89\u9ed8\u4e86...",
+  "toast.accepted": "\u6311\u6218\u5df2\u63a5\u53d7\uff01",
+  "toast.acceptError": "\u63a5\u53d7\u6311\u6218\u5931\u8d25",
+  "toast.completed": "\u6311\u6218\u5df2\u5b8c\u6210\uff01",
+  "toast.completeError": "\u5b8c\u6210\u6311\u6218\u5931\u8d25",
+  "toast.dismissed": "\u6311\u6218\u5df2\u8df3\u8fc7",
+  "toast.dismissError": "\u8df3\u8fc7\u5931\u8d25"
+}

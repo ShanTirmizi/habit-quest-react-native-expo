@@ -1,0 +1,40 @@
+{
+  "title": "All Habits",
+  "badge.active": "{{count}} active",
+  "badge.hibernated": "{{count}} hibernated",
+  "search.placeholder": "Search habits...",
+
+  "filter.all": "All",
+  "filter.daily": "Daily",
+  "filter.weekdays": "Weekdays",
+  "filter.weekends": "Weekends",
+  "filter.custom": "Custom",
+  "filter.timesPerWeek": "X/Week",
+
+  "frequency.everyDay": "Every day",
+  "frequency.monFri": "Mon \u2013 Fri",
+  "frequency.satSun": "Sat \u2013 Sun",
+  "frequency.customDays": "Custom days",
+  "frequency.timesPerWeek": "{{count}}x per week",
+
+  "card.streak": "{{count}} streak",
+  "card.xp": "{{count}} XP",
+  "card.hibernated": "Hibernated",
+
+  "empty.title": "No habits found",
+  "empty.searchDescription": "No habits match \"{{query}}\"",
+  "empty.filterDescription": "No {{filter}}habits yet",
+
+  "toast.completed": "{{name}} completed!",
+  "toast.toggleError": "Failed to toggle habit",
+  "toast.deleted": "Habit deleted",
+  "toast.deleteError": "Failed to delete habit",
+  "toast.noteAdded": "Note added",
+  "toast.noteError": "Failed to add note",
+  "toast.updated": "Habit updated!",
+  "toast.updateError": "Failed to update habit",
+  "toast.hibernated": "Habit hibernated",
+  "toast.hibernateError": "Failed to hibernate",
+  "toast.reactivated": "Habit reactivated!",
+  "toast.wakeError": "Failed to wake habit"
+}
