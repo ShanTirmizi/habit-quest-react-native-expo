@@ -14,7 +14,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { makeRedirectUri } from 'expo-auth-session';
 import { openAuthSessionAsync } from 'expo-web-browser';
-import * as AppleAuthentication from 'expo-apple-authentication';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/contexts/theme-context';
 import { FontSize, Spacing, Radius, FontFamily, Shadows, type ThemeColors } from '@/constants/theme';
@@ -69,28 +68,20 @@ export default function LoginScreen() {
   const handleAppleSignIn = async () => {
     setAppleLoading(true);
     try {
-      const credential = await AppleAuthentication.signInAsync({
-        requestedScopes: [
-          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
-          AppleAuthentication.AppleAuthenticationScope.EMAIL,
-        ],
-      });
-      if (credential.identityToken) {
-        const { redirect } = await signIn('apple', { redirectTo });
-        if (redirect) {
-          const result = await openAuthSessionAsync(
-            redirect.toString(),
-            redirectTo
-          );
-          if (result.type === 'success') {
-            const { url } = result;
-            const code = new URL(url).searchParams.get('code');
-            if (code) {
-              await signIn('apple', { code });
-            }
+      const { redirect } = await signIn('apple', { redirectTo });
+      if (redirect) {
+        const result = await openAuthSessionAsync(
+          redirect.toString(),
+          redirectTo
+        );
+        if (result.type === 'success') {
+          const { url } = result;
+          const code = new URL(url).searchParams.get('code');
+          if (code) {
+            await signIn('apple', { code });
+            router.replace('/(tabs)');
           }
         }
-        router.replace('/(tabs)');
       }
     } catch (err: any) {
       if (err.code !== 'ERR_REQUEST_CANCELED') {
@@ -109,6 +100,7 @@ export default function LoginScreen() {
     try {
       const { redirect } = await signIn('google', { redirectTo });
       if (Platform.OS === 'web') {
+        // Web OAuth handles redirect automatically via the browser
         return;
       }
       if (redirect) {
@@ -121,10 +113,10 @@ export default function LoginScreen() {
           const code = new URL(url).searchParams.get('code');
           if (code) {
             await signIn('google', { code });
+            router.replace('/(tabs)');
           }
         }
       }
-      router.replace('/(tabs)');
     } catch (err: any) {
       Alert.alert(
         t('error.googleFailed'),
@@ -167,7 +159,8 @@ export default function LoginScreen() {
               value={name}
               onChangeText={setName}
               placeholder={t('namePlaceholder')}
-              autoCapitalize="words"
+              autoCapitalize="none"
+              autoCorrect={false}
             />
           ) : null}
 
