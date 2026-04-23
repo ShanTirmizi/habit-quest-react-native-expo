@@ -45,9 +45,12 @@
   "goals.today": "今天",
   "goals.overdue": "已逾期",
 
-  "emptyState.title": "还没有习惯",
-  "emptyState.description": "创建你的第一个习惯，开始你的旅程吧。积少成多，聚沙成塔！",
+  "emptyState.title": "你的每日主场",
+  "emptyState.description": "今天的习惯都在这里。完成它们来赢得 XP 并保护你的 HP。设定你的第一个目标，Dr. Sage 会为你构建习惯。",
+  "emptyState.cta": "创建你的第一个目标",
   "emptyState.action": "创建第一个习惯",
+  "firstGoalBanner.title": "创建你的第一个目标",
+  "firstGoalBanner.subtitle": "Dr. Sage 会为你构建一份计划",
 
   "toast.habitDoneWithReward": "{{name}} 完成！奖励时间：{{reward}}",
   "toast.habitCompleted": "{{name}} 已完成！",

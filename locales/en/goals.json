@@ -9,6 +9,10 @@
   "empty.description": "Set meaningful goals and let AI generate habits to help you achieve them.",
   "empty.action": "Create Goal",
 
+  "emptyState.title": "Your reasons",
+  "emptyState.description": "Goals are the why behind your daily Habits. Dr. Sage turns a goal into a concrete plan — habits, milestones, and check-ins.",
+  "emptyState.cta": "Create your first goal",
+
   "card.milestonesProgress": "{{completed}}/{{total}} milestones",
   "card.daysLeft": "{{count}}d left",
   "card.today": "Today!",

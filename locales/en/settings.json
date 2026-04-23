@@ -10,13 +10,20 @@
     "language": "LANGUAGE",
     "personalisation": "PERSONALISATION",
     "privacy": "PRIVACY & DATA",
+    "analytics": "ANALYTICS",
     "legal": "LEGAL",
     "account": "ACCOUNT"
   },
   "notifications": {
     "morning": "Morning reminders",
     "afternoon": "Afternoon reminders",
-    "evening": "Evening reminders"
+    "evening": "Evening reminders",
+    "sendTest": "Send test notification",
+    "testFired": "Test sent",
+    "testFiredMessage": "You should see a notification within a second. If you heard a sound, you're set.",
+    "testBlocked": "Notifications disabled",
+    "testBlockedMessage": "Enable notifications for HabitQuest in iOS Settings to hear sound.",
+    "soundOffHint": "Sound permission is off — enable it in iOS Settings → Notifications → HabitQuest."
   },
   "appearance": {
     "darkMode": "Dark Mode",
@@ -39,6 +46,14 @@
     "exportLoadingMessage": "Your data is still loading. Please try again in a moment.",
     "exportTitle": "HabitQuest Data Export",
     "exportError": "Failed to export data. Please try again."
+  },
+  "analytics": {
+    "shareUsage": "Share anonymous usage data",
+    "shareUsageSub": "Processed in the EU. No content, no personal info.",
+    "viewWhatWeTrack": "What we track",
+    "viewWhatWeTrackTitle": "What we track",
+    "viewWhatWeTrackMessage": "We record which features you use (e.g., \"habit completed\", \"level up\") and basic app health. We NEVER send your journal text, chat messages, name, or email. All data is processed in the EU by PostHog.",
+    "viewWhatWeTrackOk": "Got it"
   },
   "legal": {
     "privacyPolicy": "Privacy Policy",

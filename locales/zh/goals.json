@@ -9,6 +9,10 @@
   "empty.description": "设定有意义的目标，让 AI 生成习惯来帮助你实现它们。",
   "empty.action": "创建目标",
 
+  "emptyState.title": "你的心中所想",
+  "emptyState.description": "目标是你每日习惯背后的意义所在。Dr. Sage 会将目标转化为具体计划——习惯、里程碑与定期回顾。",
+  "emptyState.cta": "创建你的第一个目标",
+
   "card.milestonesProgress": "{{completed}}/{{total}} 个里程碑",
   "card.daysLeft": "还剩 {{count}} 天",
   "card.today": "今天！",

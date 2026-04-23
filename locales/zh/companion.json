@@ -84,5 +84,9 @@
     "giftClaimed": "礼物已领取：{{giftType}}！",
     "failedClaimGift": "领取礼物失败",
     "messageCopied": "消息已复制"
-  }
+  },
+
+  "emptyState.title": "随时与 Dr. Sage 倾诉",
+  "emptyState.description": "寻求coaching指引、倾诉糟糕的一天，或者聊聊你的目标。Sage 会记住你的日记和习惯历史中的内容。",
+  "emptyState.cta": "打个招呼"
 }

@@ -79,5 +79,9 @@
     "cancel": "Cancel",
     "delete": "Delete",
     "success": "Entry deleted"
-  }
+  },
+
+  "emptyState.title": "Your journal, just for you",
+  "emptyState.description": "Write what happened, how you felt, what's on your mind. Dr. Sage reads entries privately and spots patterns you might miss.",
+  "emptyState.cta": "Write your first entry"
 }

@@ -84,5 +84,9 @@
     "giftClaimed": "Gift claimed: {{giftType}}!",
     "failedClaimGift": "Failed to claim gift",
     "messageCopied": "Message copied"
-  }
+  },
+
+  "emptyState.title": "Talk to Dr. Sage anytime",
+  "emptyState.description": "Ask for a coaching check-in, vent about a rough day, or talk through your goals. Sage remembers context from your Chronicles and habit history.",
+  "emptyState.cta": "Say hi"
 }

@@ -45,9 +45,12 @@
   "goals.today": "Today",
   "goals.overdue": "Overdue",
 
-  "emptyState.title": "No habits yet",
-  "emptyState.description": "Start your journey by creating your first habit. Small steps lead to big changes!",
+  "emptyState.title": "Your daily home base",
+  "emptyState.description": "Today's habits live here. Complete them to earn XP and protect your HP. Set up your first Goal and Dr. Sage will build habits for you.",
+  "emptyState.cta": "Create your first goal",
   "emptyState.action": "Create First Habit",
+  "firstGoalBanner.title": "Create your first goal",
+  "firstGoalBanner.subtitle": "Dr. Sage will build a plan for you",
 
   "toast.habitDoneWithReward": "{{name}} done! Time for: {{reward}}",
   "toast.habitCompleted": "{{name}} completed!",

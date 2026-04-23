@@ -79,5 +79,9 @@
     "cancel": "取消",
     "delete": "删除",
     "success": "日记已删除"
-  }
+  },
+
+  "emptyState.title": "专属你的日记本",
+  "emptyState.description": "写下发生了什么、你的感受、心里在想什么。Dr. Sage 会私下阅读你的日记，发现你可能错过的规律。",
+  "emptyState.cta": "写下第一篇日记"
 }

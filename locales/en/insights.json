@@ -65,6 +65,6 @@
   "category.growth": "Growth",
   "category.balance": "Balance",
   "bestDay.na": "N/A",
-  "emptyState.title": "No data yet",
-  "emptyState.description": "Add your first habit to start seeing insights, streaks, and progress here."
+  "emptyState.title": "Patterns appear here",
+  "emptyState.description": "After a week of habit completions and chronicle entries, we'll surface trends — which days feel best, which habits stick, what drains your HP."
 }
